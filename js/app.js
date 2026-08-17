@@ -565,15 +565,7 @@ const App = (() => {
 
       const settingsBtn = e.target.closest('.settings-btn, #btn-open-settings, [data-action="open-settings"]');
       if (settingsBtn) {
-        const modal = document.getElementById('settings-modal');
-        if (modal) {
-          modal.style.display = 'flex';
-          const settings = Storage.getSettings();
-          const qualEl = document.getElementById('select-quality');
-          if (qualEl) qualEl.value = settings.audioQuality || '320kbps';
-          const speedEl = document.getElementById('select-speed');
-          if (speedEl) speedEl.value = Player.getPlaybackSpeed();
-        }
+        openSettingsModal();
         return;
       }
 
@@ -1073,48 +1065,59 @@ const App = (() => {
 
   let visualizerRAF = null;
 
+  function openSettingsModal() {
+    const modal = document.getElementById('settings-modal');
+    if (!modal) return;
+    modal.style.display = 'flex';
+    
+    const settings = Storage.getSettings();
+    const qualEl = document.getElementById('select-quality');
+    if (qualEl) qualEl.value = settings.audioQuality || '320kbps';
+    const speedEl = document.getElementById('select-speed');
+    if (speedEl) speedEl.value = Player.getPlaybackSpeed();
+    
+    buildEqSliders();
+  }
+
+  function buildEqSliders() {
+    const eqContainer = document.querySelector('.eq-sliders');
+    if (!eqContainer || eqContainer.children.length > 0) return;
+    
+    const settings = Storage.getSettings();
+    const freqs = ['60', '170', '310', '600', '1k', '3k', '6k', '12k', '14k', '16k'];
+    const savedEQ = settings.eq || Array(10).fill(0);
+    freqs.forEach((freq, i) => {
+      const band = document.createElement('div');
+      band.className = 'eq-band';
+      band.innerHTML = `
+        <input type="range" class="eq-slider" min="-12" max="12" step="0.1" value="${savedEQ[i]}" data-index="${i}">
+        <div class="eq-label">${freq}</div>
+      `;
+      eqContainer.appendChild(band);
+      Player.setEqBand(i, savedEQ[i]);
+    });
+    
+    eqContainer.addEventListener('input', (e) => {
+      if (e.target.classList.contains('eq-slider')) {
+        const idx = parseInt(e.target.dataset.index);
+        const val = parseFloat(e.target.value);
+        Player.setEqBand(idx, val);
+        
+        const newEQ = Storage.getSettings().eq || Array(10).fill(0);
+        newEQ[idx] = val;
+        Storage.updateSettings({ eq: newEQ });
+      }
+    });
+  }
+
   function initSettings() {
     const modal = document.getElementById('settings-modal');
-    const settings = Storage.getSettings();
     
+    buildEqSliders();
+
     document.querySelectorAll('.settings-btn, #btn-open-settings').forEach(btn => {
-      btn.addEventListener('click', () => {
-        modal.style.display = 'flex';
-        // Load current values
-        document.getElementById('select-quality').value = settings.audioQuality || '320kbps';
-        document.getElementById('select-speed').value = Player.getPlaybackSpeed();
-      });
+      btn.addEventListener('click', openSettingsModal);
     });
-      
-      // Build EQ if empty
-      const eqContainer = document.querySelector('.eq-sliders');
-      if (eqContainer.children.length === 0) {
-        const freqs = ['60', '170', '310', '600', '1k', '3k', '6k', '12k', '14k', '16k'];
-        const savedEQ = settings.eq || Array(10).fill(0);
-        freqs.forEach((freq, i) => {
-          const band = document.createElement('div');
-          band.className = 'eq-band';
-          band.innerHTML = `
-            <input type="range" class="eq-slider" min="-12" max="12" step="0.1" value="${savedEQ[i]}" data-index="${i}">
-            <div class="eq-label">${freq}</div>
-          `;
-          eqContainer.appendChild(band);
-          // Apply initial
-          Player.setEqBand(i, savedEQ[i]);
-        });
-        
-        eqContainer.addEventListener('input', (e) => {
-          if (e.target.classList.contains('eq-slider')) {
-            const idx = parseInt(e.target.dataset.index);
-            const val = parseFloat(e.target.value);
-            Player.setEqBand(idx, val);
-            
-            const newEQ = Storage.getSettings().eq || Array(10).fill(0);
-            newEQ[idx] = val;
-            Storage.updateSettings({ eq: newEQ });
-          }
-        });
-      }
 
     document.getElementById('btn-close-settings').addEventListener('click', () => {
       modal.style.display = 'none';
