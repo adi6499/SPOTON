@@ -462,6 +462,12 @@ body.color-orange { --primary: #e17055; --primary-hover: #b85a44; --primary-glow
   background: var(--bg-card);
   border: 1px solid var(--border);
   transition: all var(--anim-micro);
+  cursor: pointer;
+  z-index: 10;
+  pointer-events: auto !important;
+}
+.settings-btn svg, .settings-btn path {
+  pointer-events: none;
 }
 .settings-btn:hover { background: var(--bg-card-hover); transform: scale(1.05); }
 

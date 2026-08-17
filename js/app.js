@@ -563,6 +563,20 @@ const App = (() => {
         return;
       }
 
+      const settingsBtn = e.target.closest('.settings-btn, #btn-open-settings, [data-action="open-settings"]');
+      if (settingsBtn) {
+        const modal = document.getElementById('settings-modal');
+        if (modal) {
+          modal.style.display = 'flex';
+          const settings = Storage.getSettings();
+          const qualEl = document.getElementById('select-quality');
+          if (qualEl) qualEl.value = settings.audioQuality || '320kbps';
+          const speedEl = document.getElementById('select-speed');
+          if (speedEl) speedEl.value = Player.getPlaybackSpeed();
+        }
+        return;
+      }
+
       const clearBtn = e.target.closest('#btn-clear-queue');
       if (clearBtn) {
         if (confirm('Clear the entire queue?')) {
