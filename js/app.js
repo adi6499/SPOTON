@@ -1063,11 +1063,14 @@ const App = (() => {
     const modal = document.getElementById('settings-modal');
     const settings = Storage.getSettings();
     
-    document.querySelector('.settings-btn').addEventListener('click', () => {
-      modal.style.display = 'flex';
-      // Load current values
-      document.getElementById('select-quality').value = settings.audioQuality || '320kbps';
-      document.getElementById('select-speed').value = Player.getPlaybackSpeed();
+    document.querySelectorAll('.settings-btn, #btn-open-settings').forEach(btn => {
+      btn.addEventListener('click', () => {
+        modal.style.display = 'flex';
+        // Load current values
+        document.getElementById('select-quality').value = settings.audioQuality || '320kbps';
+        document.getElementById('select-speed').value = Player.getPlaybackSpeed();
+      });
+    });
       
       // Build EQ if empty
       const eqContainer = document.querySelector('.eq-sliders');
@@ -1098,7 +1101,6 @@ const App = (() => {
           }
         });
       }
-    });
 
     document.getElementById('btn-close-settings').addEventListener('click', () => {
       modal.style.display = 'none';
