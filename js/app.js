@@ -689,6 +689,7 @@ const App = (() => {
             UI.showContextMenu(rect.left - 120, rect.bottom + 5, [
               { label: 'Play Next', icon: '▶️', onClick: () => { Player.playNext(song); UI.showToast('Added to Play Next'); } },
               { label: 'Add to Queue', icon: '🎵', onClick: () => { Player.addToQueue(song); UI.showToast('Added to Queue'); } },
+              { label: 'Start Radio', icon: '📻', onClick: () => startRadioForSong(song) },
               { label: 'Download', icon: '⬇️', onClick: () => window.Download ? window.Download.downloadSong(song) : null },
               { type: 'divider' },
               { label: 'Go to Artist', icon: '👤', onClick: () => {
@@ -910,6 +911,7 @@ const App = (() => {
           UI.showContextMenu(rect.left, rect.bottom + 5, [
             { label: 'Play Next', icon: '▶️', onClick: () => { Player.playNext(song); UI.showToast('Added to Play Next'); } },
             { label: 'Add to Queue', icon: '🎵', onClick: () => { Player.addToQueue(song); UI.showToast('Added to Queue'); } },
+            { label: 'Start Radio', icon: '📻', onClick: () => startRadioForSong(song) },
             { type: 'divider' },
             { label: 'Go to Artist', icon: '👤', onClick: () => {
                const artistName = song.artists ? song.artists.split(',')[0].trim() : 'Unknown';
@@ -1588,6 +1590,35 @@ const App = (() => {
       }
     });
   });
+
+  async function startRadioForSong(song) {
+    if (!song) return;
+    UI.showToast(`Starting Radio for "${song.name}"...`, 'info');
+    
+    try {
+      const artistName = song.artists ? song.artists.split(',')[0].trim() : '';
+      const query = artistName || song.name;
+      const results = await API.searchSongs(query, 25);
+      
+      if (results && results.length > 0) {
+        const shuffled = [...results].sort(() => Math.random() - 0.5);
+        const existingIdx = shuffled.findIndex(s => s.id === song.id);
+        if (existingIdx !== -1) {
+          shuffled.splice(existingIdx, 1);
+        }
+        shuffled.unshift(song);
+        
+        Player.setQueue(shuffled, 0);
+        await Player.playSong(song);
+        UI.showToast(`Radio started based on ${song.name}`, 'success');
+      } else {
+        UI.showToast('Could not load radio mix', 'error');
+      }
+    } catch (err) {
+      console.error('Start radio error:', err);
+      UI.showToast('Failed to start radio', 'error');
+    }
+  }
 
   // ---- Global Functions for new pages ----
   async function openArtistPage(name, image) {
