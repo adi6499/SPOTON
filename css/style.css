@@ -1451,6 +1451,15 @@ body.has-player #player-container.player-minimized {
   background: var(--bg-surface);
   z-index: 2;
 }
+
+#btn-close-settings {
+  cursor: pointer !important;
+  pointer-events: auto !important;
+  z-index: 10002 !important;
+}
+#btn-close-settings svg, #btn-close-settings line {
+  pointer-events: none !important;
+}
 .modal-header h2 {
   margin: 0;
   font-size: 20px;

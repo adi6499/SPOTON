@@ -569,6 +569,13 @@ const App = (() => {
         return;
       }
 
+      const closeSettingsBtn = e.target.closest('#btn-close-settings, [data-action="close-settings"]');
+      if (closeSettingsBtn) {
+        const modal = document.getElementById('settings-modal');
+        if (modal) modal.style.display = 'none';
+        return;
+      }
+
       const clearBtn = e.target.closest('#btn-clear-queue');
       if (clearBtn) {
         if (confirm('Clear the entire queue?')) {
