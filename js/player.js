@@ -31,6 +31,9 @@ const Player = (() => {
   const eqBands = [];
   const eqFrequencies = [60, 170, 310, 600, 1000, 3000, 6000, 12000, 14000, 16000];
 
+  let pannerNode = null;
+  let spatialInterval = null;
+
   function initWebAudio() {
     if (!audioCtx) {
       try {
@@ -39,7 +42,6 @@ const Player = (() => {
         const source1 = audioCtx.createMediaElementSource(audio);
         const source2 = audioCtx.createMediaElementSource(audio2);
         
-        // Both sources feed into the same EQ chain start node
         const inputGain = audioCtx.createGain();
         source1.connect(inputGain);
         source2.connect(inputGain);
@@ -47,6 +49,7 @@ const Player = (() => {
         const freqs = [60, 170, 310, 600, 1000, 3000, 6000, 12000, 14000, 16000];
         let prevNode = inputGain;
 
+        eqBands.length = 0;
         freqs.forEach(freq => {
           const eq = audioCtx.createBiquadFilter();
           eq.type = 'peaking';
@@ -57,6 +60,17 @@ const Player = (() => {
           prevNode.connect(eq);
           prevNode = eq;
         });
+
+        if (audioCtx.createStereoPanner) {
+          pannerNode = audioCtx.createStereoPanner();
+        } else if (audioCtx.createPanner) {
+          pannerNode = audioCtx.createPanner();
+        }
+        
+        if (pannerNode) {
+          prevNode.connect(pannerNode);
+          prevNode = pannerNode;
+        }
 
         analyserNode = audioCtx.createAnalyser();
         analyserNode.fftSize = 256;
@@ -74,8 +88,12 @@ const Player = (() => {
         analyserNode.connect(volumeNormalizer);
         volumeNormalizer.connect(audioCtx.destination);
       } catch (e) {
-        console.warn('[Player] Web Audio API not supported', e);
+        console.warn('[Player] Web Audio API init:', e);
       }
+    }
+
+    if (audioCtx && audioCtx.state === 'suspended') {
+      audioCtx.resume();
     }
   }
 
@@ -599,9 +617,37 @@ const Player = (() => {
 
   let isSpatialEnabled = false;
 
-  function toggleSpatialAudio() {
-    isSpatialEnabled = !isSpatialEnabled;
+  function toggleSpatialAudio(enable) {
+    if (!audioCtx) initWebAudio();
+    isSpatialEnabled = enable !== undefined ? enable : !isSpatialEnabled;
     Storage.updateSettings({ spatialAudio: isSpatialEnabled });
+
+    if (pannerNode && audioCtx) {
+      if (isSpatialEnabled) {
+        let angle = 0;
+        if (spatialInterval) clearInterval(spatialInterval);
+        spatialInterval = setInterval(() => {
+          if (!isSpatialEnabled) {
+            clearInterval(spatialInterval);
+            return;
+          }
+          angle += 0.04;
+          const panVal = Math.sin(angle) * 0.75;
+          if (pannerNode.pan) {
+            pannerNode.pan.setValueAtTime(panVal, audioCtx.currentTime);
+          } else if (pannerNode.setPosition) {
+            pannerNode.setPosition(Math.sin(angle), 0, Math.cos(angle));
+          }
+        }, 50);
+      } else {
+        if (spatialInterval) clearInterval(spatialInterval);
+        if (pannerNode.pan) {
+          pannerNode.pan.setValueAtTime(0, audioCtx.currentTime);
+        } else if (pannerNode.setPosition) {
+          pannerNode.setPosition(0, 0, 1);
+        }
+      }
+    }
     return isSpatialEnabled;
   }
 

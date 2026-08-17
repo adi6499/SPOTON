@@ -1253,36 +1253,46 @@ const App = (() => {
     if (!canvas || canvas.style.display === 'none') return;
     const ctx = canvas.getContext('2d');
     const analyser = Player.getAnalyserNode();
-    if (!analyser) return;
 
-    const bufferLength = analyser.frequencyBinCount;
+    const bufferLength = analyser ? analyser.frequencyBinCount : 64;
     const dataArray = new Uint8Array(bufferLength);
+    let step = 0;
 
     function draw() {
       if (canvas.style.display === 'none') return;
       visualizerRAF = requestAnimationFrame(draw);
-      analyser.getByteFrequencyData(dataArray);
+      step += 0.05;
+
+      if (analyser) {
+        analyser.getByteFrequencyData(dataArray);
+      }
+
+      let hasData = false;
+      for (let i = 0; i < dataArray.length; i++) {
+        if (dataArray[i] > 0) { hasData = true; break; }
+      }
 
       ctx.clearRect(0, 0, canvas.width, canvas.height);
       const cx = canvas.width / 2;
       const cy = canvas.height / 2;
-      const radius = 100;
-      
-      // Draw circular visualizer
+      const radius = 90;
+
       for (let i = 0; i < bufferLength; i++) {
-        const barHeight = (dataArray[i] / 255) * 100;
+        let val = hasData ? dataArray[i] : (Math.sin(step + i * 0.2) * 50 + 60 + Math.random() * 20);
+        const barHeight = (val / 255) * 80;
         const angle = (i / bufferLength) * Math.PI * 2;
-        
+
         const x1 = cx + Math.cos(angle) * radius;
         const y1 = cy + Math.sin(angle) * radius;
         const x2 = cx + Math.cos(angle) * (radius + barHeight);
         const y2 = cy + Math.sin(angle) * (radius + barHeight);
-        
+
         ctx.beginPath();
         ctx.moveTo(x1, y1);
         ctx.lineTo(x2, y2);
-        ctx.strokeStyle = `hsl(${(i/bufferLength)*360}, 100%, 70%)`;
-        ctx.lineWidth = 2;
+        ctx.strokeStyle = `hsl(${((i / bufferLength) * 360 + step * 50) % 360}, 100%, 65%)`;
+        ctx.lineWidth = 2.5;
+        ctx.lineCap = 'round';
         ctx.stroke();
       }
     }
