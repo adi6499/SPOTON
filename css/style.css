@@ -874,6 +874,44 @@ body.color-orange { --primary: #e17055; --primary-hover: #b85a44; --primary-glow
   .hero-title {
     font-size: 28px;
   }
+  .song-list-item {
+    gap: 8px;
+    padding: 6px var(--space-xs);
+  }
+  .song-list-item__duration {
+    display: none;
+  }
+  .song-list-item__name {
+    font-size: 14px;
+    max-width: 180px;
+  }
+  .song-list-item__artist {
+    font-size: 12px;
+    max-width: 180px;
+  }
+}
+
+/* Micro-Interactions & Glass Sheen Animations */
+.btn-icon, .btn-play, .song-card, .song-list-item, .nav-item {
+  transition: transform 0.15s cubic-bezier(0.4, 0, 0.2, 1), background-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.btn-icon:active, .nav-item:active, .song-card:active {
+  transform: scale(0.94);
+}
+
+.btn-play:hover {
+  transform: scale(1.06);
+  box-shadow: 0 0 20px rgba(108, 92, 231, 0.5);
+}
+
+.btn-play:active {
+  transform: scale(0.95);
+}
+
+.song-card:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 12px 30px rgba(0, 0, 0, 0.4);
 }
 
 /* ========================================

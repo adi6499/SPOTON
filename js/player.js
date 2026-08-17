@@ -309,6 +309,7 @@ const Player = (() => {
 
       onTrackChange?.(getCurrentTrack(), currentIndex);
     } catch (error) {
+      if (error.name === 'AbortError') return;
       console.error('[Player] Play error:', error);
       onError?.(error);
     }

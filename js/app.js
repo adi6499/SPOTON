@@ -8,6 +8,7 @@ const App = (() => {
 
   async function init() {
     setupPlayerEvents();
+    setupPlayerBarEvents();
     setupSearchEvents();
     setupNavigationEvents();
     setupDelegatedEvents();
