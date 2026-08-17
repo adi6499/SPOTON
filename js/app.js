@@ -135,13 +135,7 @@ const App = (() => {
     }
   }
 
-  function applyTheme(theme) {
-    if (theme === 'light') {
-      document.body.classList.add('theme-light');
-    } else {
-      document.body.classList.remove('theme-light');
-    }
-  }
+
 
   // ---- Player Events ----
 
@@ -1078,10 +1072,29 @@ const App = (() => {
     modal.style.display = 'flex';
     
     const settings = Storage.getSettings();
+    const themeSelect = document.getElementById('select-theme');
+    if (themeSelect) themeSelect.value = settings.theme || 'system';
+    
+    const colorSelect = document.getElementById('select-color');
+    if (colorSelect) colorSelect.value = settings.color || 'purple';
+    
+    const toggleGlass = document.getElementById('toggle-glass');
+    if (toggleGlass) toggleGlass.checked = settings.glassEffect === true;
+    
     const qualEl = document.getElementById('select-quality');
     if (qualEl) qualEl.value = settings.audioQuality || '320kbps';
+    
     const speedEl = document.getElementById('select-speed');
     if (speedEl) speedEl.value = Player.getPlaybackSpeed();
+    
+    const eqPresetSelect = document.getElementById('select-eq-preset');
+    if (eqPresetSelect) eqPresetSelect.value = settings.eqPreset || 'flat';
+    
+    const spatialToggle = document.getElementById('toggle-spatial-audio');
+    if (spatialToggle) spatialToggle.checked = settings.spatialAudio === true;
+    
+    const ambientSelect = document.getElementById('select-ambient-sound');
+    if (ambientSelect) ambientSelect.value = settings.ambientSound || 'off';
     
     buildEqSliders();
   }
@@ -1126,96 +1139,70 @@ const App = (() => {
       btn.addEventListener('click', openSettingsModal);
     });
 
-    document.getElementById('btn-close-settings').addEventListener('click', () => {
-      modal.style.display = 'none';
+    document.getElementById('btn-close-settings')?.addEventListener('click', () => {
+      if (modal) modal.style.display = 'none';
     });
 
-    modal.addEventListener('click', (e) => {
+    modal?.addEventListener('click', (e) => {
       if (e.target === modal) {
         modal.style.display = 'none';
       }
     });
 
-    document.getElementById('select-quality').addEventListener('change', (e) => {
+    document.getElementById('select-quality')?.addEventListener('change', (e) => {
       Storage.updateSettings({ audioQuality: e.target.value });
       UI.showToast(`Audio quality set to ${e.target.value}`);
     });
 
-    // Theme & Color Bindings
-    const themeSelect = document.getElementById('select-theme');
-    const colorSelect = document.getElementById('select-color');
-    
-    if (themeSelect) {
-      themeSelect.value = settings.theme || 'system';
-      themeSelect.addEventListener('change', (e) => {
-        Storage.updateSettings({ theme: e.target.value });
-        applyTheme();
-      });
-    }
-    
-    if (colorSelect) {
-      colorSelect.value = settings.color || 'purple';
-      colorSelect.addEventListener('change', (e) => {
-        Storage.updateSettings({ color: e.target.value });
-        applyTheme();
-      });
-    }
+    document.getElementById('select-theme')?.addEventListener('change', (e) => {
+      Storage.updateSettings({ theme: e.target.value });
+      applyTheme();
+      UI.showToast(`Theme updated to ${e.target.value}`);
+    });
 
-    const toggleGlass = document.getElementById('toggle-glass');
-    if (toggleGlass) {
-      toggleGlass.checked = settings.glassEffect === true;
-      toggleGlass.addEventListener('change', (e) => {
-        Storage.updateSettings({ glassEffect: e.target.checked });
-        applyTheme();
-      });
-    }
+    document.getElementById('select-color')?.addEventListener('change', (e) => {
+      Storage.updateSettings({ color: e.target.value });
+      applyTheme();
+      UI.showToast(`Accent color set to ${e.target.value}`);
+    });
 
-    // EQ Presets
-    const eqPresetSelect = document.getElementById('select-eq-preset');
-    if (eqPresetSelect) {
-      eqPresetSelect.value = settings.eqPreset || 'flat';
-      eqPresetSelect.addEventListener('change', (e) => {
-        Player.applyEqPreset(e.target.value);
-        UI.showToast(`Equalizer preset set to ${e.target.options[e.target.selectedIndex].text}`);
-      });
-    }
+    document.getElementById('toggle-glass')?.addEventListener('change', (e) => {
+      Storage.updateSettings({ glassEffect: e.target.checked });
+      applyTheme();
+      UI.showToast(`Glassmorphism ${e.target.checked ? 'enabled' : 'disabled'}`);
+    });
 
-    // 3D Spatial Audio
-    const spatialToggle = document.getElementById('toggle-spatial-audio');
-    if (spatialToggle) {
-      spatialToggle.checked = settings.spatialAudio === true;
-      spatialToggle.addEventListener('change', () => {
-        const state = Player.toggleSpatialAudio();
-        UI.showToast(`3D Spatial Audio ${state ? 'enabled' : 'disabled'}`);
-      });
-    }
+    document.getElementById('select-eq-preset')?.addEventListener('change', (e) => {
+      Storage.updateSettings({ eqPreset: e.target.value });
+      Player.applyEqPreset(e.target.value);
+      UI.showToast(`Equalizer preset set to ${e.target.options[e.target.selectedIndex].text}`);
+    });
 
-    // Smart Ambient Focus Sound
-    const ambientSelect = document.getElementById('select-ambient-sound');
-    if (ambientSelect) {
-      ambientSelect.addEventListener('change', (e) => {
-        Player.playAmbientSound(e.target.value);
-        if (e.target.value !== 'off') {
-          UI.showToast(`Ambient Sound "${e.target.options[e.target.selectedIndex].text}" active`, 'success');
-        } else {
-          UI.showToast('Ambient sounds turned off');
-        }
-      });
-    }
+    document.getElementById('toggle-spatial-audio')?.addEventListener('change', (e) => {
+      Storage.updateSettings({ spatialAudio: e.target.checked });
+      const state = Player.toggleSpatialAudio();
+      UI.showToast(`3D Spatial Audio ${state ? 'enabled' : 'disabled'}`);
+    });
 
-    // Sleep Timer
-    const timerSelect = document.getElementById('select-timer');
-    if (timerSelect) {
-      timerSelect.addEventListener('change', (e) => {
-        const val = parseInt(e.target.value) || 0;
-        Player.setSleepTimer(val);
-        if (val > 0) {
-          UI.showToast(`Sleep Timer set for ${val} minutes (with fade-out)`, 'info');
-        } else {
-          UI.showToast('Sleep Timer turned off');
-        }
-      });
-    }
+    document.getElementById('select-ambient-sound')?.addEventListener('change', (e) => {
+      Storage.updateSettings({ ambientSound: e.target.value });
+      Player.playAmbientSound(e.target.value);
+      if (e.target.value !== 'off') {
+        UI.showToast(`Ambient Sound "${e.target.options[e.target.selectedIndex].text}" active`, 'success');
+      } else {
+        UI.showToast('Ambient sounds turned off');
+      }
+    });
+
+    document.getElementById('select-timer')?.addEventListener('change', (e) => {
+      const val = parseInt(e.target.value) || 0;
+      Player.setSleepTimer(val);
+      if (val > 0) {
+        UI.showToast(`Sleep Timer set for ${val} minutes`, 'info');
+      } else {
+        UI.showToast('Sleep Timer turned off');
+      }
+    });
 
     // Data Clear Buttons
     document.getElementById('btn-clear-history')?.addEventListener('click', () => {
