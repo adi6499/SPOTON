@@ -242,6 +242,9 @@ const Player = (() => {
 
   async function loadAndPlay(song, isCrossfade = false) {
     try {
+      // Fire track change immediately so UI artwork and title update instantly
+      onTrackChange?.(song, currentIndex);
+
       const qual = Storage.getSettings().audioQuality || '320kbps';
       let streamUrl = null;
 

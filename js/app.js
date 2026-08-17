@@ -1643,19 +1643,49 @@ const App = (() => {
     UI.showToast(`Starting Radio for "${song.name}"...`, 'info');
     
     try {
-      const artistName = song.artists ? song.artists.split(',')[0].trim() : '';
-      const query = artistName || song.name;
-      const results = await API.searchSongs(query, 25);
+      const primaryArtist = song.artists ? song.artists.split(',')[0].trim() : '';
+      const secondaryArtist = song.artists && song.artists.includes(',') ? song.artists.split(',')[1].trim() : '';
       
-      if (results && results.length > 0) {
-        const shuffled = [...results].sort(() => Math.random() - 0.5);
-        const existingIdx = shuffled.findIndex(s => s.id === song.id);
-        if (existingIdx !== -1) {
-          shuffled.splice(existingIdx, 1);
+      const queryPromises = [
+        API.searchSongs(primaryArtist, 15),
+        API.searchSongs(song.album || song.name, 15)
+      ];
+
+      if (secondaryArtist) {
+        queryPromises.push(API.searchSongs(secondaryArtist, 15));
+      }
+      if (song.language) {
+        queryPromises.push(API.searchSongs(`trending ${song.language}`, 15));
+      } else {
+        queryPromises.push(API.searchSongs('trending hits', 15));
+      }
+
+      const resultsArray = await Promise.allSettled(queryPromises);
+      let combinedPool = [];
+      resultsArray.forEach(res => {
+        if (res.status === 'fulfilled' && Array.isArray(res.value)) {
+          combinedPool.push(...res.value);
         }
-        shuffled.unshift(song);
-        
-        Player.setQueue(shuffled, 0);
+      });
+
+      const seen = new Set();
+      let uniqueSongs = [];
+      combinedPool.forEach(s => {
+        if (s && s.id && !seen.has(s.id)) {
+          seen.add(s.id);
+          uniqueSongs.push(s);
+        }
+      });
+
+      if (uniqueSongs.length > 0) {
+        const radioQueue = [...uniqueSongs].sort(() => Math.random() - 0.5);
+        const existingIdx = radioQueue.findIndex(s => s.id === song.id);
+        if (existingIdx !== -1) {
+          radioQueue.splice(existingIdx, 1);
+        }
+        radioQueue.unshift(song);
+
+        Player.setQueue(radioQueue, 0);
         await Player.playSong(song);
         UI.showToast(`Radio started based on ${song.name}`, 'success');
       } else {
