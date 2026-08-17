@@ -1902,6 +1902,10 @@ body.theme-light.clear-glass #full-player {
   opacity: 0.85;
 }
 
+body:not(.clear-glass) .aurora-bg {
+  display: none !important;
+}
+
 /* 2. Glass Light Sweep Shimmer Reflection */
 @keyframes glass-shimmer-sweep {
   0% { transform: translateX(-150%) rotate(25deg); }
@@ -1913,7 +1917,8 @@ body.theme-light.clear-glass #full-player {
   overflow: hidden;
 }
 
-.song-card::after, .mini-player::after {
+body.clear-glass .song-card::after,
+body.clear-glass .mini-player::after {
   content: '';
   position: absolute;
   top: -50%;
@@ -1930,7 +1935,8 @@ body.theme-light.clear-glass #full-player {
   pointer-events: none;
 }
 
-.song-card:hover::after, .mini-player:hover::after {
+body.clear-glass .song-card:hover::after,
+body.clear-glass .mini-player:hover::after {
   animation: glass-shimmer-sweep 1.2s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
@@ -1963,13 +1969,32 @@ body.has-player #player-container.player-minimized {
   animation: glassPageFadeIn 0.35s cubic-bezier(0.16, 1, 0.3, 1) forwards;
 }
 
-/* 5. Prism Edge Glow & High Saturation Glass Blur */
-.mini-player, .modal, .song-card, .context-menu {
-  border: 1px solid rgba(255, 255, 255, 0.12) !important;
+/* 5. Glassmorphism Active State (Only when clear-glass is active) */
+body.clear-glass .mini-player,
+body.clear-glass .modal,
+body.clear-glass .song-card,
+body.clear-glass .context-menu {
+  border: 1px solid rgba(255, 255, 255, 0.15) !important;
   backdrop-filter: blur(35px) saturate(180%) !important;
   -webkit-backdrop-filter: blur(35px) saturate(180%) !important;
 }
 
-.mini-player:hover, .song-card:hover {
+body.clear-glass .mini-player:hover,
+body.clear-glass .song-card:hover {
   border-color: rgba(255, 255, 255, 0.3) !important;
+}
+
+/* 6. Clean Solid Surfaces when Glass Effect is Toggled OFF */
+body:not(.clear-glass) .mini-player,
+body:not(.clear-glass) .modal,
+body:not(.clear-glass) .song-card,
+body:not(.clear-glass) .context-menu,
+body:not(.clear-glass) .top-nav,
+body:not(.clear-glass) .bottom-nav,
+body:not(.clear-glass) .sidebar,
+body:not(.clear-glass) #player-container.player-minimized,
+body:not(.clear-glass) #full-player {
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+  background: var(--bg-surface) !important;
 }
