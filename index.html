@@ -353,12 +353,44 @@
           </div>
 
           <div class="settings-group">
-            <h3>Equalizer</h3>
+            <h3>Equalizer Presets</h3>
+            <select id="select-eq-preset" class="settings-select">
+              <option value="flat">Flat (Default)</option>
+              <option value="bass">Bass Boost</option>
+              <option value="vocal">Vocal Enhancer</option>
+              <option value="treble">Treble Boost</option>
+              <option value="party">Party Mode</option>
+              <option value="chill">Chill & Relax</option>
+            </select>
+          </div>
+
+          <div class="settings-group">
+            <h3>Equalizer Custom Bands</h3>
             <div class="eq-container">
               <div class="eq-sliders">
                 <!-- Sliders injected by JS -->
               </div>
             </div>
+          </div>
+
+          <div class="settings-group">
+            <h3>3D Spatial Audio & Audio Enhancements</h3>
+            <label class="switch-wrap">
+              <span>Enable 3D Surround Audio</span>
+              <input type="checkbox" id="toggle-spatial-audio">
+              <span class="switch-slider"></span>
+            </label>
+          </div>
+
+          <div class="settings-group">
+            <h3>Smart Ambient Focus Sound Overlay</h3>
+            <p class="settings-desc">Mix background focus sounds with your music for studying or relaxing.</p>
+            <select id="select-ambient-sound" class="settings-select">
+              <option value="off">Off</option>
+              <option value="rain">Calm Rain</option>
+              <option value="lofi">Warm Lo-Fi Beats</option>
+              <option value="binaural">Focus Binaural Waves</option>
+            </select>
           </div>
 
           <div class="settings-group">

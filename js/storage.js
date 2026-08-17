@@ -243,6 +243,98 @@ const Storage = (() => {
     });
   }
 
+  // ---- IndexedDB Offline Storage ----
+  let dbInstance = null;
+
+  function initOfflineDB() {
+    return new Promise((resolve, reject) => {
+      if (dbInstance) return resolve(dbInstance);
+      if (!window.indexedDB) return resolve(null);
+
+      const request = indexedDB.open('mf_offline_db', 1);
+      request.onupgradeneeded = (e) => {
+        const db = e.target.result;
+        if (!db.objectStoreNames.contains('offline_songs')) {
+          db.createObjectStore('offline_songs', { keyPath: 'id' });
+        }
+      };
+      request.onsuccess = (e) => {
+        dbInstance = e.target.result;
+        resolve(dbInstance);
+      };
+      request.onerror = (e) => {
+        console.warn('[Storage] IndexedDB open error:', e);
+        resolve(null);
+      };
+    });
+  }
+
+  async function saveOfflineSong(song, blob) {
+    const db = await initOfflineDB();
+    if (!db) return false;
+    return new Promise((resolve) => {
+      const tx = db.transaction('offline_songs', 'readwrite');
+      const store = tx.objectStore('offline_songs');
+      const record = {
+        id: song.id,
+        name: song.name,
+        artists: song.artists,
+        album: song.album,
+        image: song.image,
+        duration: song.duration,
+        blob: blob,
+        savedAt: Date.now()
+      };
+      const req = store.put(record);
+      req.onsuccess = () => resolve(true);
+      req.onerror = () => resolve(false);
+    });
+  }
+
+  async function getOfflineSong(songId) {
+    const db = await initOfflineDB();
+    if (!db) return null;
+    return new Promise((resolve) => {
+      const tx = db.transaction('offline_songs', 'readonly');
+      const store = tx.objectStore('offline_songs');
+      const req = store.get(songId);
+      req.onsuccess = () => {
+        const item = req.result;
+        if (item && item.blob) {
+          const url = URL.createObjectURL(item.blob);
+          resolve({ ...item, url });
+        } else {
+          resolve(null);
+        }
+      };
+      req.onerror = () => resolve(null);
+    });
+  }
+
+  async function getOfflineSongs() {
+    const db = await initOfflineDB();
+    if (!db) return [];
+    return new Promise((resolve) => {
+      const tx = db.transaction('offline_songs', 'readonly');
+      const store = tx.objectStore('offline_songs');
+      const req = store.getAll();
+      req.onsuccess = () => resolve(req.result || []);
+      req.onerror = () => resolve([]);
+    });
+  }
+
+  async function removeOfflineSong(songId) {
+    const db = await initOfflineDB();
+    if (!db) return false;
+    return new Promise((resolve) => {
+      const tx = db.transaction('offline_songs', 'readwrite');
+      const store = tx.objectStore('offline_songs');
+      const req = store.delete(songId);
+      req.onsuccess = () => resolve(true);
+      req.onerror = () => resolve(false);
+    });
+  }
+
   return {
     getFavorites,
     addFavorite,
@@ -266,5 +358,9 @@ const Storage = (() => {
     getStats,
     getHomeCache,
     setHomeCache,
+    saveOfflineSong,
+    getOfflineSong,
+    getOfflineSongs,
+    removeOfflineSong
   };
 })();

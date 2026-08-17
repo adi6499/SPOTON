@@ -541,19 +541,125 @@ const Player = (() => {
 
   function setSleepTimer(minutes) {
     if (sleepTimerId && sleepTimerId !== 'song') clearTimeout(sleepTimerId);
+    if (sleepTimerId) clearTimeout(sleepTimerId);
     sleepTimerMinutes = minutes;
-    
-    if (minutes === 'song') {
-      sleepTimerId = 'song';
-    } else if (minutes > 0) {
+    if (minutes > 0) {
+      const ms = minutes * 60 * 1000;
+      const fadeStartMs = Math.max(0, ms - 10000); // 10s before end
+      
       sleepTimerId = setTimeout(() => {
-        pause();
-        sleepTimerMinutes = 0;
-        sleepTimerId = null;
-        onSleepTimer?.();
-      }, minutes * 60 * 1000);
+        let startVol = activeAudio.volume;
+        let fadeStep = startVol / 20;
+        let fadeInterval = setInterval(() => {
+          if (activeAudio.volume > fadeStep) {
+            activeAudio.volume -= fadeStep;
+          } else {
+            clearInterval(fadeInterval);
+            pause();
+            activeAudio.volume = startVol;
+            sleepTimerMinutes = 0;
+            sleepTimerId = null;
+            onSleepTimer?.(0);
+          }
+        }, 500);
+      }, fadeStartMs);
+      onSleepTimer?.(minutes);
     } else {
       sleepTimerId = null;
+      onSleepTimer?.(0);
+    }
+  }
+
+  function getSleepTimerMinutes() {
+    return sleepTimerMinutes;
+  }
+
+  // ---- EQ Presets ----
+
+  const EQ_PRESETS = {
+    flat: [0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+    bass: [7, 6, 5, 3, 1, 0, 0, 0, 0, 0],
+    vocal: [-2, -1, 1, 3, 5, 4, 3, 1, 0, -1],
+    treble: [-3, -2, 0, 1, 2, 4, 6, 7, 8, 8],
+    party: [5, 4, 2, 0, 0, 2, 4, 5, 5, 5],
+    chill: [2, 1, 0, 1, 2, 2, 1, 0, -1, -2]
+  };
+
+  function applyEqPreset(presetName) {
+    const preset = EQ_PRESETS[presetName] || EQ_PRESETS.flat;
+    preset.forEach((gain, i) => setEqBand(i, gain));
+    Storage.updateSettings({ eqPreset: presetName, eq: preset });
+    return preset;
+  }
+
+  // ---- 3D Spatial Surround ----
+
+  let isSpatialEnabled = false;
+
+  function toggleSpatialAudio() {
+    isSpatialEnabled = !isSpatialEnabled;
+    Storage.updateSettings({ spatialAudio: isSpatialEnabled });
+    return isSpatialEnabled;
+  }
+
+  // ---- Ambient Focus Sound Generator ----
+
+  let ambientSource = null;
+  let ambientGainNode = null;
+  let activeAmbientType = 'off';
+
+  function playAmbientSound(type = 'off', volume = 0.4) {
+    if (!audioCtx) initWebAudio();
+    if (!audioCtx) return;
+
+    if (ambientSource) {
+      try { ambientSource.stop(); } catch(e){}
+      ambientSource = null;
+    }
+
+    activeAmbientType = type;
+    if (type === 'off') return;
+
+    const bufferSize = audioCtx.sampleRate * 2;
+    const buffer = audioCtx.createBuffer(1, bufferSize, audioCtx.sampleRate);
+    const data = buffer.getChannelData(0);
+
+    if (type === 'rain') {
+      let b0=0, b1=0, b2=0, b3=0, b4=0, b5=0, b6=0;
+      for (let i = 0; i < bufferSize; i++) {
+        let white = Math.random() * 2 - 1;
+        b0 = 0.99886 * b0 + white * 0.0555179;
+        b1 = 0.99332 * b1 + white * 0.0750759;
+        b2 = 0.96900 * b2 + white * 0.1538520;
+        b3 = 0.86650 * b3 + white * 0.3104856;
+        b4 = 0.55000 * b4 + white * 0.5329522;
+        b5 = -0.7616 * b5 - white * 0.0168980;
+        data[i] = (b0 + b1 + b2 + b3 + b4 + b5 + b6 + white * 0.5362) * 0.08;
+        b6 = white * 0.115926;
+      }
+    } else if (type === 'binaural' || type === 'lofi') {
+      for (let i = 0; i < bufferSize; i++) {
+        data[i] = Math.sin(2 * Math.PI * 110 * (i / audioCtx.sampleRate)) * 0.1 + (Math.random() * 0.03);
+      }
+    }
+
+    ambientSource = audioCtx.createBufferSource();
+    ambientSource.buffer = buffer;
+    ambientSource.loop = true;
+
+    if (!ambientGainNode) {
+      ambientGainNode = audioCtx.createGain();
+    }
+    ambientGainNode.gain.value = volume;
+
+    ambientSource.connect(ambientGainNode);
+    ambientGainNode.connect(audioCtx.destination);
+    ambientSource.start();
+  }
+
+  function setAmbientVolume(vol) {
+    if (ambientGainNode) {
+      ambientGainNode.gain.value = Math.max(0, Math.min(1, vol));
     }
   }
 
@@ -670,7 +776,11 @@ const Player = (() => {
     setEqBand,
     getAnalyserNode,
     setSleepTimer,
-    clearSleepTimer: () => setSleepTimer(0),
+    getSleepTimerMinutes,
+    applyEqPreset,
+    toggleSpatialAudio,
+    playAmbientSound,
+    setAmbientVolume,
     getStreamCodecDisplay
   };
 })();

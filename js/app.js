@@ -1140,6 +1140,53 @@ const App = (() => {
       });
     }
 
+    // EQ Presets
+    const eqPresetSelect = document.getElementById('select-eq-preset');
+    if (eqPresetSelect) {
+      eqPresetSelect.value = settings.eqPreset || 'flat';
+      eqPresetSelect.addEventListener('change', (e) => {
+        Player.applyEqPreset(e.target.value);
+        UI.showToast(`Equalizer preset set to ${e.target.options[e.target.selectedIndex].text}`);
+      });
+    }
+
+    // 3D Spatial Audio
+    const spatialToggle = document.getElementById('toggle-spatial-audio');
+    if (spatialToggle) {
+      spatialToggle.checked = settings.spatialAudio === true;
+      spatialToggle.addEventListener('change', () => {
+        const state = Player.toggleSpatialAudio();
+        UI.showToast(`3D Spatial Audio ${state ? 'enabled' : 'disabled'}`);
+      });
+    }
+
+    // Smart Ambient Focus Sound
+    const ambientSelect = document.getElementById('select-ambient-sound');
+    if (ambientSelect) {
+      ambientSelect.addEventListener('change', (e) => {
+        Player.playAmbientSound(e.target.value);
+        if (e.target.value !== 'off') {
+          UI.showToast(`Ambient Sound "${e.target.options[e.target.selectedIndex].text}" active`, 'success');
+        } else {
+          UI.showToast('Ambient sounds turned off');
+        }
+      });
+    }
+
+    // Sleep Timer
+    const timerSelect = document.getElementById('select-timer');
+    if (timerSelect) {
+      timerSelect.addEventListener('change', (e) => {
+        const val = parseInt(e.target.value) || 0;
+        Player.setSleepTimer(val);
+        if (val > 0) {
+          UI.showToast(`Sleep Timer set for ${val} minutes (with fade-out)`, 'info');
+        } else {
+          UI.showToast('Sleep Timer turned off');
+        }
+      });
+    }
+
     // Data Clear Buttons
     document.getElementById('btn-clear-history')?.addEventListener('click', () => {
       if (confirm('Clear all listening history?')) {

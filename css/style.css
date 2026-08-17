@@ -1800,3 +1800,26 @@ body.theme-light.clear-glass #full-player {
   background: rgba(255, 255, 255, 0.4) !important;
   border-color: rgba(0, 0, 0, 0.1) !important;
 }
+
+/* 5. Synced Karaoke Lyrics Highlighting */
+.karaoke-line {
+  font-size: 18px;
+  font-weight: 500;
+  color: var(--text-tertiary);
+  padding: 10px 14px;
+  border-radius: 12px;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  text-align: center;
+  margin: 4px 0;
+  opacity: 0.5;
+}
+
+.karaoke-line-active {
+  font-size: 22px;
+  font-weight: 700;
+  color: #ffffff;
+  background: linear-gradient(90deg, rgba(108, 92, 231, 0.3), rgba(253, 121, 168, 0.3));
+  box-shadow: 0 4px 20px rgba(108, 92, 231, 0.4);
+  transform: scale(1.04);
+  opacity: 1;
+}
