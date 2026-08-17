@@ -26,11 +26,12 @@ const App = (() => {
     const minimizeBtn = document.getElementById('btn-minimize-player');
 
     if (miniPlayer) {
-      miniPlayer.addEventListener('click', (e) => {
-        if (e.target.closest('button')) return; // ignore clicks on play/fav/next buttons
+      const expandPlayer = (e) => {
+        if (e.target.closest('button') || e.target.closest('.mini-player__controls')) return;
         playerContainer.classList.remove('player-minimized');
         playerContainer.classList.add('player-expanded');
-      });
+      };
+      miniPlayer.addEventListener('click', expandPlayer);
     }
 
     if (minimizeBtn) {

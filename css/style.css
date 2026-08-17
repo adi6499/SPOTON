@@ -1043,17 +1043,20 @@ body.has-player #player-container.player-minimized {
 
 /* --- EXPANDED STATE (Full Player) --- */
 #player-container.player-expanded {
+  position: fixed;
   top: 0;
   left: 0;
   right: 0;
   bottom: 0;
+  width: 100vw;
   height: 100dvh;
+  z-index: 9999 !important;
   border-radius: 0;
   border: none;
-  background: var(--bg-glass-heavy); /* Will be overridden by dynamic background */
+  background: var(--bg-surface);
   backdrop-filter: blur(50px);
   -webkit-backdrop-filter: blur(50px);
-  transform: translateY(0);
+  transform: translateY(0) !important;
 }
 
 #player-container.player-expanded #mini-player {
