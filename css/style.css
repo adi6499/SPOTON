@@ -950,6 +950,13 @@ body.color-orange { --primary: #e17055; --primary-hover: #b85a44; --primary-glow
   overflow: hidden;
 }
 
+body:not(.has-player) #player-container {
+  display: none !important;
+  visibility: hidden !important;
+  opacity: 0 !important;
+  pointer-events: none !important;
+}
+
 /* --- MINIMIZED STATE (Mini Player) --- */
 #player-container.player-minimized {
   bottom: calc(var(--nav-height) + var(--safe-bottom) + 8px);
@@ -961,14 +968,19 @@ body.color-orange { --primary: #e17055; --primary-hover: #b85a44; --primary-glow
   -webkit-backdrop-filter: blur(30px);
   border: 1px solid var(--border);
   border-radius: var(--radius-lg);
-  transform: translateY(180%);
+  transform: translateY(300%) !important;
   cursor: pointer;
   z-index: 500;
   box-shadow: 0 8px 30px rgba(0, 0, 0, 0.5);
-  transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.3s ease;
 }
+
 body.has-player #player-container.player-minimized {
-  transform: translateY(0);
+  display: block !important;
+  visibility: visible !important;
+  opacity: 1 !important;
+  pointer-events: auto !important;
+  transform: translateY(0) !important;
 }
 
 .mini-player {
