@@ -1054,11 +1054,11 @@ const App = (() => {
 
   function initSettings() {
     const modal = document.getElementById('settings-modal');
+    const settings = Storage.getSettings();
     
     document.querySelector('.settings-btn').addEventListener('click', () => {
       modal.style.display = 'flex';
       // Load current values
-      const settings = Storage.getSettings();
       document.getElementById('select-quality').value = settings.audioQuality || '320kbps';
       document.getElementById('select-speed').value = Player.getPlaybackSpeed();
       
@@ -1095,6 +1095,12 @@ const App = (() => {
 
     document.getElementById('btn-close-settings').addEventListener('click', () => {
       modal.style.display = 'none';
+    });
+
+    modal.addEventListener('click', (e) => {
+      if (e.target === modal) {
+        modal.style.display = 'none';
+      }
     });
 
     document.getElementById('select-quality').addEventListener('change', (e) => {

@@ -682,42 +682,7 @@ body.color-orange { --primary: #e17055; --primary-hover: #b85a44; --primary-glow
 /* ========================================
    Modals
    ======================================== */
-.modal {
-  position: fixed;
-  inset: 0;
-  z-index: 999;
-  background: rgba(0,0,0,0.6);
-  backdrop-filter: blur(8px);
-  -webkit-backdrop-filter: blur(8px);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  opacity: 0;
-  pointer-events: none;
-  transition: opacity var(--anim-ui);
-}
-
-.modal.active {
-  opacity: 1;
-  pointer-events: auto;
-}
-
-.modal-content {
-  background: var(--bg-surface);
-  width: 90%;
-  max-width: 500px;
-  border-radius: var(--radius-xl);
-  border: 1px solid var(--border);
-  box-shadow: var(--shadow-lg);
-  transform: translateY(20px);
-  transition: transform var(--anim-ui);
-  display: flex;
-  flex-direction: column;
-}
-
-.modal.active .modal-content {
-  transform: translateY(0);
-}
+/* Consolidated modal styling below */
 
 .modal-header {
   padding: var(--space-lg);
@@ -1365,13 +1330,18 @@ body.has-player #player-container.player-minimized {
   padding: 20px;
 }
 .modal {
+  position: relative;
   background: var(--bg-surface);
+  border: 1px solid var(--border);
   border-radius: var(--radius-lg);
   width: 100%;
   max-width: 500px;
-  max-height: 90vh;
+  max-height: 85vh;
   overflow-y: auto;
   box-shadow: 0 20px 60px rgba(0,0,0,0.5);
+  opacity: 1;
+  pointer-events: auto;
+  z-index: 1001;
 }
 .modal-header {
   display: flex;
@@ -1748,6 +1718,7 @@ body.clear-glass #player-container.player-minimized,
 body.clear-glass .sidebar,
 body.clear-glass .context-menu,
 body.clear-glass .modal-content,
+body.clear-glass .modal,
 body.clear-glass #full-player {
   background: rgba(255, 255, 255, 0.05) !important;
   backdrop-filter: blur(40px) saturate(150%) !important;
@@ -1760,6 +1731,7 @@ body.theme-light.clear-glass #player-container.player-minimized,
 body.theme-light.clear-glass .sidebar,
 body.theme-light.clear-glass .context-menu,
 body.theme-light.clear-glass .modal-content,
+body.theme-light.clear-glass .modal,
 body.theme-light.clear-glass #full-player {
   background: rgba(255, 255, 255, 0.4) !important;
   border-color: rgba(0, 0, 0, 0.1) !important;
