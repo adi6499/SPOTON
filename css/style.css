@@ -881,13 +881,39 @@ body.color-orange { --primary: #e17055; --primary-hover: #b85a44; --primary-glow
   .song-list-item__duration {
     display: none;
   }
-  .song-list-item__name {
+  .song-list-item__name, .song-list-item__artist {
     font-size: 14px;
-    max-width: 180px;
+    max-width: none !important;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
   }
   .song-list-item__artist {
     font-size: 12px;
-    max-width: 180px;
+  }
+  .queue-container .song-list-item__num,
+  .queue-container .btn-download,
+  .queue-container .btn-fav {
+    display: none !important;
+  }
+  .queue-container .song-list-item {
+    gap: 6px;
+    padding: 8px 4px;
+  }
+  .section-header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 8px;
+  }
+  .section-actions {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    width: 100%;
+    justify-content: space-between;
+  }
+  .main-scroll-area {
+    padding-bottom: calc(var(--player-bar-height) + var(--nav-height) + var(--safe-bottom) + 40px) !important;
   }
 }
 
