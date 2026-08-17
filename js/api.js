@@ -1,0 +1,308 @@
+// ========================================
+// MusicFlow — JioSaavn API Service Layer
+// ========================================
+
+const API = (() => {
+  // Public JioSaavn API instances (unofficial)
+  // Users can self-host on Vercel for reliability
+  const INSTANCES = [
+    'http://localhost:3001',
+    'https://saavn.dev',
+    'https://jiosaavn-api-privatecvc2.vercel.app',
+    'https://saavn.me',
+  ];
+
+  let currentInstanceIndex = 0;
+  let baseUrl = INSTANCES[0];
+
+  /**
+   * Set a custom API base URL (e.g., self-hosted instance)
+   */
+  function setBaseUrl(url) {
+    baseUrl = url.replace(/\/+$/, '');
+  }
+
+  function getBaseUrl() {
+    return baseUrl;
+  }
+
+  /**
+   * Try next instance if current fails
+   */
+  function rotateInstance() {
+    currentInstanceIndex = (currentInstanceIndex + 1) % INSTANCES.length;
+    baseUrl = INSTANCES[currentInstanceIndex];
+    console.log(`[API] Rotating to instance: ${baseUrl}`);
+  }
+
+  /**
+   * Core fetch wrapper with retry & instance rotation
+   */
+  async function request(endpoint, retries = 2) {
+    const url = `${baseUrl}${endpoint}`;
+
+    for (let attempt = 0; attempt <= retries; attempt++) {
+      try {
+        const response = await fetch(url);
+        if (!response.ok) {
+          throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+        }
+        const data = await response.json();
+        return data;
+      } catch (error) {
+        console.warn(`[API] Attempt ${attempt + 1} failed for ${url}:`, error.message);
+        if (attempt < retries) {
+          rotateInstance();
+          return request(endpoint, retries - attempt - 1);
+        }
+        throw error;
+      }
+    }
+  }
+
+  // ---- Search Endpoints ----
+
+  /**
+   * Search for songs
+   * @param {string} query - Search term
+   * @param {number} limit - Max results (default 20)
+   * @returns {Promise<Array>} Array of song objects
+   */
+  async function searchSongs(query, limit = 20) {
+    const data = await request(`/api/search/songs?query=${encodeURIComponent(query)}&limit=${limit}`);
+    return data?.data?.results || [];
+  }
+
+  /**
+   * Search for albums
+   * @param {string} query - Search term
+   * @param {number} limit - Max results
+   * @returns {Promise<Array>} Array of album objects
+   */
+  async function searchAlbums(query, limit = 10) {
+    const data = await request(`/api/search/albums?query=${encodeURIComponent(query)}&limit=${limit}`);
+    return data?.data?.results || [];
+  }
+
+  /**
+   * Search for artists
+   * @param {string} query - Search term
+   * @param {number} limit - Max results
+   * @returns {Promise<Array>} Array of artist objects
+   */
+  async function searchArtists(query, limit = 10) {
+    const data = await request(`/api/search/artists?query=${encodeURIComponent(query)}&limit=${limit}`);
+    return data?.data?.results || [];
+  }
+
+  /**
+   * Global search (songs + albums + artists)
+   * @param {string} query - Search term
+   * @returns {Promise<Object>} Combined search results
+   */
+  async function searchAll(query) {
+    const data = await request(`/api/search?query=${encodeURIComponent(query)}`);
+    return data?.data || {};
+  }
+
+  // ---- Recommendations Aggregator ----
+
+  async function getHomeRecommendations() {
+    const cached = Storage.getHomeCache();
+    if (cached) {
+      console.log('[API] Using cached home recommendations');
+      return cached;
+    }
+
+    const queries = {
+      trending: { type: 'songs', query: 'trending hits' },
+      global: { type: 'songs', query: 'global top 50' },
+      newReleases: { type: 'songs', query: 'new releases' },
+      chill: { type: 'songs', query: 'lo-fi chill' },
+      focus: { type: 'songs', query: 'deep focus' },
+      workout: { type: 'songs', query: 'workout hits' },
+      popularArtists: { type: 'artists', query: 'popular' },
+      popularAlbums: { type: 'albums', query: 'top albums' }
+    };
+
+    const keys = Object.keys(queries);
+    const promises = keys.map(k => {
+      const q = queries[k];
+      if (q.type === 'songs') return searchSongs(q.query, 15);
+      if (q.type === 'artists') return searchArtists(q.query, 12);
+      if (q.type === 'albums') return searchAlbums(q.query, 12);
+      return Promise.resolve([]);
+    });
+
+    try {
+      const results = await Promise.allSettled(promises);
+      const data = {};
+      
+      const seenIds = new Set();
+      
+      keys.forEach((k, index) => {
+        let items = results[index].status === 'fulfilled' ? results[index].value : [];
+        
+        // Deduplicate songs across categories
+        if (queries[k].type === 'songs') {
+          items = items.filter(item => {
+            if (seenIds.has(item.id)) return false;
+            seenIds.add(item.id);
+            return true;
+          });
+        }
+        
+        data[k] = items;
+      });
+
+      // Populate hero with a random trending song (if available)
+      data.hero = data.trending.length > 0 ? data.trending[0] : null;
+
+      Storage.setHomeCache(data);
+      return data;
+    } catch (e) {
+      console.warn('[API] Home recommendations failed', e);
+      return {};
+    }
+  }
+
+  // ---- Detail Endpoints ----
+
+  /**
+   * Get full song details including stream URLs
+   * @param {string|Array<string>} ids - Song ID(s)
+   * @returns {Promise<Array>} Array of song detail objects
+   */
+  async function getSongDetails(ids) {
+    const idStr = Array.isArray(ids) ? ids.join(',') : ids;
+    const data = await request(`/api/songs/${idStr}`);
+    return data?.data || [];
+  }
+
+  /**
+   * Get album details with all tracks
+   * @param {string} id - Album ID
+   * @returns {Promise<Object>} Album object with songs
+   */
+  async function getAlbumDetails(id) {
+    const data = await request(`/api/albums?id=${id}`);
+    return data?.data || null;
+  }
+
+  /**
+   * Get playlist details with all tracks
+   * @param {string} id - Playlist ID
+   * @returns {Promise<Object>} Playlist object with songs
+   */
+  async function getPlaylistDetails(id) {
+    const data = await request(`/api/playlists?id=${id}`);
+    return data?.data || null;
+  }
+
+  /**
+   * Get artist details
+   * @param {string} id - Artist ID
+   * @returns {Promise<Object>} Artist object
+   */
+  async function getArtistDetails(id) {
+    const data = await request(`/api/artists/${id}`);
+    return data?.data || null;
+  }
+
+  // ---- Helpers ----
+
+  /**
+   * Extract the best quality download URL from song data
+   * @param {Object} song - Song object from API
+   * @returns {string|null} Best quality URL
+   */
+  function getBestDownloadUrl(song) {
+    if (!song?.downloadUrl) return null;
+
+    const urls = song.downloadUrl;
+    if (Array.isArray(urls)) {
+      // Pick highest quality (last in array is usually 320kbps)
+      const best = urls[urls.length - 1];
+      return best?.url || best?.link || null;
+    }
+
+    // Sometimes it's a direct string
+    if (typeof urls === 'string') return urls;
+
+    return null;
+  }
+
+  /**
+   * Get a specific quality download URL
+   * @param {Object} song - Song object
+   * @param {string} quality - '12kbps', '48kbps', '96kbps', '160kbps', '320kbps'
+   * @returns {string|null}
+   */
+  function getDownloadUrl(song, quality = '320kbps') {
+    if (!song?.downloadUrl || !Array.isArray(song.downloadUrl)) {
+      return getBestDownloadUrl(song);
+    }
+    const match = song.downloadUrl.find(u => u.quality === quality);
+    return match?.url || match?.link || getBestDownloadUrl(song);
+  }
+
+  /**
+   * Get the best quality image URL from song/album data
+   * @param {Object} item - Song/album object
+   * @returns {string} Image URL
+   */
+  function getImageUrl(item) {
+    if (!item?.image) return '';
+
+    const images = item.image;
+    if (Array.isArray(images)) {
+      const best = images[images.length - 1];
+      return best?.url || best?.link || '';
+    }
+    if (typeof images === 'string') return images;
+    return '';
+  }
+
+  /**
+   * Normalize a song object for consistent usage
+   * @param {Object} raw - Raw song from API
+   * @returns {Object} Normalized song
+   */
+  function normalizeSong(raw) {
+    return {
+      id: raw.id,
+      name: raw.name || raw.title || 'Unknown',
+      artists: raw.artists?.primary?.map(a => a.name).join(', ')
+        || raw.primaryArtists
+        || raw.artist
+        || 'Unknown Artist',
+      album: raw.album?.name || raw.album || '',
+      duration: raw.duration || 0,
+      image: getImageUrl(raw),
+      streamUrl: getBestDownloadUrl(raw),
+      downloadUrls: raw.downloadUrl || [],
+      year: raw.year || '',
+      language: raw.language || '',
+      hasLyrics: raw.hasLyrics || false,
+      raw: raw,
+    };
+  }
+
+  return {
+    setBaseUrl,
+    getBaseUrl,
+    searchSongs,
+    searchAlbums,
+    searchArtists,
+    searchAll,
+    getHomeRecommendations,
+    getSongDetails,
+    getAlbumDetails,
+    getPlaylistDetails,
+    getArtistDetails,
+    getBestDownloadUrl,
+    getDownloadUrl,
+    getImageUrl,
+    normalizeSong,
+  };
+})();
