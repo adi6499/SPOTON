@@ -15,7 +15,10 @@ const App = (() => {
 
     loadHomePage();
 
-    // 1. Initial UI Setup
+    const miniPlayer = document.getElementById('mini-player');
+    const playerContainer = document.getElementById('player-container');
+    const minimizeBtn = document.getElementById('btn-minimize-player');
+
     UI.updateVolumeIcon(Player.getVolume());
     const currentTrack = Player.getCurrentTrack();
     if (currentTrack && currentTrack.id) {
