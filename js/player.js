@@ -607,6 +607,11 @@ const Player = (() => {
   };
 
   function applyEqPreset(presetName) {
+    if (presetName === 'custom') {
+      const saved = Storage.getSettings().eq || EQ_PRESETS.flat;
+      saved.forEach((gain, i) => setEqBand(i, gain));
+      return saved;
+    }
     const preset = EQ_PRESETS[presetName] || EQ_PRESETS.flat;
     preset.forEach((gain, i) => setEqBand(i, gain));
     Storage.updateSettings({ eqPreset: presetName, eq: preset });
@@ -724,6 +729,7 @@ const Player = (() => {
   }
 
   function setEqBand(index, gain) {
+    if (!audioCtx) initWebAudio();
     if (eqBands[index]) {
       eqBands[index].gain.value = gain;
     }

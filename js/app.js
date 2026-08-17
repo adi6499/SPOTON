@@ -1095,6 +1095,15 @@ const App = (() => {
     
     const ambientSelect = document.getElementById('select-ambient-sound');
     if (ambientSelect) ambientSelect.value = settings.ambientSound || 'off';
+
+    const visualizerToggle = document.getElementById('toggle-visualizer');
+    if (visualizerToggle) visualizerToggle.checked = settings.visualizer !== false; // Default true
+
+    const timerSelect = document.getElementById('select-timer');
+    if (timerSelect) {
+      const currentTimer = Player.getSleepTimerMinutes();
+      timerSelect.value = currentTimer > 0 ? currentTimer.toString() : '0';
+    }
     
     buildEqSliders();
   }
@@ -1174,7 +1183,15 @@ const App = (() => {
 
     document.getElementById('select-eq-preset')?.addEventListener('change', (e) => {
       Storage.updateSettings({ eqPreset: e.target.value });
-      Player.applyEqPreset(e.target.value);
+      const presetValues = Player.applyEqPreset(e.target.value);
+      
+      // Update UI sliders dynamically
+      document.querySelectorAll('.eq-slider').forEach((slider, i) => {
+        if (presetValues && presetValues[i] !== undefined) {
+          slider.value = presetValues[i];
+        }
+      });
+      
       UI.showToast(`Equalizer preset set to ${e.target.options[e.target.selectedIndex].text}`);
     });
 
@@ -1225,25 +1242,21 @@ const App = (() => {
       }
     });
 
-    document.getElementById('select-timer').addEventListener('change', (e) => {
-      const val = parseInt(e.target.value);
-      Player.setSleepTimer(val);
-      if (val > 0) UI.showToast(`Sleep timer set for ${val} minutes`);
-      else UI.showToast('Sleep timer disabled');
-    });
-
-    document.getElementById('select-speed').addEventListener('change', (e) => {
+    document.getElementById('select-speed')?.addEventListener('change', (e) => {
       Player.setPlaybackSpeed(parseFloat(e.target.value));
     });
 
-    document.getElementById('toggle-visualizer').addEventListener('change', (e) => {
+    document.getElementById('toggle-visualizer')?.addEventListener('change', (e) => {
+      Storage.updateSettings({ visualizer: e.target.checked });
       const canvas = document.getElementById('visualizer-canvas');
       if (e.target.checked) {
-        canvas.style.display = 'block';
+        if (canvas) canvas.style.display = 'block';
         startVisualizer();
+        UI.showToast('Audio Visualizer enabled');
       } else {
-        canvas.style.display = 'none';
+        if (canvas) canvas.style.display = 'none';
         if (visualizerRAF) cancelAnimationFrame(visualizerRAF);
+        UI.showToast('Audio Visualizer disabled');
       }
     });
   }
@@ -1642,6 +1655,16 @@ const App = (() => {
   document.addEventListener('DOMContentLoaded', () => {
     applyTheme(); // Apply theme before init
     init();
+
+    const settings = Storage.getSettings();
+    if (settings.visualizer !== false) {
+      const canvas = document.getElementById('visualizer-canvas');
+      if (canvas) {
+        canvas.style.display = 'block';
+        startVisualizer();
+      }
+    }
+
     bindKeyboardShortcuts();
     document.addEventListener('click', (e) => {
       const artistLink = e.target.closest('[data-action="open-artist"]');
