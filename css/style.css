@@ -952,17 +952,20 @@ body.color-orange { --primary: #e17055; --primary-hover: #b85a44; --primary-glow
 
 /* --- MINIMIZED STATE (Mini Player) --- */
 #player-container.player-minimized {
-  bottom: calc(var(--nav-height) + var(--safe-bottom));
+  bottom: calc(var(--nav-height) + var(--safe-bottom) + 8px);
   left: var(--space-sm);
   right: var(--space-sm);
-  height: 64px;
+  height: 60px;
   background: var(--bg-glass-heavy);
   backdrop-filter: blur(30px);
   -webkit-backdrop-filter: blur(30px);
   border: 1px solid var(--border);
   border-radius: var(--radius-lg);
-  transform: translateY(150%);
+  transform: translateY(180%);
   cursor: pointer;
+  z-index: 500;
+  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.5);
+  transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 }
 body.has-player #player-container.player-minimized {
   transform: translateY(0);

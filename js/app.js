@@ -17,13 +17,13 @@ const App = (() => {
 
     // 1. Initial UI Setup
     UI.updateVolumeIcon(Player.getVolume());
-    UI.updateRepeatButton(Player.getRepeatMode());
-    UI.updateShuffleButton(Player.getShuffleMode());
-    
-    initSettings(); // Initialize settings properly
-    const miniPlayer = document.getElementById('mini-player');
-    const playerContainer = document.getElementById('player-container');
-    const minimizeBtn = document.getElementById('btn-minimize-player');
+    const currentTrack = Player.getCurrentTrack();
+    if (currentTrack && currentTrack.id) {
+      UI.updatePlayerBar(currentTrack);
+    } else {
+      if (playerContainer) playerContainer.style.display = 'none';
+      document.body.classList.remove('has-player');
+    }
 
     if (miniPlayer) {
       const expandPlayer = (e) => {

@@ -496,11 +496,13 @@ const UI = (() => {
     const bar = document.getElementById('player-container');
     if (!bar) return;
 
-    if (!track) {
+    if (!track || !track.id || track.name === 'Not Playing') {
       document.body.classList.remove('has-player');
+      bar.style.display = 'none';
       return;
     }
 
+    bar.style.display = 'block';
     document.body.classList.add('has-player');
 
     // Mini Player
