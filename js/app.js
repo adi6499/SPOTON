@@ -221,33 +221,33 @@ const App = (() => {
           miniArtworkImg.style.transform = `scale(${miniScale.toFixed(3)})`;
         }
 
-        // Pulse dynamic glowing aura behind artwork
+        // Pulse dynamic glowing aura behind artwork (subtle atmospheric glow)
         if (glowAura && isPlayerExpanded) {
-          const auraScale = 0.94 + (beatPower * 0.50);
-          const auraOpacity = 0.65 + (beatPower * 0.35);
+          const auraScale = 0.92 + (beatPower * 0.22);
+          const auraOpacity = 0.40 + (beatPower * 0.25);
           glowAura.style.transform = `scale(${auraScale.toFixed(3)})`;
           glowAura.style.opacity = auraOpacity.toFixed(2);
         }
 
-        // Pulse and modulate ambient fluid mesh backdrop orbs
+        // Pulse and modulate ambient fluid mesh backdrop orbs (soft micro-movement)
         if (isPlayerExpanded) {
           const orb1 = document.querySelector('.ambient-mesh-orb.orb-1');
           const orb2 = document.querySelector('.ambient-mesh-orb.orb-2');
           const orb3 = document.querySelector('.ambient-mesh-orb.orb-3');
           if (orb1) {
-            const o1Scale = 1.0 + (beatPower * 0.22);
+            const o1Scale = 1.0 + (beatPower * 0.08);
             orb1.style.transform = `scale(${o1Scale.toFixed(3)})`;
-            orb1.style.opacity = (0.75 + beatPower * 0.25).toFixed(2);
+            orb1.style.opacity = (0.35 + beatPower * 0.10).toFixed(2);
           }
           if (orb2) {
-            const o2Scale = 1.0 + (beatPower * 0.18);
+            const o2Scale = 1.0 + (beatPower * 0.06);
             orb2.style.transform = `scale(${o2Scale.toFixed(3)})`;
-            orb2.style.opacity = (0.70 + beatPower * 0.25).toFixed(2);
+            orb2.style.opacity = (0.26 + beatPower * 0.08).toFixed(2);
           }
           if (orb3) {
-            const o3Scale = 1.0 + (beatPower * 0.15);
+            const o3Scale = 1.0 + (beatPower * 0.05);
             orb3.style.transform = `scale(${o3Scale.toFixed(3)})`;
-            orb3.style.opacity = (0.60 + beatPower * 0.25).toFixed(2);
+            orb3.style.opacity = (0.18 + beatPower * 0.06).toFixed(2);
           }
         }
       } else {

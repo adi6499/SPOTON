@@ -735,17 +735,17 @@ const UI = (() => {
       const triG = g3 ?? Math.min(255, Math.round(g * 0.5 + 40));
       const triB = b3 ?? Math.min(255, Math.round(b * 1.3));
 
-      document.documentElement.style.setProperty('--dynamic-color', `rgba(${r}, ${g}, ${b}, 0.75)`);
-      document.documentElement.style.setProperty('--dynamic-color-sec', `rgba(${secR}, ${secG}, ${secB}, 0.65)`);
-      document.documentElement.style.setProperty('--dynamic-color-tri', `rgba(${triR}, ${triG}, ${triB}, 0.55)`);
-      document.documentElement.style.setProperty('--dynamic-color-dim', `rgba(${r}, ${g}, ${b}, 0.20)`);
+      document.documentElement.style.setProperty('--dynamic-color', `rgba(${r}, ${g}, ${b}, 0.45)`);
+      document.documentElement.style.setProperty('--dynamic-color-sec', `rgba(${secR}, ${secG}, ${secB}, 0.32)`);
+      document.documentElement.style.setProperty('--dynamic-color-tri', `rgba(${triR}, ${triG}, ${triB}, 0.22)`);
+      document.documentElement.style.setProperty('--dynamic-color-dim', `rgba(${r}, ${g}, ${b}, 0.12)`);
       document.documentElement.style.setProperty('--dynamic-rgb', `${r}, ${g}, ${b}`);
       document.documentElement.style.setProperty('--dynamic-rgb-sec', `${secR}, ${secG}, ${secB}`);
       document.documentElement.style.setProperty('--dynamic-rgb-tri', `${triR}, ${triG}, ${triB}`);
       
       const bg = document.getElementById('dynamic-bg');
       if (bg) {
-        bg.style.background = `radial-gradient(circle at 50% 0%, rgba(${r}, ${g}, ${b}, 0.6) 0%, transparent 70%)`;
+        bg.style.background = `radial-gradient(circle at 50% 0%, rgba(${r}, ${g}, ${b}, 0.4) 0%, transparent 70%)`;
       }
     });
   }

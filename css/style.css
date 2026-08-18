@@ -1195,16 +1195,16 @@ body.is-player-expanded .bottom-nav,
 /* Ambient Fluid Mesh Backdrop for Full Player */
 .ambient-mesh-container {
   position: absolute;
-  top: -10%;
-  left: -10%;
-  right: -10%;
-  bottom: -10%;
+  top: -15%;
+  left: -15%;
+  right: -15%;
+  bottom: -15%;
   overflow: hidden;
   pointer-events: none;
   z-index: 0;
-  opacity: 0.95;
-  filter: blur(55px);
-  -webkit-filter: blur(55px);
+  opacity: 0.45;
+  filter: blur(80px);
+  -webkit-filter: blur(80px);
   transform: translate3d(0, 0, 0);
   will-change: transform;
 }
@@ -1220,49 +1220,49 @@ body.is-player-expanded .bottom-nav,
 .ambient-mesh-orb.orb-1 {
   top: -5%;
   left: 5%;
-  width: min(100vw, 420px);
-  height: min(100vw, 420px);
-  background: radial-gradient(circle, var(--dynamic-color, #ff4081) 0%, rgba(0,0,0,0) 68%);
-  opacity: 0.85;
-  animation: orb-float-1 9s ease-in-out infinite alternate;
+  width: min(90vw, 380px);
+  height: min(90vw, 380px);
+  background: radial-gradient(circle, var(--dynamic-color, rgba(255, 64, 129, 0.45)) 0%, rgba(0,0,0,0) 68%);
+  opacity: 0.38;
+  animation: orb-float-1 12s ease-in-out infinite alternate;
 }
 
 .ambient-mesh-orb.orb-2 {
   top: 25%;
   right: -15%;
-  width: min(90vw, 380px);
-  height: min(90vw, 380px);
-  background: radial-gradient(circle, var(--dynamic-color-sec, #7c4dff) 0%, rgba(0,0,0,0) 70%);
-  opacity: 0.80;
-  animation: orb-float-2 12s ease-in-out infinite alternate;
+  width: min(80vw, 340px);
+  height: min(80vw, 340px);
+  background: radial-gradient(circle, var(--dynamic-color-sec, rgba(124, 77, 255, 0.35)) 0%, rgba(0,0,0,0) 70%);
+  opacity: 0.28;
+  animation: orb-float-2 16s ease-in-out infinite alternate;
 }
 
 .ambient-mesh-orb.orb-3 {
   bottom: 0%;
   left: -10%;
-  width: min(85vw, 350px);
-  height: min(85vw, 350px);
-  background: radial-gradient(circle, var(--dynamic-color-tri, #00e5ff) 0%, rgba(0,0,0,0) 70%);
-  opacity: 0.70;
-  animation: orb-float-3 10s ease-in-out infinite alternate;
+  width: min(75vw, 300px);
+  height: min(75vw, 300px);
+  background: radial-gradient(circle, var(--dynamic-color-tri, rgba(0, 229, 255, 0.25)) 0%, rgba(0,0,0,0) 70%);
+  opacity: 0.20;
+  animation: orb-float-3 14s ease-in-out infinite alternate;
 }
 
 @keyframes orb-float-1 {
   0% { transform: translate3d(0, 0, 0) scale(1); }
-  50% { transform: translate3d(35px, 45px, 0) scale(1.22); }
-  100% { transform: translate3d(-30px, 20px, 0) scale(0.90); }
+  50% { transform: translate3d(25px, 30px, 0) scale(1.10); }
+  100% { transform: translate3d(-20px, 15px, 0) scale(0.95); }
 }
 
 @keyframes orb-float-2 {
   0% { transform: translate3d(0, 0, 0) scale(1); }
-  50% { transform: translate3d(-45px, -35px, 0) scale(1.25); }
-  100% { transform: translate3d(25px, -20px, 0) scale(0.85); }
+  50% { transform: translate3d(-30px, -25px, 0) scale(1.12); }
+  100% { transform: translate3d(15px, -15px, 0) scale(0.92); }
 }
 
 @keyframes orb-float-3 {
   0% { transform: translate3d(0, 0, 0) scale(1); }
-  50% { transform: translate3d(40px, -40px, 0) scale(1.18); }
-  100% { transform: translate3d(-25px, 25px, 0) scale(0.92); }
+  50% { transform: translate3d(25px, -25px, 0) scale(1.08); }
+  100% { transform: translate3d(-15px, 18px, 0) scale(0.95); }
 }
 
 .full-player {
@@ -1314,12 +1314,12 @@ body.is-player-expanded .bottom-nav,
 
 .artwork-glow-aura {
   position: absolute;
-  width: min(85vw, 320px);
-  height: min(85vw, 320px);
+  width: min(80vw, 300px);
+  height: min(80vw, 300px);
   border-radius: 50%;
-  background: radial-gradient(circle, var(--dynamic-color, rgba(29, 185, 84, 0.75)) 0%, var(--dynamic-color-sec, rgba(29, 185, 84, 0.35)) 48%, transparent 72%);
-  filter: blur(48px);
-  opacity: 0.90;
+  background: radial-gradient(circle, var(--dynamic-color, rgba(29, 185, 84, 0.45)) 0%, var(--dynamic-color-sec, rgba(29, 185, 84, 0.2)) 48%, transparent 70%);
+  filter: blur(42px);
+  opacity: 0.45;
   z-index: 1;
   pointer-events: none;
   transition: opacity 0.6s ease, transform 0.6s ease;
@@ -1329,13 +1329,13 @@ body.is-player-expanded .bottom-nav,
 }
 
 .is-playing .artwork-glow-aura {
-  opacity: 0.95;
+  opacity: 0.60;
   animation: aura-breathe 4s ease-in-out infinite alternate;
 }
 
 @keyframes aura-breathe {
-  0% { transform: scale(0.94); opacity: 0.75; }
-  100% { transform: scale(1.24); opacity: 1; }
+  0% { transform: scale(0.94); opacity: 0.45; }
+  100% { transform: scale(1.15); opacity: 0.70; }
 }
 
 .full-player__artwork img {
