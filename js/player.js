@@ -156,6 +156,19 @@ const Player = (() => {
         duration: a.duration || 0,
         progress: a.duration ? (a.currentTime / a.duration) * 100 : 0,
       });
+
+      // Update lock screen progress
+      if ('mediaSession' in navigator && a.duration) {
+        try {
+          navigator.mediaSession.setPositionState({
+            duration: a.duration,
+            playbackRate: a.playbackRate,
+            position: a.currentTime
+          });
+        } catch (e) {
+          // Ignore state errors if track changed rapidly
+        }
+      }
     });
 
     a.addEventListener('ended', () => {
@@ -263,6 +276,9 @@ const Player = (() => {
     const thisLoadId = ++_loadId; // Increment to cancel any previous pending load
 
     try {
+      // Unlock audio for Safari/iOS by playing synchronously during user gesture
+      activeAudio.play().catch(() => {});
+      
       // Resume AudioContext if it was previously initialized (for EQ/visualizer)
       if (audioCtx && audioCtx.state === 'suspended') {
         await audioCtx.resume();
