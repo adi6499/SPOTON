@@ -37,7 +37,7 @@ self.addEventListener('fetch', (event) => {
   if (event.request.url.includes('images') || event.request.url.includes('c.saavncdn.com')) return;
 
   event.respondWith(
-    caches.match(event.request)
+    caches.match(event.request, { ignoreSearch: true })
       .then(response => {
         return response || fetch(event.request);
       })
