@@ -647,7 +647,7 @@ const App = (() => {
               { label: 'Play Next', icon: '▶️', onClick: () => { Player.playNext(song); UI.showToast('Added to Play Next'); } },
               { label: 'Add to Queue', icon: '🎵', onClick: () => { Player.addToQueue(song); UI.showToast('Added to Queue'); } },
               { label: 'Start Radio', icon: '📻', onClick: () => startRadioForSong(song) },
-              { label: 'Download', icon: '⬇️', onClick: () => window.Download ? window.Download.downloadSong(song) : null },
+              { label: 'Download', icon: '⬇️', onClick: () => typeof Download !== 'undefined' ? Download.downloadSong(song) : null },
               { type: 'divider' },
               { label: 'Go to Artist', icon: '👤', onClick: () => {
                  const artistName = song.artists ? song.artists.split(',')[0].trim() : 'Unknown';
