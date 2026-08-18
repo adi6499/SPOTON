@@ -71,7 +71,16 @@ const App = (() => {
       if (miniPlayer) {
         miniPlayer.addEventListener('click', (e) => {
           if (window.innerWidth > 768) return;
-          if (e.target.closest('button') || e.target.closest('.mini-player__controls') || e.target.closest('input') || e.target.closest('.mini-player__progress-container')) return;
+          if (
+            e.target.closest('button') || 
+            e.target.closest('[data-action]') || 
+            e.target.closest('.mini-player__controls') || 
+            e.target.closest('.clickable-artist-link') || 
+            e.target.closest('input') || 
+            e.target.closest('.mini-player__progress-container')
+          ) {
+            return;
+          }
           window.expandPlayer(true);
         });
       }
@@ -280,72 +289,199 @@ const App = (() => {
   // ---- Player Events ----
 
   function setupPlayerEvents() {
-    // Touch & Swipe Gestures for Bottom Player & Full Player Sheet
+    // 1:1 Real-Time Finger Tracking Gesture Physics for Bottom Player & Full Player
     const miniPlayer = document.getElementById('mini-player');
     const playerContainer = document.getElementById('player-container');
     const fullPlayer = document.getElementById('full-player');
-    
-    // --- 1. Mini-Player Swipe Gestures (Swipe Up to Open, Swipe Left/Right to Skip) ---
-    if (miniPlayer) {
-      let mTouchStartY = 0;
-      let mTouchStartX = 0;
-      let mTouchStartTime = 0;
+    const bottomNav = document.querySelector('.bottom-nav');
+
+    // --- 1. Real-Time 1:1 Drag-To-Open from Mini Player ---
+    if (miniPlayer && playerContainer) {
+      let mStartY = 0;
+      let mStartX = 0;
+      let mStartTime = 0;
+      let isDraggingUp = false;
 
       miniPlayer.addEventListener('touchstart', (e) => {
-        if (e.target.closest('button') || e.target.closest('input') || e.target.closest('.mini-player__progress-container')) return;
-        mTouchStartY = e.touches[0].clientY;
-        mTouchStartX = e.touches[0].clientX;
-        mTouchStartTime = Date.now();
+        if (window.innerWidth > 768 || e.touches.length !== 1) return;
+        if (e.target.closest('button, [data-action], .mini-player__controls, .clickable-artist-link, input, .mini-player__progress-container')) {
+          mStartY = 0;
+          return;
+        }
+        mStartY = e.touches[0].clientY;
+        mStartX = e.touches[0].clientX;
+        mStartTime = Date.now();
+        isDraggingUp = false;
+      }, { passive: true });
+
+      miniPlayer.addEventListener('touchmove', (e) => {
+        if (!mStartY || e.touches.length !== 1) return;
+        if (playerContainer.classList.contains('player-expanded')) return;
+
+        const currentY = e.touches[0].clientY;
+        const deltaY = currentY - mStartY;
+        const deltaX = e.touches[0].clientX - mStartX;
+
+        if (!isDraggingUp) {
+          if (deltaY < -5 && Math.abs(deltaY) > Math.abs(deltaX)) {
+            isDraggingUp = true;
+            playerContainer.classList.add('is-gesture-dragging');
+            if (bottomNav) bottomNav.classList.add('is-gesture-dragging');
+          }
+        }
+
+        if (isDraggingUp) {
+          // Locked 1:1 directly to finger Y position
+          const sheetY = Math.max(0, currentY);
+          playerContainer.style.transform = `translate3d(0, ${sheetY}px, 0)`;
+          if (bottomNav) {
+            const navProg = Math.min(1, Math.max(0, (window.innerHeight - sheetY) / (window.innerHeight * 0.75)));
+            bottomNav.style.transform = `translate3d(0, ${(navProg * 100).toFixed(1)}%, 0)`;
+          }
+        }
       }, { passive: true });
 
       miniPlayer.addEventListener('touchend', (e) => {
-        if (!mTouchStartY) return;
-        const deltaY = e.changedTouches[0].clientY - mTouchStartY;
-        const deltaX = e.changedTouches[0].clientX - mTouchStartX;
-        const deltaTime = Date.now() - mTouchStartTime;
+        if (!mStartY) return;
+        const endY = e.changedTouches[0].clientY;
+        const deltaY = endY - mStartY;
+        const deltaX = e.changedTouches[0].clientX - mStartX;
+        const deltaTime = Date.now() - mStartTime;
+        const velocity = deltaY / Math.max(1, deltaTime);
 
-        if (Math.abs(deltaY) > Math.abs(deltaX)) {
-          // Swipe up to expand player smoothly
-          if (deltaY < -20) {
-            window.expandPlayer(true);
+        if (isDraggingUp) {
+          isDraggingUp = false;
+          playerContainer.classList.remove('is-gesture-dragging');
+          if (bottomNav) bottomNav.classList.remove('is-gesture-dragging');
+          playerContainer.classList.add('is-animating-snap');
+
+          // If dragged above 65% of screen or flicked up
+          if (endY < window.innerHeight * 0.65 || velocity < -0.28) {
+            playerContainer.style.transform = 'translate3d(0, 0, 0)';
+            if (bottomNav) bottomNav.style.transform = 'translate3d(0, 100%, 0)';
+
+            setTimeout(() => {
+              playerContainer.style.transform = '';
+              if (bottomNav) bottomNav.style.transform = '';
+              playerContainer.classList.remove('is-animating-snap');
+              window.expandPlayer(true);
+            }, 320);
+          } else {
+            // Snap back down
+            playerContainer.style.transform = 'translate3d(0, 100vh, 0)';
+            if (bottomNav) bottomNav.style.transform = 'translate3d(0, 0, 0)';
+
+            setTimeout(() => {
+              playerContainer.style.transform = '';
+              if (bottomNav) bottomNav.style.transform = '';
+              playerContainer.classList.remove('is-animating-snap');
+            }, 320);
           }
         } else {
-          // Horizontal swipe to skip tracks
-          if (deltaX < -40 && deltaTime < 600) {
-            Player.next();
-          } else if (deltaX > 40 && deltaTime < 600) {
-            Player.previous();
+          // Horizontal skip on mini player
+          if (Math.abs(deltaX) > 40 && deltaTime < 600) {
+            if (deltaX < -40) Player.next();
+            else if (deltaX > 40) Player.previous();
           }
         }
 
-        mTouchStartY = 0;
-        mTouchStartX = 0;
+        mStartY = 0;
+        mStartX = 0;
       }, { passive: true });
     }
 
-    // --- 2. Full Player Swipe Gestures (Swipe Down to Minimize) ---
-    if (fullPlayer) {
-      let fpTouchStartY = 0;
-      let fpTouchStartX = 0;
+    // --- 2. Real-Time 1:1 Drag-To-Close from Full Player ---
+    if (fullPlayer && playerContainer) {
+      let fpStartY = 0;
+      let fpStartX = 0;
+      let fpStartTime = 0;
+      let isDraggingDown = false;
 
       fullPlayer.addEventListener('touchstart', (e) => {
-        if (e.target.tagName === 'INPUT' || e.target.closest('.modal') || e.target.closest('.lyrics-scroll') || e.target.closest('button')) return;
-        fpTouchStartY = e.touches[0].clientY;
-        fpTouchStartX = e.touches[0].clientX;
+        if (window.innerWidth > 768 || e.touches.length !== 1) return;
+        if (e.target.tagName === 'INPUT' || e.target.closest('.modal') || e.target.closest('.lyrics-scroll') || e.target.closest('button, [data-action], .clickable-artist-link')) {
+          fpStartY = 0;
+          return;
+        }
+        fpStartY = e.touches[0].clientY;
+        fpStartX = e.touches[0].clientX;
+        fpStartTime = Date.now();
+        isDraggingDown = false;
+      }, { passive: true });
+
+      fullPlayer.addEventListener('touchmove', (e) => {
+        if (!fpStartY || e.touches.length !== 1) return;
+        if (!playerContainer.classList.contains('player-expanded')) return;
+
+        const currentY = e.touches[0].clientY;
+        const deltaY = currentY - fpStartY;
+        const deltaX = e.touches[0].clientX - fpStartX;
+
+        if (!isDraggingDown) {
+          if (deltaY > 5 && Math.abs(deltaY) > Math.abs(deltaX)) {
+            isDraggingDown = true;
+            playerContainer.classList.add('is-gesture-dragging');
+            if (bottomNav) {
+              bottomNav.style.display = 'flex';
+              bottomNav.classList.add('is-gesture-dragging');
+            }
+          }
+        }
+
+        if (isDraggingDown && deltaY > 0) {
+          // Sheet follows finger downwards
+          playerContainer.style.transform = `translate3d(0, ${deltaY}px, 0)`;
+          if (bottomNav) {
+            const navProg = Math.max(0, 100 - (deltaY / (window.innerHeight * 0.75)) * 100);
+            bottomNav.style.transform = `translate3d(0, ${navProg.toFixed(1)}%, 0)`;
+          }
+        }
       }, { passive: true });
 
       fullPlayer.addEventListener('touchend', (e) => {
-        if (!fpTouchStartY) return;
-        const deltaY = e.changedTouches[0].clientY - fpTouchStartY;
-        const deltaX = e.changedTouches[0].clientX - fpTouchStartX;
+        if (!fpStartY) return;
+        const deltaY = e.changedTouches[0].clientY - fpStartY;
+        const deltaTime = Date.now() - fpStartTime;
+        const velocity = deltaY / Math.max(1, deltaTime);
 
-        // Swipe down to dismiss / minimize
-        if (deltaY > 30 && Math.abs(deltaY) > Math.abs(deltaX) * 1.1) {
-          window.minimizePlayer(false);
+        if (isDraggingDown) {
+          isDraggingDown = false;
+          playerContainer.classList.remove('is-gesture-dragging');
+          if (bottomNav) bottomNav.classList.remove('is-gesture-dragging');
+          playerContainer.classList.add('is-animating-snap');
+
+          // If pulled down past 22% of screen or flicked down
+          if (deltaY > window.innerHeight * 0.20 || velocity > 0.28) {
+            playerContainer.style.transform = 'translate3d(0, 100vh, 0)';
+            if (bottomNav) bottomNav.style.transform = 'translate3d(0, 0, 0)';
+
+            setTimeout(() => {
+              playerContainer.style.transform = '';
+              if (bottomNav) {
+                bottomNav.style.transform = '';
+                bottomNav.style.display = '';
+              }
+              playerContainer.classList.remove('is-animating-snap');
+              window.minimizePlayer(false);
+            }, 320);
+          } else {
+            // Snap back open
+            playerContainer.style.transform = 'translate3d(0, 0, 0)';
+            if (bottomNav) bottomNav.style.transform = 'translate3d(0, 100%, 0)';
+
+            setTimeout(() => {
+              playerContainer.style.transform = '';
+              if (bottomNav) {
+                bottomNav.style.transform = '';
+                bottomNav.style.display = '';
+              }
+              playerContainer.classList.remove('is-animating-snap');
+            }, 320);
+          }
         }
 
-        fpTouchStartY = 0;
-        fpTouchStartX = 0;
+        fpStartY = 0;
+        fpStartX = 0;
       }, { passive: true });
     }
 
