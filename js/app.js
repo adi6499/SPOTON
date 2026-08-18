@@ -157,6 +157,14 @@ const App = (() => {
     Player.on('trackchange', (track) => {
       UI.updatePlayerBar(track);
       
+      // Update full player with HD image and dynamic artwork
+      if (track && track.image) {
+        const hdImage = track.image.replace('150x150', '500x500').replace('50x50', '500x500');
+        const fImg = document.getElementById('full-player-img');
+        if (fImg) fImg.src = hdImage;
+        if (typeof updateDynamicArtwork === 'function') updateDynamicArtwork(hdImage);
+      }
+      
       const codecEl = document.getElementById('full-player-codec');
       if (codecEl && Player.getStreamCodecDisplay) {
         codecEl.textContent = Player.getStreamCodecDisplay();
@@ -1580,14 +1588,7 @@ const App = (() => {
     }
   }
 
-  // Inject track change listener for dynamic artwork
-  Player.on('trackchange', (song) => {
-    if (song && song.image) {
-      const hdImage = song.image.replace('150x150', '500x500');
-      document.getElementById('full-player-img').src = hdImage;
-      updateDynamicArtwork(hdImage);
-    }
-  });
+  // HD artwork and dynamic background now handled in the main trackchange handler above
 
   // ---- Init ----
   document.addEventListener('DOMContentLoaded', () => {

@@ -266,11 +266,12 @@ const Player = (() => {
         audioCtx.resume();
       }
 
-      // Fire track change immediately so UI artwork and title update instantly
+      // Fire track change immediately so UI shows something right away
       onTrackChange?.(song, currentIndex);
 
       const qual = Storage.getSettings().audioQuality || '320kbps';
       let streamUrl = null;
+      let updatedSong = song;
 
       if (song.raw && window.API && API.getDownloadUrl) {
         streamUrl = API.getDownloadUrl(song.raw, qual);
@@ -281,16 +282,17 @@ const Player = (() => {
         streamUrl = song.streamUrl;
       }
 
-      // If no stream URL, fetch it
+      // If no stream URL, fetch full song details
       if (!streamUrl) {
         const details = await API.getSongDetails(song.id);
         if (details && details.length > 0) {
           streamUrl = API.getDownloadUrl(details[0], qual);
           
-          // Update song in queue with stream URL
+          // Update song in queue with full details (correct image, metadata)
           if (currentIndex >= 0 && queue[currentIndex]) {
-            queue[currentIndex].streamUrl = streamUrl;
-            queue[currentIndex] = { ...queue[currentIndex], ...API.normalizeSong(details[0]) };
+            const normalized = API.normalizeSong(details[0]);
+            queue[currentIndex] = { ...queue[currentIndex], ...normalized };
+            updatedSong = queue[currentIndex];
           }
         }
       }
@@ -301,6 +303,29 @@ const Player = (() => {
         return;
       }
 
+      // Helper: wait for audio to be ready before playing
+      function waitForCanPlay(audioEl) {
+        return new Promise((resolve, reject) => {
+          // If already has enough data, resolve immediately
+          if (audioEl.readyState >= 3) {
+            resolve();
+            return;
+          }
+          const onReady = () => {
+            audioEl.removeEventListener('canplay', onReady);
+            audioEl.removeEventListener('error', onErr);
+            resolve();
+          };
+          const onErr = (e) => {
+            audioEl.removeEventListener('canplay', onReady);
+            audioEl.removeEventListener('error', onErr);
+            reject(e);
+          };
+          audioEl.addEventListener('canplay', onReady);
+          audioEl.addEventListener('error', onErr);
+        });
+      }
+
       if (isCrossfade) {
         // Swap active audio
         const oldAudio = activeAudio;
@@ -308,7 +333,9 @@ const Player = (() => {
         inactiveAudio = oldAudio;
         
         activeAudio.src = streamUrl;
+        activeAudio.load();
         activeAudio.volume = 0;
+        await waitForCanPlay(activeAudio);
         await activeAudio.play();
         
         // Simple linear crossfade over 3 seconds
@@ -327,14 +354,17 @@ const Player = (() => {
         }, 150);
       } else {
         activeAudio.src = streamUrl;
+        activeAudio.load();
         activeAudio.volume = getVolume();
+        await waitForCanPlay(activeAudio);
         await activeAudio.play();
       }
 
       // Track in recently played
       Storage.addRecent(getCurrentTrack());
 
-      onTrackChange?.(getCurrentTrack(), currentIndex);
+      // Fire track change again with updated song data (correct image/metadata)
+      onTrackChange?.(updatedSong, currentIndex);
     } catch (error) {
       if (error.name === 'AbortError') return;
       console.error('[Player] Play error:', error);
