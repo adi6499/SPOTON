@@ -194,41 +194,65 @@ ul { list-style: none; }
 ::-webkit-scrollbar-thumb { background: var(--border-hover); border-radius: var(--radius-full); }
 ::-webkit-scrollbar-thumb:hover { background: var(--text-tertiary); }
 
-/* Dynamic Background */
-#dynamic-bg { display: none !important; }
-#dynamic-bg.active { opacity: 1; }
-body.theme-light #dynamic-bg { filter: blur(100px) saturate(1.2) brightness(0.9); }
+/* Dynamic Background & Ambient Lighting */
+#dynamic-bg {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 550px;
+  background: radial-gradient(circle at 50% 0%, var(--dynamic-color, rgba(29, 185, 84, 0.45)) 0%, transparent 75%);
+  pointer-events: none;
+  z-index: 0;
+  opacity: 0.85;
+  transition: background 1.2s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.8s ease;
+}
 
 .aurora-bg { display: none !important; }
 
 :root {
-  /* Colors - Base (Dark Theme Default) */
-  --bg-base: #12121a;
-  --bg-surface: #1e1e28;
-  --bg-glass: rgba(30, 30, 40, 0.7);
-  --bg-glass-heavy: rgba(30, 30, 40, 0.9);
+  /* Dynamic song ambient colors */
+  --dynamic-color: rgba(29, 185, 84, 0.45);
+  --dynamic-color-dim: rgba(29, 185, 84, 0.12);
+
+  /* Colors - Base (Spotify Dark Theme) */
+  --bg-base: #121212;
+  --bg-surface: #181818;
+  --bg-elevated: #242424;
+  --bg-glass: rgba(18, 18, 18, 0.85);
+  --bg-glass-heavy: rgba(18, 18, 18, 0.95);
   
   /* Text */
   --text: #ffffff;
-  --text-sec: #a0a0b0;
-  --text-muted: #6e6e80;
+  --text-sec: #b3b3b3;
+  --text-muted: #727272;
   
-  /* Accents (Purple Default) */
-  --primary: #6c5ce7;
-  --primary-hover: #5b4bc4;
-  --primary-glow: rgba(108, 92, 231, 0.4);
+  /* Accents (Spotify Green) */
+  --primary: #1DB954;
+  --primary-hover: #1ed760;
+  --primary-glow: rgba(29, 185, 84, 0.35);
   
   /* Status */
-  --error: #ff4757;
-  --success: #2ed573;
-  --border: rgba(255, 255, 255, 0.1);
+  --error: #e91429;
+  --success: #1DB954;
+  --border: rgba(255, 255, 255, 0.08);
   --border-hover: rgba(255, 255, 255, 0.2);
-  
-  /* Theme System overrides handled dynamically by JS injecting .theme-[color] */
   
   /* Typography */
   --font-family: 'Inter', system-ui, -apple-system, sans-serif;
+  --font-heading: 'Inter', system-ui, -apple-system, sans-serif;
   --font-size-xs: 12px;
+}
+
+/* Main Content Area with Adaptive Dynamic Lighting */
+.main-view {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  position: relative;
+  background: linear-gradient(180deg, var(--dynamic-color, rgba(29, 185, 84, 0.4)) 0%, rgba(18, 18, 18, 0.92) 420px, var(--bg-base) 100%);
+  transition: background 1.2s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 body.color-purple { --primary: #6c5ce7; --primary-hover: #5b4bc4; --primary-glow: rgba(108, 92, 231, 0.4); }

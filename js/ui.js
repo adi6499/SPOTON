@@ -607,15 +607,73 @@ const UI = (() => {
     }
   }
 
-  // ---- Dynamic Background ----
+  // ---- Dynamic Background (Spotify Ambient Color Glow) ----
+
+  function extractDominantColor(imageUrl, callback) {
+    if (!imageUrl) return;
+    const img = new Image();
+    img.crossOrigin = 'Anonymous';
+    img.onload = () => {
+      try {
+        const canvas = document.createElement('canvas');
+        canvas.width = 30;
+        canvas.height = 30;
+        const ctx = canvas.getContext('2d');
+        ctx.drawImage(img, 0, 0, 30, 30);
+        const data = ctx.getImageData(0, 0, 30, 30).data;
+        let r = 0, g = 0, b = 0, count = 0;
+        for (let i = 0; i < data.length; i += 16) {
+          const red = data[i], green = data[i + 1], blue = data[i + 2], alpha = data[i + 3];
+          if (alpha < 128) continue;
+          const brightness = (red + green + blue) / 3;
+          // Keep rich, saturated colors (filter out pure gray/black/white)
+          if (brightness > 20 && brightness < 235) {
+            r += red;
+            g += green;
+            b += blue;
+            count++;
+          }
+        }
+        if (count > 0) {
+          callback(Math.round(r / count), Math.round(g / count), Math.round(b / count));
+          return;
+        }
+      } catch (e) {
+        // Fallback for CORS restricted canvases
+      }
+      fallbackColor(imageUrl, callback);
+    };
+    img.onerror = () => fallbackColor(imageUrl, callback);
+    img.src = imageUrl;
+  }
+
+  function fallbackColor(str, callback) {
+    let hash = 0;
+    for (let i = 0; i < str.length; i++) hash = str.charCodeAt(i) + ((hash << 5) - hash);
+    const hue = Math.abs(hash % 360);
+    // Convert HSL to RGB approximation
+    const c = 0.6, x = c * (1 - Math.abs((hue / 60) % 2 - 1)), m = 0.2;
+    let r1 = 0, g1 = 0, b1 = 0;
+    if (hue < 60) { r1 = c; g1 = x; }
+    else if (hue < 120) { r1 = x; g1 = c; }
+    else if (hue < 180) { g1 = c; b1 = x; }
+    else if (hue < 240) { g1 = x; b1 = c; }
+    else if (hue < 300) { r1 = x; b1 = c; }
+    else { r1 = c; b1 = x; }
+    callback(Math.round((r1 + m) * 255), Math.round((g1 + m) * 255), Math.round((b1 + m) * 255));
+  }
 
   function updateDynamicBackground(imageUrl) {
     if (!imageUrl) return;
-    const bg = document.getElementById('dynamic-bg');
-    if (bg) {
-      bg.style.backgroundImage = `url(${imageUrl})`;
-      bg.classList.add('active');
-    }
+    extractDominantColor(imageUrl, (r, g, b) => {
+      document.documentElement.style.setProperty('--dynamic-color', `rgba(${r}, ${g}, ${b}, 0.45)`);
+      document.documentElement.style.setProperty('--dynamic-color-dim', `rgba(${r}, ${g}, ${b}, 0.12)`);
+      
+      const bg = document.getElementById('dynamic-bg');
+      if (bg) {
+        bg.style.background = `radial-gradient(circle at 50% 0%, rgba(${r}, ${g}, ${b}, 0.5) 0%, transparent 70%)`;
+      }
+    });
   }
 
   // ---- Loading States ----
