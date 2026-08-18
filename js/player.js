@@ -38,12 +38,10 @@ const Player = (() => {
       try {
         audioCtx = new (window.AudioContext || window.webkitAudioContext)();
         
-        const source1 = audioCtx.createMediaElementSource(audio);
-        const source2 = audioCtx.createMediaElementSource(audio2);
-        
         const inputGain = audioCtx.createGain();
-        source1.connect(inputGain);
-        source2.connect(inputGain);
+        // Disconnected audio and audio2 from Web Audio API to prevent 
+        // cross-origin security muting. The audio will play directly to speakers.
+        // Ambient sounds and internal generators will still route through the graph.
         
         const freqs = [60, 170, 310, 600, 1000, 3000, 6000, 12000, 14000, 16000];
         let prevNode = inputGain;

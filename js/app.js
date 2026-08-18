@@ -1192,19 +1192,7 @@ const App = (() => {
       Player.setPlaybackSpeed(parseFloat(e.target.value));
     });
 
-    document.getElementById('toggle-visualizer')?.addEventListener('change', (e) => {
-      Storage.updateSettings({ visualizer: e.target.checked });
-      const canvas = document.getElementById('visualizer-canvas');
-      if (e.target.checked) {
-        if (canvas) canvas.style.display = 'block';
-        startVisualizer();
-        UI.showToast('Audio Visualizer enabled');
-      } else {
-        if (canvas) canvas.style.display = 'none';
-        if (visualizerRAF) cancelAnimationFrame(visualizerRAF);
-        UI.showToast('Audio Visualizer disabled');
-      }
-    });
+
   }
 
   function startVisualizer() {
@@ -1596,13 +1584,6 @@ const App = (() => {
     init();
 
     const settings = Storage.getSettings();
-    if (settings.visualizer !== false) {
-      const canvas = document.getElementById('visualizer-canvas');
-      if (canvas) {
-        canvas.style.display = 'block';
-        startVisualizer();
-      }
-    }
 
     bindKeyboardShortcuts();
     document.addEventListener('click', (e) => {
