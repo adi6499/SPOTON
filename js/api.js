@@ -279,6 +279,37 @@ const API = (() => {
   }
 
   /**
+   * Safely extract artists from various API response formats
+   * @param {Object} raw - Raw song from API
+   * @returns {string} Comma-separated artists
+   */
+  function getArtistsString(raw) {
+    if (!raw) return 'Unknown Artist';
+    
+    if (typeof raw.artists === 'string') return raw.artists;
+    
+    if (Array.isArray(raw.artists)) {
+      return raw.artists.map(a => a.name || a).join(', ');
+    }
+    
+    if (raw.artists && typeof raw.artists === 'object') {
+      if (Array.isArray(raw.artists.primary) && raw.artists.primary.length > 0) {
+        return raw.artists.primary.map(a => a.name || a).join(', ');
+      }
+      if (Array.isArray(raw.artists.all) && raw.artists.all.length > 0) {
+        return raw.artists.all.map(a => a.name || a).join(', ');
+      }
+    }
+    
+    if (typeof raw.primaryArtists === 'string') return raw.primaryArtists;
+    if (Array.isArray(raw.primaryArtists)) return raw.primaryArtists.map(a => a.name || a).join(', ');
+    
+    if (typeof raw.artist === 'string') return raw.artist;
+    
+    return 'Unknown Artist';
+  }
+
+  /**
    * Normalize a song object for consistent usage
    * @param {Object} raw - Raw song from API
    * @returns {Object} Normalized song
@@ -287,10 +318,7 @@ const API = (() => {
     return {
       id: raw.id,
       name: raw.name || raw.title || 'Unknown',
-      artists: raw.artists?.primary?.map(a => a.name).join(', ')
-        || raw.primaryArtists
-        || raw.artist
-        || 'Unknown Artist',
+      artists: getArtistsString(raw),
       album: raw.album?.name || raw.album || '',
       duration: raw.duration || 0,
       image: getImageUrl(raw),
