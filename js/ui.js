@@ -186,14 +186,15 @@ const UI = (() => {
     const div = document.createElement('div');
     div.className = 'song-card artist-card';
     div.dataset.artistId = artist.id;
+    const name = artist.name || artist.title || artist.artist || 'Unknown';
     const imageUrl = API.getImageUrl(artist) || '';
     
     div.innerHTML = `
-      <div class="song-card__img-wrap artist-card__img-wrap" data-action="open-artist">
-        <img class="song-card__img" src="${imageUrl}" alt="${artist.title || artist.name}" loading="lazy" onerror="this.src='data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><rect fill=%22%231a1a2e%22 width=%22100%22 height=%22100%22/><text x=%2250%22 y=%2255%22 text-anchor=%22middle%22 fill=%22%236c5ce7%22 font-size=%2240%22>👤</text></svg>'">
+      <div class="song-card__img-wrap artist-card__img-wrap" data-action="open-artist" data-name="${name.replace(/"/g, '&quot;')}" data-image="${imageUrl}">
+        <img class="song-card__img" src="${imageUrl}" alt="${name}" loading="lazy" onerror="this.src='data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><rect fill=%22%231a1a2e%22 width=%22100%22 height=%22100%22/><text x=%2250%22 y=%2255%22 text-anchor=%22middle%22 fill=%22%236c5ce7%22 font-size=%2240%22>👤</text></svg>'">
       </div>
-      <div class="song-card__info artist-card__info">
-        <div class="song-card__name" title="${artist.title || artist.name}">${truncate(artist.title || artist.name, 28)}</div>
+      <div class="song-card__info artist-card__info" data-action="open-artist" data-name="${name.replace(/"/g, '&quot;')}" data-image="${imageUrl}">
+        <div class="song-card__name" title="${name}">${truncate(name, 28)}</div>
         <div class="song-card__artist">Artist</div>
       </div>
     `;

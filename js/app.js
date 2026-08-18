@@ -1848,7 +1848,12 @@ const App = (() => {
     document.addEventListener('click', (e) => {
       const artistLink = e.target.closest('[data-action="open-artist"]');
       if (artistLink) {
-        openArtistPage(artistLink.dataset.name, artistLink.dataset.image);
+        const card = artistLink.closest('.artist-card') || artistLink.closest('.song-card') || artistLink;
+        const name = artistLink.dataset.name || card.querySelector('.song-card__name')?.textContent?.trim() || '';
+        const img = artistLink.dataset.image || card.querySelector('.song-card__img')?.src || '';
+        if (name && name !== 'undefined') {
+          openArtistPage(name, img);
+        }
       }
       const albumCard = e.target.closest('.album-card');
       if (albumCard) {
@@ -1933,6 +1938,7 @@ const App = (() => {
 
   // ---- Global Functions for new pages ----
   async function openArtistPage(name, image) {
+    if (!name || name === 'undefined' || name.trim() === '') return;
     UI.showPage('page-artist');
     document.getElementById('btn-minimize-player')?.click();
     
@@ -1949,12 +1955,12 @@ const App = (() => {
     }
 
     try {
-      const results = await API.searchSongs(name, 30);
+      const results = await API.searchSongs(name, 50);
       if (container) {
         if (results && results.length > 0) {
           container.innerHTML = '';
           const normSongs = results.map(API.normalizeSong);
-          normSongs.slice(0, 15).forEach((song, i) => {
+          normSongs.forEach((song, i) => {
             const el = UI.renderSongListItem(song, i, { showRemove: false });
             container.appendChild(el);
           });
