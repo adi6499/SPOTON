@@ -1,5 +1,8 @@
 {
-  "rewrites": [],
+  "buildCommand": "",
+  "installCommand": "",
+  "outputDirectory": ".",
+  "framework": null,
   "headers": [
     {
       "source": "(.*)",
@@ -10,5 +13,6 @@
         }
       ]
     }
-  ]
+  ],
+  "cleanUrls": true
 }
