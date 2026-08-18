@@ -338,6 +338,29 @@
           </div>
           
            <div class="settings-group">
+            <h3>Music Languages</h3>
+            <p class="settings-desc">Select the languages for your recommendations and radio.</p>
+            <div id="settings-languages" style="display: flex; gap: 8px; flex-wrap: wrap; margin-top: 8px;">
+              <label><input type="checkbox" value="hindi"> Hindi</label>
+              <label><input type="checkbox" value="english"> English</label>
+              <label><input type="checkbox" value="punjabi"> Punjabi</label>
+              <label><input type="checkbox" value="tamil"> Tamil</label>
+              <label><input type="checkbox" value="telugu"> Telugu</label>
+              <label><input type="checkbox" value="marathi"> Marathi</label>
+              <label><input type="checkbox" value="gujarati"> Gujarati</label>
+              <label><input type="checkbox" value="bengali"> Bengali</label>
+              <label><input type="checkbox" value="kannada"> Kannada</label>
+              <label><input type="checkbox" value="bhojpuri"> Bhojpuri</label>
+              <label><input type="checkbox" value="malayalam"> Malayalam</label>
+              <label><input type="checkbox" value="urdu"> Urdu</label>
+              <label><input type="checkbox" value="haryanvi"> Haryanvi</label>
+              <label><input type="checkbox" value="rajasthani"> Rajasthani</label>
+              <label><input type="checkbox" value="odia"> Odia</label>
+              <label><input type="checkbox" value="assamese"> Assamese</label>
+            </div>
+          </div>
+
+          <div class="settings-group">
             <h3>Audio Quality</h3>
             <p class="settings-desc">Select your preferred streaming quality.</p>
             <select id="select-quality" class="settings-select">
@@ -451,12 +474,12 @@
   <div id="toast-container"></div>
 
   <!-- Scripts (order matters: dependencies first) -->
-  <script src="js/api.js?v=5"></script>
-  <script src="js/storage.js?v=5"></script>
-  <script src="js/player.js?v=5"></script>
-  <script src="js/ui.js?v=5"></script>
-  <script src="js/download.js?v=5"></script>
-  <script src="js/app.js?v=5"></script>
+  <script src="js/api.js?v=6"></script>
+  <script src="js/storage.js?v=6"></script>
+  <script src="js/player.js?v=6"></script>
+  <script src="js/ui.js?v=6"></script>
+  <script src="js/download.js?v=6"></script>
+  <script src="js/app.js?v=6"></script>
   <script>
     // Clear old service worker caches to force fresh files
     if ('caches' in window) {

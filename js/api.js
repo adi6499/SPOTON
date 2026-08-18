@@ -125,15 +125,19 @@ const API = (() => {
       return cached;
     }
 
+    const prefs = Storage.getSettings().languages || [];
+    const mainLang = prefs.length > 0 ? prefs[0] : '';
+    const langSuffix = mainLang ? ` ${mainLang}` : '';
+
     const queries = {
-      trending: { type: 'songs', query: 'trending hits' },
-      global: { type: 'songs', query: 'global top 50' },
-      newReleases: { type: 'songs', query: 'new releases' },
+      trending: { type: 'songs', query: `trending hits${langSuffix}` },
+      global: { type: 'songs', query: `top 50${langSuffix}` },
+      newReleases: { type: 'songs', query: `new releases${langSuffix}` },
       chill: { type: 'songs', query: 'lo-fi chill' },
       focus: { type: 'songs', query: 'deep focus' },
       workout: { type: 'songs', query: 'workout hits' },
-      popularArtists: { type: 'artists', query: 'popular' },
-      popularAlbums: { type: 'albums', query: 'top albums' }
+      popularArtists: { type: 'artists', query: `popular artists${langSuffix}` },
+      popularAlbums: { type: 'albums', query: `top albums${langSuffix}` }
     };
 
     const keys = Object.keys(queries);

@@ -114,6 +114,7 @@ const Storage = (() => {
       shuffle: false,
       theme: 'dark',
       autoplay: true,
+      languages: ['hindi', 'english', 'punjabi'],
     });
   }
 
@@ -243,6 +244,10 @@ const Storage = (() => {
     });
   }
 
+  function clearHomeCache() {
+    set(KEYS.HOME_CACHE, null);
+  }
+
   // ---- IndexedDB Offline Storage ----
   let dbInstance = null;
 
@@ -359,6 +364,7 @@ const Storage = (() => {
     getStats,
     getHomeCache,
     setHomeCache,
+    clearHomeCache,
     saveOfflineSong,
     getOfflineSong,
     getOfflineSongs,

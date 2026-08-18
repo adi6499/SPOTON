@@ -430,8 +430,14 @@ const Player = (() => {
             
             const recentIds = Storage.getRecent().map(r => r.id);
             const queueIds = queue.map(q => q.id);
+            const prefs = Storage.getSettings().languages || [];
             
-            const newSongs = res.filter(s => !queueIds.includes(s.id) && !recentIds.includes(s.id));
+            const newSongs = res.filter(s => {
+              if (queueIds.includes(s.id) || recentIds.includes(s.id)) return false;
+              const lang = (s.language || '').toLowerCase();
+              if (prefs.length > 0 && lang !== '' && lang !== 'unknown' && !prefs.includes(lang)) return false;
+              return true;
+            });
             
             if (newSongs.length > 0) {
               queue.push(window.API ? window.API.normalizeSong(newSongs[0]) : newSongs[0]); 

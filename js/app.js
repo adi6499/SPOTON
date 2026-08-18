@@ -344,9 +344,23 @@ const App = (() => {
         shelf.className = 'song-list';
         container.appendChild(shelf);
         
-        const normSongs = results.songs.results.map(s => API.normalizeSong(s));
+        const rawNormSongs = results.songs.results.map(s => API.normalizeSong(s));
+        
+        // Local Language Filtering
+        const prefs = Storage.getSettings().languages || [];
+        const normSongs = prefs.length > 0 
+          ? rawNormSongs.filter(s => {
+              const lang = (s.language || '').toLowerCase();
+              return lang === '' || lang === 'unknown' || prefs.includes(lang);
+            })
+          : rawNormSongs;
+
         currentSearchResults = normSongs;
-        UI.renderSearchResults(normSongs, shelf);
+        if (normSongs.length === 0) {
+           shelf.innerHTML = '<div class="empty-state">No songs found in your preferred languages.</div>';
+        } else {
+           UI.renderSearchResults(normSongs, shelf);
+        }
         bindSongCardEvents(shelf);
       }
       
@@ -1034,6 +1048,12 @@ const App = (() => {
     
     const toggleGlass = document.getElementById('toggle-glass');
     if (toggleGlass) toggleGlass.checked = settings.glassEffect === true;
+
+    const langCheckboxes = document.querySelectorAll('#settings-languages input[type="checkbox"]');
+    const prefs = settings.languages || ['hindi', 'english', 'punjabi'];
+    langCheckboxes.forEach(cb => {
+      cb.checked = prefs.includes(cb.value);
+    });
     
     const qualEl = document.getElementById('select-quality');
     if (qualEl) qualEl.value = settings.audioQuality || '320kbps';
@@ -1110,6 +1130,17 @@ const App = (() => {
       if (e.target === modal) {
         modal.style.display = 'none';
       }
+    });
+
+    const langCheckboxes = document.querySelectorAll('#settings-languages input[type="checkbox"]');
+    langCheckboxes.forEach(cb => {
+      cb.addEventListener('change', () => {
+        const selected = Array.from(langCheckboxes)
+          .filter(c => c.checked)
+          .map(c => c.value);
+        Storage.updateSettings({ languages: selected });
+        Storage.clearHomeCache();
+      });
     });
 
     document.getElementById('select-quality')?.addEventListener('change', (e) => {
@@ -1669,12 +1700,17 @@ const App = (() => {
         }
       });
 
+      const prefs = Storage.getSettings().languages || [];
       const seen = new Set();
       let uniqueSongs = [];
       combinedPool.forEach(s => {
         if (s && s.id && !seen.has(s.id)) {
           seen.add(s.id);
-          uniqueSongs.push(API.normalizeSong(s));
+          const norm = API.normalizeSong(s);
+          const lang = (norm.language || '').toLowerCase();
+          if (prefs.length === 0 || lang === '' || lang === 'unknown' || prefs.includes(lang)) {
+            uniqueSongs.push(norm);
+          }
         }
       });
 
