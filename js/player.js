@@ -21,6 +21,7 @@ const Player = (() => {
   let playbackSpeed = 1.0;
   let sleepTimerId = null;
   let sleepTimerMinutes = 0;
+  let targetVolume = 0.8;
 
   // Web Audio API Context
   let audioCtx = null;
@@ -119,7 +120,9 @@ const Player = (() => {
 
   // Initialize settings
   const settings = Storage.getSettings();
-  audio.volume = settings.volume;
+  targetVolume = settings.volume !== undefined ? settings.volume : 0.8;
+  audio.volume = targetVolume;
+  audio2.volume = targetVolume;
   repeatMode = settings.repeat || 'off';
   shuffleMode = settings.shuffle || false;
 
@@ -342,16 +345,17 @@ const Player = (() => {
         
         // Simple linear crossfade over 3 seconds
         let vol = 0;
+        const currentTargetVol = getVolume();
         const fadeInt = setInterval(() => {
           vol += 0.05;
           if (vol >= 1) {
-            activeAudio.volume = getVolume();
+            activeAudio.volume = currentTargetVol;
             oldAudio.pause();
-            oldAudio.volume = getVolume();
+            oldAudio.volume = currentTargetVol;
             clearInterval(fadeInt);
           } else {
-            activeAudio.volume = vol * getVolume();
-            oldAudio.volume = (1 - vol) * getVolume();
+            activeAudio.volume = vol * currentTargetVol;
+            oldAudio.volume = (1 - vol) * currentTargetVol;
           }
         }, 150);
       } else {
@@ -506,12 +510,13 @@ const Player = (() => {
   // ---- Volume ----
 
   function setVolume(vol) {
-    activeAudio.volume = Math.max(0, Math.min(1, vol));
-    Storage.updateSettings({ volume: activeAudio.volume });
+    targetVolume = Math.max(0, Math.min(1, vol));
+    activeAudio.volume = targetVolume;
+    Storage.updateSettings({ volume: targetVolume });
   }
 
   function getVolume() {
-    return activeAudio.volume;
+    return targetVolume;
   }
 
   function mute() {
