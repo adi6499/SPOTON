@@ -24,6 +24,10 @@
   <!-- Global Top Progress Loading Bar -->
   <div id="app-loader" class="app-loader"></div>
 
+  <!-- Persistent DOM Audio Elements (Required by iOS Safari for background & lockscreen playback) -->
+  <audio id="main-audio" preload="auto" playsinline webkit-playsinline style="display:none;"></audio>
+  <audio id="crossfade-audio" preload="auto" playsinline webkit-playsinline style="display:none;"></audio>
+
   <!-- Dynamic Background & Aurora Mesh -->
   <div id="dynamic-bg"></div>
   <div class="aurora-bg"></div>

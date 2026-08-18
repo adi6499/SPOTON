@@ -3,18 +3,40 @@
 // ========================================
 
 const Player = (() => {
-  let audio = new Audio();
-  let audio2 = new Audio(); // For crossfade
+  let audio = document.getElementById('main-audio') || new Audio();
+  let audio2 = document.getElementById('crossfade-audio') || new Audio();
   let activeAudio = audio;
   let inactiveAudio = audio2;
   
   [audio, audio2].forEach(a => {
     a.preload = 'auto';
-    a.crossOrigin = 'anonymous';
     a.playsInline = true;
     a.setAttribute('playsinline', 'true');
     a.setAttribute('webkit-playsinline', 'true');
+    if (!a.parentNode && document.body) {
+      document.body.appendChild(a);
+    }
   });
+
+  // iOS Safari Background Audio Session Activator (Warm-up)
+  const unlockIOSAudioSession = () => {
+    try {
+      const silentWav = 'data:audio/wav;base64,UklGRigAAABXQVZFZm10IBIAAAABAAEARKwAAIhYAQACABAAAABkYXRhAgAAAAEA';
+      if (!audio.src) {
+        audio.src = silentWav;
+        audio.play().then(() => {
+          audio.pause();
+          audio.currentTime = 0;
+        }).catch(() => {});
+      }
+    } catch (_) {}
+    document.removeEventListener('touchstart', unlockIOSAudioSession);
+    document.removeEventListener('touchend', unlockIOSAudioSession);
+    document.removeEventListener('click', unlockIOSAudioSession);
+  };
+  document.addEventListener('touchstart', unlockIOSAudioSession, { passive: true, once: true });
+  document.addEventListener('touchend', unlockIOSAudioSession, { passive: true, once: true });
+  document.addEventListener('click', unlockIOSAudioSession, { passive: true, once: true });
 
   let queue = [];
   let currentIndex = -1;
