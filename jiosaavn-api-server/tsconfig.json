@@ -5,7 +5,7 @@
     "jsxImportSource": "hono/jsx",
     "lib": ["ESNext", "esnext.asynciterable", "DOM"],
     "baseUrl": ".",
-    "rootDir": "./src",
+    "rootDir": ".",
     "module": "ESNext",
     "moduleResolution": "bundler",
     "paths": { "#modules/*": ["src/modules/*"], "#common/*": ["src/common/*"] },
@@ -20,7 +20,7 @@
     "forceConsistentCasingInFileNames": true,
     "skipLibCheck": true
   },
-  "include": ["src/**/*.ts", "src/**/*.tsx"],
+  "include": ["src/**/*.ts", "src/**/*.tsx", "api/**/*.ts"],
   "exclude": ["node_modules"],
   "tsc-alias": { "resolveFullPaths": true }
 }
