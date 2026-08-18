@@ -10,6 +10,7 @@ const Player = (() => {
   
   [audio, audio2].forEach(a => {
     a.preload = 'auto';
+    a.crossOrigin = 'anonymous';
   });
 
   let queue = [];
@@ -25,9 +26,11 @@ const Player = (() => {
 
   // Web Audio API Context
   let audioCtx = null;
-  let sourceNode = null;
+  let sourceNode1 = null;
+  let sourceNode2 = null;
   let gainNode = null;
   let analyserNode = null;
+  let volumeNormalizer = null;
   const eqBands = [];
   const eqFrequencies = [60, 170, 310, 600, 1000, 3000, 6000, 12000, 14000, 16000];
 
@@ -40,9 +43,19 @@ const Player = (() => {
         audioCtx = new (window.AudioContext || window.webkitAudioContext)();
         
         const inputGain = audioCtx.createGain();
-        // Disconnected audio and audio2 from Web Audio API to prevent 
-        // cross-origin security muting. The audio will play directly to speakers.
-        // Ambient sounds and internal generators will still route through the graph.
+        
+        try {
+          if (!sourceNode1) {
+            sourceNode1 = audioCtx.createMediaElementSource(audio);
+            sourceNode1.connect(inputGain);
+          }
+          if (!sourceNode2) {
+            sourceNode2 = audioCtx.createMediaElementSource(audio2);
+            sourceNode2.connect(inputGain);
+          }
+        } catch (e) {
+          console.warn('[Player] MediaElementSource init:', e);
+        }
         
         const freqs = [60, 170, 310, 600, 1000, 3000, 6000, 12000, 14000, 16000];
         let prevNode = inputGain;
@@ -71,7 +84,8 @@ const Player = (() => {
         }
 
         analyserNode = audioCtx.createAnalyser();
-        analyserNode.fftSize = 256;
+        analyserNode.fftSize = 128;
+        analyserNode.smoothingTimeConstant = 0.35;
         prevNode.connect(analyserNode);
         
         volumeNormalizer = audioCtx.createDynamicsCompressor();

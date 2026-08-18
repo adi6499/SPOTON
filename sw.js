@@ -1,4 +1,4 @@
-const CACHE_NAME = 'musicflow-v24';
+const CACHE_NAME = 'musicflow-v25';
 const ASSETS = [
   './',
   './index.html',
