@@ -49,6 +49,7 @@ const App = (() => {
           if (e.target.closest('button') || e.target.closest('.mini-player__controls') || e.target.closest('input') || e.target.closest('.mini-player__progress-container')) return;
           playerContainer.classList.remove('player-minimized');
           playerContainer.classList.add('player-expanded');
+          document.body.classList.add('is-player-expanded');
         };
         miniPlayer.addEventListener('click', expandPlayer);
       }
@@ -59,6 +60,7 @@ const App = (() => {
           e.stopPropagation();
           playerContainer.classList.remove('player-minimized');
           playerContainer.classList.add('player-expanded');
+          document.body.classList.add('is-player-expanded');
         });
       }
 
@@ -67,6 +69,7 @@ const App = (() => {
           e.stopPropagation();
           playerContainer.classList.add('player-minimized');
           playerContainer.classList.remove('player-expanded');
+          document.body.classList.remove('is-player-expanded');
         });
       }
 
