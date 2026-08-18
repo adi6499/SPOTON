@@ -302,7 +302,15 @@ const App = (() => {
     });
 
     try {
-      const results = await API.searchAll(query);
+      const [results, moreSongs] = await Promise.all([
+        API.searchAll(query),
+        API.searchSongs(query, 30)
+      ]);
+      
+      // Override limited global search song results with the extended list
+      if (results && moreSongs && moreSongs.length > 0) {
+        results.songs = { results: moreSongs };
+      }
       container.innerHTML = '';
       
       if (!results || Object.keys(results).length === 0) {
