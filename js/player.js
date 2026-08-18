@@ -263,8 +263,7 @@ const Player = (() => {
     const thisLoadId = ++_loadId; // Increment to cancel any previous pending load
 
     try {
-      // Ensure Web Audio context is initialized and resumed before playing
-      if (!audioCtx) initWebAudio();
+      // Resume AudioContext if it was previously initialized (for EQ/visualizer)
       if (audioCtx && audioCtx.state === 'suspended') {
         await audioCtx.resume();
       }
@@ -272,7 +271,11 @@ const Player = (() => {
       // Fire track change immediately so UI shows something right away
       onTrackChange?.(song, currentIndex);
 
-      const qual = Storage.getSettings().audioQuality || '320kbps';
+      let qual = Storage.getSettings().audioQuality || '320kbps';
+      // Map lossless selections to best available quality
+      if (['lossless', 'hi-res-48', 'hi-res-96', 'hi-res-192', 'auto'].includes(qual)) {
+        qual = '320kbps';
+      }
       let streamUrl = null;
       let updatedSong = song;
 
@@ -357,7 +360,6 @@ const Player = (() => {
 
   function play() {
     if (activeAudio.src) {
-      if (!audioCtx) initWebAudio();
       if (audioCtx && audioCtx.state === 'suspended') {
         audioCtx.resume();
       }
@@ -761,12 +763,16 @@ const Player = (() => {
   function getStreamCodecDisplay() {
     if (!queue[currentIndex]) return '';
     const qual = Storage.getSettings().audioQuality || '320kbps';
+    if (qual === 'hi-res-192') return 'Hi-Res 24-bit / 192 kHz';
+    if (qual === 'hi-res-96') return 'Hi-Res 24-bit / 96 kHz';
+    if (qual === 'hi-res-48') return 'Hi-Res 24-bit / 48 kHz';
+    if (qual === 'lossless') return 'Lossless 16-bit / 44.1 kHz';
     if (qual === 'auto' || qual === '320kbps') return '320 kbps AAC';
     if (qual === '256kbps') return '256 kbps AAC';
     if (qual === '192kbps') return '192 kbps AAC';
     if (qual === '128kbps') return '128 kbps AAC';
     if (qual === '64kbps') return '64 kbps AAC';
-    return '';
+    return '320 kbps AAC';
   }
 
   // ---- State Getters ----
