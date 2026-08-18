@@ -213,8 +213,8 @@ const API = (() => {
    * @param {string} id - Playlist ID
    * @returns {Promise<Object>} Playlist object with songs
    */
-  async function getPlaylistDetails(id) {
-    const data = await request(`/api/playlists?id=${id}`);
+  async function getPlaylistDetails(id, limit = 100) {
+    const data = await request(`/api/playlists?id=${id}&limit=${limit}`);
     return data?.data || null;
   }
 

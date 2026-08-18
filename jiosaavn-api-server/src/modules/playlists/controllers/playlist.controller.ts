@@ -59,8 +59,8 @@ export class PlaylistController implements Routes {
               title: 'Limit',
               description: 'Number of songs to retrieve per page',
               type: 'integer',
-              example: '10',
-              default: '10'
+              example: '100',
+              default: '100'
             })
           })
         },

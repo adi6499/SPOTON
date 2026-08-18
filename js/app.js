@@ -511,15 +511,18 @@ const App = (() => {
       activeBar = null;
     });
 
-    // Volume slider
-    const volumeSlider = document.getElementById('volume-slider');
-    if (volumeSlider) {
-      volumeSlider.addEventListener('input', () => {
-        const vol = volumeSlider.value / 100;
+    // Volume sliders (Desktop & Mobile Full Player)
+    const volumeSliders = document.querySelectorAll('.volume-slider');
+    volumeSliders.forEach(slider => {
+      slider.addEventListener('input', () => {
+        const vol = parseFloat(slider.value) / 100;
         Player.setVolume(vol);
         UI.updateVolumeIcon(vol);
+        volumeSliders.forEach(s => {
+          if (s !== slider) s.value = slider.value;
+        });
       });
-    }
+    });
   }
 
   function seekFromEvent(e, bar) {
