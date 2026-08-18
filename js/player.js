@@ -434,7 +434,7 @@ const Player = (() => {
             const newSongs = res.filter(s => !queueIds.includes(s.id) && !recentIds.includes(s.id));
             
             if (newSongs.length > 0) {
-              queue.push(newSongs[0]); 
+              queue.push(window.API ? window.API.normalizeSong(newSongs[0]) : newSongs[0]); 
               nextIndex = currentIndex + 1;
               if (shuffleMode) generateShuffledIndices();
             } else {

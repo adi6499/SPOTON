@@ -1651,7 +1651,7 @@ const App = (() => {
       combinedPool.forEach(s => {
         if (s && s.id && !seen.has(s.id)) {
           seen.add(s.id);
-          uniqueSongs.push(s);
+          uniqueSongs.push(API.normalizeSong(s));
         }
       });
 
