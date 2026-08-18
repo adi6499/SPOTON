@@ -11,6 +11,9 @@ const Player = (() => {
   [audio, audio2].forEach(a => {
     a.preload = 'auto';
     a.crossOrigin = 'anonymous';
+    a.playsInline = true;
+    a.setAttribute('playsinline', 'true');
+    a.setAttribute('webkit-playsinline', 'true');
   });
 
   let queue = [];
@@ -24,7 +27,7 @@ const Player = (() => {
   let sleepTimerMinutes = 0;
   let targetVolume = 0.8;
 
-  // Web Audio API Context
+  // Web Audio API Context (Initialized on demand to protect background audio playback)
   let audioCtx = null;
   let sourceNode1 = null;
   let sourceNode2 = null;
@@ -112,22 +115,20 @@ const Player = (() => {
     }
   }
 
-  // Auto-unlock Web Audio on first user gesture for mobile (iOS / Android)
-  const unlockAudioGesture = () => {
-    try {
-      if (!audioCtx) {
-        initWebAudio();
-      } else if (audioCtx.state === 'suspended') {
+  // Mobile Audio Background & Lifecycle Keepalive
+  document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'hidden') {
+      if ('mediaSession' in navigator) {
+        try {
+          navigator.mediaSession.playbackState = isPlaying ? 'playing' : 'paused';
+        } catch (_) {}
+      }
+    } else if (document.visibilityState === 'visible') {
+      if (audioCtx && audioCtx.state === 'suspended') {
         audioCtx.resume().catch(() => {});
       }
-    } catch (_) {}
-    document.removeEventListener('touchstart', unlockAudioGesture);
-    document.removeEventListener('touchend', unlockAudioGesture);
-    document.removeEventListener('click', unlockAudioGesture);
-  };
-  document.addEventListener('touchstart', unlockAudioGesture, { passive: true, once: true });
-  document.addEventListener('touchend', unlockAudioGesture, { passive: true, once: true });
-  document.addEventListener('click', unlockAudioGesture, { passive: true, once: true });
+    }
+  });
 
   function applyNormalization() {
     if (!volumeNormalizer) return;
