@@ -168,12 +168,22 @@ const Player = (() => {
       isPlaying = true;
       onPlay?.();
       updateMediaSession();
+      if ('mediaSession' in navigator) {
+        try {
+          navigator.mediaSession.playbackState = 'playing';
+        } catch (e) {}
+      }
     });
 
     a.addEventListener('pause', () => {
       if (a !== activeAudio) return;
       isPlaying = false;
       onPause?.();
+      if ('mediaSession' in navigator) {
+        try {
+          navigator.mediaSession.playbackState = 'paused';
+        } catch (e) {}
+      }
     });
 
     a.addEventListener('timeupdate', () => {
@@ -193,12 +203,12 @@ const Player = (() => {
       });
 
       // Update lock screen progress
-      if ('mediaSession' in navigator && a.duration) {
+      if ('mediaSession' in navigator && a.duration && isFinite(a.duration)) {
         try {
           navigator.mediaSession.setPositionState({
             duration: a.duration,
-            playbackRate: a.playbackRate,
-            position: a.currentTime
+            playbackRate: a.playbackRate || 1,
+            position: Math.min(a.currentTime, a.duration)
           });
         } catch (e) {
           // Ignore state errors if track changed rapidly
@@ -453,19 +463,37 @@ const Player = (() => {
   }
 
   function play() {
-    if (activeAudio.src) {
-      if (!audioCtx) {
-        initWebAudio();
-      } else if (audioCtx.state === 'suspended') {
+    if (activeAudio && activeAudio.src) {
+      if (audioCtx && audioCtx.state === 'suspended') {
         audioCtx.resume().catch(() => {});
       }
-      activeAudio.play().catch(console.error);
+      const playPromise = activeAudio.play();
+      if (playPromise !== undefined) {
+        playPromise.then(() => {
+          isPlaying = true;
+          if ('mediaSession' in navigator) {
+            try {
+              navigator.mediaSession.playbackState = 'playing';
+            } catch (e) {}
+          }
+        }).catch(err => {
+          console.warn('[Player] Resume error:', err);
+        });
+      }
     }
   }
 
   function pause() {
     stopInactiveAudio();
-    activeAudio.pause();
+    if (activeAudio) {
+      activeAudio.pause();
+      isPlaying = false;
+      if ('mediaSession' in navigator) {
+        try {
+          navigator.mediaSession.playbackState = 'paused';
+        } catch (e) {}
+      }
+    }
   }
 
   function togglePlayPause() {
@@ -667,22 +695,47 @@ const Player = (() => {
     const track = getCurrentTrack();
     if (!track) return;
 
-    navigator.mediaSession.metadata = new MediaMetadata({
-      title: track.name,
-      artist: track.artists,
-      album: track.album,
-      artwork: track.image ? [
-        { src: track.image, sizes: '500x500', type: 'image/jpeg' }
-      ] : [],
-    });
+    const artworkList = track.image ? [
+      { src: track.image, sizes: '96x96', type: 'image/jpeg' },
+      { src: track.image, sizes: '128x128', type: 'image/jpeg' },
+      { src: track.image, sizes: '192x192', type: 'image/jpeg' },
+      { src: track.image, sizes: '256x256', type: 'image/jpeg' },
+      { src: track.image, sizes: '384x384', type: 'image/jpeg' },
+      { src: track.image, sizes: '512x512', type: 'image/jpeg' }
+    ] : [];
 
-    navigator.mediaSession.setActionHandler('play', () => play());
-    navigator.mediaSession.setActionHandler('pause', () => pause());
-    navigator.mediaSession.setActionHandler('previoustrack', () => previous());
-    navigator.mediaSession.setActionHandler('nexttrack', () => next(false));
-    navigator.mediaSession.setActionHandler('seekto', (details) => {
-      if (details.seekTime != null) seek(details.seekTime);
-    });
+    try {
+      navigator.mediaSession.metadata = new MediaMetadata({
+        title: track.name || 'Unknown Track',
+        artist: track.artists || track.artist || 'Unknown Artist',
+        album: track.album || 'MusicFlow',
+        artwork: artworkList,
+      });
+      navigator.mediaSession.playbackState = isPlaying ? 'playing' : 'paused';
+    } catch (e) {
+      console.warn('[Player] MediaSession metadata error:', e);
+    }
+
+    try {
+      navigator.mediaSession.setActionHandler('play', () => play());
+      navigator.mediaSession.setActionHandler('pause', () => pause());
+      navigator.mediaSession.setActionHandler('previoustrack', () => previous());
+      navigator.mediaSession.setActionHandler('nexttrack', () => next(false));
+      navigator.mediaSession.setActionHandler('seekto', (details) => {
+        if (details.seekTime != null) seek(details.seekTime);
+      });
+      navigator.mediaSession.setActionHandler('seekbackward', (details) => {
+        const skip = details.seekOffset || 10;
+        seek(Math.max(0, activeAudio.currentTime - skip));
+      });
+      navigator.mediaSession.setActionHandler('seekforward', (details) => {
+        const skip = details.seekOffset || 10;
+        seek(Math.min(activeAudio.duration || 0, activeAudio.currentTime + skip));
+      });
+      navigator.mediaSession.setActionHandler('stop', () => pause());
+    } catch (e) {
+      console.warn('[Player] MediaSession setActionHandler error:', e);
+    }
   }
 
   // ---- Sleep Timer & Speed ----
