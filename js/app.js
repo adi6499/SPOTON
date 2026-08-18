@@ -45,15 +45,26 @@ const App = (() => {
 
       if (miniPlayer) {
         const expandPlayer = (e) => {
-          if (e.target.closest('button') || e.target.closest('.mini-player__controls')) return;
+          if (window.innerWidth > 768) return; // Desktop uses bottom bar only
+          if (e.target.closest('button') || e.target.closest('.mini-player__controls') || e.target.closest('input') || e.target.closest('.mini-player__progress-container')) return;
           playerContainer.classList.remove('player-minimized');
           playerContainer.classList.add('player-expanded');
         };
         miniPlayer.addEventListener('click', expandPlayer);
       }
 
+      const btnFullscreen = document.getElementById('btn-fullscreen');
+      if (btnFullscreen) {
+        btnFullscreen.addEventListener('click', (e) => {
+          e.stopPropagation();
+          playerContainer.classList.remove('player-minimized');
+          playerContainer.classList.add('player-expanded');
+        });
+      }
+
       if (minimizeBtn) {
-        minimizeBtn.addEventListener('click', () => {
+        minimizeBtn.addEventListener('click', (e) => {
+          e.stopPropagation();
           playerContainer.classList.add('player-minimized');
           playerContainer.classList.remove('player-expanded');
         });
