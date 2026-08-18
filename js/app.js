@@ -111,12 +111,64 @@ const App = (() => {
           if (queueNav) queueNav.click();
         });
       });
+      startAudioReactivePulse();
     } catch (e) {
       console.error('[App] Init failed:', e);
     }
   }
 
+  // ---- Real-Time Audio-Reactive Scaling (Beat & Bass Pulsing) ----
+  const audioFreqData = new Uint8Array(32);
+  let audioPulseFrame = null;
 
+  function startAudioReactivePulse() {
+    if (audioPulseFrame) return;
+
+    function renderPulse() {
+      const pc = document.getElementById('player-container');
+      const isPlayerExpanded = pc && pc.classList.contains('player-expanded');
+      const isPlaying = document.body.classList.contains('is-playing');
+      const fullArtworkImg = document.getElementById('full-player-img');
+      const glowAura = document.querySelector('.artwork-glow-aura');
+
+      if (isPlaying && isPlayerExpanded && fullArtworkImg) {
+        const analyser = Player.getAnalyserNode();
+        let bassPower = 0;
+
+        if (analyser) {
+          try {
+            analyser.getByteFrequencyData(audioFreqData);
+            // Low frequencies (sub-bass, kicks, bass drops): bins 0 to 6
+            let sum = 0;
+            const bassBins = Math.min(6, audioFreqData.length);
+            for (let i = 0; i < bassBins; i++) {
+              sum += audioFreqData[i];
+            }
+            bassPower = sum / (bassBins * 255); // Normalized 0.0 to 1.0
+          } catch (err) {}
+        }
+
+        // Dynamically scale artwork on beats (scale 1.0 to 1.075)
+        const scale = 1.0 + (bassPower * 0.075);
+        fullArtworkImg.style.transform = `scale(${scale.toFixed(3)})`;
+
+        // Pulse dynamic glowing aura behind artwork
+        if (glowAura) {
+          const auraScale = 0.95 + (bassPower * 0.35);
+          const auraOpacity = 0.55 + (bassPower * 0.45);
+          glowAura.style.transform = `scale(${auraScale.toFixed(3)})`;
+          glowAura.style.opacity = auraOpacity.toFixed(2);
+        }
+      } else if (fullArtworkImg && !isPlaying) {
+        fullArtworkImg.style.transform = '';
+        if (glowAura) glowAura.style.transform = '';
+      }
+
+      audioPulseFrame = requestAnimationFrame(renderPulse);
+    }
+
+    audioPulseFrame = requestAnimationFrame(renderPulse);
+  }
 
   // ---- Player Events ----
 
