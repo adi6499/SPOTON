@@ -139,6 +139,38 @@ html {
   scroll-behavior: smooth;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+  -webkit-tap-highlight-color: transparent;
+  -webkit-touch-callout: none;
+  -webkit-text-size-adjust: 100%;
+  overscroll-behavior-y: contain;
+}
+
+body {
+  font-family: var(--font-body);
+  background: var(--bg-base);
+  color: var(--text-primary);
+  min-height: 100vh;
+  min-height: 100dvh;
+  min-height: -webkit-fill-available;
+  overflow-x: hidden !important;
+  overflow-y: hidden;
+  line-height: 1.5;
+  -webkit-tap-highlight-color: transparent;
+  touch-action: pan-y pinch-zoom;
+  transition: background-color var(--anim-ui), color var(--anim-ui);
+}
+
+/* Cross-Browser Input Resets (Prevent unwanted auto-zoom on iOS Safari) */
+input, button, select, textarea {
+  font-family: inherit;
+  -webkit-appearance: none;
+  appearance: none;
+}
+
+@media screen and (-webkit-min-device-pixel-ratio: 0) {
+  .search-bar {
+    font-size: 16px !important; /* Prevents iOS Safari input focus auto-zoom */
+  }
 }
 
 /* Button Icons */
@@ -152,6 +184,7 @@ html {
   color: var(--text-secondary);
   transition: all var(--anim-micro);
   flex-shrink: 0;
+  -webkit-tap-highlight-color: transparent;
 }
 .btn-icon:hover {
   color: var(--text-primary);
@@ -163,17 +196,6 @@ html {
 .btn-icon svg {
   width: 24px;
   height: 24px;
-}
-
-body {
-  font-family: var(--font-body);
-  background: var(--bg-base);
-  color: var(--text-primary);
-  min-height: 100vh;
-  overflow-x: hidden !important;
-  overflow-y: hidden; /* App takes full screen, internal areas scroll */
-  line-height: 1.5;
-  transition: background-color var(--anim-ui), color var(--anim-ui);
 }
 
 h1, h2, h3, h4, h5, h6 {
