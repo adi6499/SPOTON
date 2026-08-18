@@ -260,6 +260,12 @@ const Player = (() => {
 
   async function loadAndPlay(song, isCrossfade = false) {
     try {
+      // Ensure Web Audio context is initialized and resumed before playing
+      if (!audioCtx) initWebAudio();
+      if (audioCtx && audioCtx.state === 'suspended') {
+        audioCtx.resume();
+      }
+
       // Fire track change immediately so UI artwork and title update instantly
       onTrackChange?.(song, currentIndex);
 
