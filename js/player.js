@@ -369,6 +369,12 @@ const Player = (() => {
       onTrackChange?.(updatedSong, currentIndex);
     } catch (error) {
       if (error.name === 'AbortError') return;
+      if (error.name === 'NotAllowedError') {
+        console.warn('[Player] Autoplay blocked by browser. User must click play.');
+        isPlaying = false;
+        onPause?.();
+        return; // Do NOT trigger onError, which skips to the next track
+      }
       console.error('[Player] Play error:', error);
       onError?.(error);
     }
