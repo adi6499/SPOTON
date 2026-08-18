@@ -7,131 +7,69 @@ const App = (() => {
   let searchDebounceTimer = null;
 
   async function init() {
-    setupPlayerEvents();
-    setupPlayerBarEvents();
-    setupSearchEvents();
-    setupNavigationEvents();
-    setupDelegatedEvents();
-
-    loadHomePage();
-
-    const miniPlayer = document.getElementById('mini-player');
-    const playerContainer = document.getElementById('player-container');
-    const minimizeBtn = document.getElementById('btn-minimize-player');
-
-    UI.updateVolumeIcon(Player.getVolume());
-    const currentTrack = Player.getCurrentTrack();
-    if (currentTrack && currentTrack.id) {
-      UI.updatePlayerBar(currentTrack);
-    } else {
-      if (playerContainer) playerContainer.style.display = 'none';
-      document.body.classList.remove('has-player');
-    }
-
-    if (miniPlayer) {
-      const expandPlayer = (e) => {
-        if (e.target.closest('button') || e.target.closest('.mini-player__controls')) return;
-        playerContainer.classList.remove('player-minimized');
-        playerContainer.classList.add('player-expanded');
-      };
-      miniPlayer.addEventListener('click', expandPlayer);
-    }
-
-    if (minimizeBtn) {
-      minimizeBtn.addEventListener('click', () => {
-        playerContainer.classList.add('player-minimized');
-        playerContainer.classList.remove('player-expanded');
-      });
-    }
-
-    const lyricsBtn = document.getElementById('btn-full-lyrics');
-    const lyricsPanel = document.getElementById('lyrics-panel');
-    const artworkImg = document.getElementById('full-player-img');
-    if (lyricsBtn && lyricsPanel && artworkImg) {
-      lyricsBtn.addEventListener('click', () => {
-        const isHidden = lyricsPanel.style.display === 'none';
-        lyricsPanel.style.display = isHidden ? 'flex' : 'none';
-        artworkImg.style.opacity = isHidden ? '0.2' : '1';
-        lyricsBtn.style.opacity = isHidden ? '1' : '0.5';
-      });
-    }
-
-    // Queue buttons
-    document.querySelectorAll('#btn-full-queue, .btn-queue-toggle').forEach(btn => {
-      btn.addEventListener('click', () => {
-        playerContainer.classList.add('player-minimized');
-        playerContainer.classList.remove('player-expanded');
-        // Trigger navigation to queue page
-        const queueNav = document.querySelector('[data-page="page-queue"]');
-        if (queueNav) queueNav.click();
-      });
-    });
-  }
-
-  async function loadHomePage() {
-    UI.showPage('page-home');
-    
-    // Check if recent container exists and populate it
-    const recentContainer = document.getElementById('recent-container');
-    const recentSection = document.getElementById('recent-section');
-    if (recentContainer && recentSection) {
-      const history = Storage.getHistory();
-      if (history.length > 0) {
-        recentSection.style.display = 'block';
-        UI.renderRecent(recentContainer);
-      } else {
-        recentSection.style.display = 'none';
-      }
-    }
-    
-    // Check if trending shelf is already populated
-    const trendingContainer = document.getElementById('shelf-trending');
-    if (trendingContainer && trendingContainer.querySelector('.song-card')) {
-      return; // Already loaded
-    }
-    
     try {
-      const data = await API.getHomeRecommendations();
-      
-      // Update Hero
-      if (data.hero) {
-        const heroTitle = document.getElementById('hero-title');
-        const heroSubtitle = document.getElementById('hero-subtitle');
-        if (heroTitle) heroTitle.textContent = data.hero.name;
-        if (heroSubtitle) heroSubtitle.textContent = data.hero.artist || 'Trending';
-        
-        const heroBg = document.getElementById('hero-bg');
-        if (heroBg && data.hero.image) {
-          heroBg.style.backgroundImage = `url('${data.hero.image.replace('150x150', '500x500')}')`;
-        }
-        
-        const heroPlayBtn = document.getElementById('hero-play-btn');
-        if (heroPlayBtn) {
-          heroPlayBtn.onclick = () => Player.playSong(data.hero);
-        }
+      setupPlayerEvents();
+      setupPlayerBarEvents();
+      setupSearchEvents();
+      setupNavigationEvents();
+      setupDelegatedEvents();
+      initSettings();
+
+      loadHomePage();
+
+      const miniPlayer = document.getElementById('mini-player');
+      const playerContainer = document.getElementById('player-container');
+      const minimizeBtn = document.getElementById('btn-minimize-player');
+
+      UI.updateVolumeIcon(Player.getVolume());
+      const currentTrack = Player.getCurrentTrack();
+      if (currentTrack && currentTrack.id) {
+        UI.updatePlayerBar(currentTrack);
+      } else {
+        if (playerContainer) playerContainer.style.display = 'none';
+        document.body.classList.remove('has-player');
       }
-      
-      // Update Shelves
-      const shelves = [
-        { id: 'shelf-trending', key: 'trending', type: 'song' },
-        { id: 'shelf-global', key: 'global', type: 'song' },
-        { id: 'shelf-newReleases', key: 'newReleases', type: 'song' },
-        { id: 'shelf-chill', key: 'chill', type: 'song' },
-        { id: 'shelf-focus', key: 'focus', type: 'song' },
-        { id: 'shelf-workout', key: 'workout', type: 'song' },
-        { id: 'shelf-popularAlbums', key: 'popularAlbums', type: 'album' },
-        { id: 'shelf-popularArtists', key: 'popularArtists', type: 'artist' }
-      ];
-      
-      shelves.forEach(shelf => {
-        const container = document.getElementById(shelf.id);
-        if (container && data[shelf.key]) {
-          UI.renderShelf(data[shelf.key], container, shelf.type);
-        }
+
+      if (miniPlayer) {
+        const expandPlayer = (e) => {
+          if (e.target.closest('button') || e.target.closest('.mini-player__controls')) return;
+          playerContainer.classList.remove('player-minimized');
+          playerContainer.classList.add('player-expanded');
+        };
+        miniPlayer.addEventListener('click', expandPlayer);
+      }
+
+      if (minimizeBtn) {
+        minimizeBtn.addEventListener('click', () => {
+          playerContainer.classList.add('player-minimized');
+          playerContainer.classList.remove('player-expanded');
+        });
+      }
+
+      const lyricsBtn = document.getElementById('btn-full-lyrics');
+      const lyricsPanel = document.getElementById('lyrics-panel');
+      const artworkImg = document.getElementById('full-player-img');
+      if (lyricsBtn && lyricsPanel && artworkImg) {
+        lyricsBtn.addEventListener('click', () => {
+          const isHidden = lyricsPanel.style.display === 'none';
+          lyricsPanel.style.display = isHidden ? 'flex' : 'none';
+          artworkImg.style.opacity = isHidden ? '0.2' : '1';
+          lyricsBtn.style.opacity = isHidden ? '1' : '0.5';
+        });
+      }
+
+      // Queue buttons
+      document.querySelectorAll('#btn-full-queue, .btn-queue-toggle').forEach(btn => {
+        btn.addEventListener('click', () => {
+          playerContainer.classList.add('player-minimized');
+          playerContainer.classList.remove('player-expanded');
+          // Trigger navigation to queue page
+          const queueNav = document.querySelector('[data-page="page-queue"]');
+          if (queueNav) queueNav.click();
+        });
       });
-      
     } catch (e) {
-      console.error('[App] Failed to load home page', e);
+      console.error('[App] Init failed:', e);
     }
   }
 

@@ -344,6 +344,7 @@ const Storage = (() => {
     getRecent,
     addRecent,
     clearRecent,
+    getHistory: getRecent, // Alias for backward compatibility
     getSettings,
     updateSettings,
     getSearchHistory,

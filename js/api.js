@@ -36,28 +36,33 @@ const API = (() => {
   }
 
   /**
-   * Core fetch wrapper with retry & instance rotation
+   * Core fetch wrapper with retry & instance fallback
+   * Each request independently tries instances without mutating shared state
    */
   async function request(endpoint, retries = 2) {
-    const url = `${baseUrl}${endpoint}`;
+    let lastError = null;
 
     for (let attempt = 0; attempt <= retries; attempt++) {
+      const instanceUrl = INSTANCES[(currentInstanceIndex + attempt) % INSTANCES.length];
+      const url = `${instanceUrl}${endpoint}`;
+
       try {
         const response = await fetch(url);
         if (!response.ok) {
           throw new Error(`HTTP ${response.status}: ${response.statusText}`);
         }
         const data = await response.json();
+        // On success, remember this working instance
+        currentInstanceIndex = INSTANCES.indexOf(instanceUrl);
+        baseUrl = instanceUrl;
         return data;
       } catch (error) {
         console.warn(`[API] Attempt ${attempt + 1} failed for ${url}:`, error.message);
-        if (attempt < retries) {
-          rotateInstance();
-          return request(endpoint, retries - attempt - 1);
-        }
-        throw error;
+        lastError = error;
       }
     }
+
+    throw lastError;
   }
 
   // ---- Search Endpoints ----
@@ -109,7 +114,8 @@ const API = (() => {
 
   async function getHomeRecommendations() {
     const cached = Storage.getHomeCache();
-    if (cached) {
+    // Only use cache if it has actual content
+    if (cached && cached.trending && cached.trending.length > 0) {
       console.log('[API] Using cached home recommendations');
       return cached;
     }
@@ -158,7 +164,11 @@ const API = (() => {
       // Populate hero with a random trending song (if available)
       data.hero = data.trending.length > 0 ? data.trending[0] : null;
 
-      Storage.setHomeCache(data);
+      // Only cache if we got actual data
+      const hasData = keys.some(k => data[k] && data[k].length > 0);
+      if (hasData) {
+        Storage.setHomeCache(data);
+      }
       return data;
     } catch (e) {
       console.warn('[API] Home recommendations failed', e);
@@ -288,6 +298,19 @@ const API = (() => {
     };
   }
 
+  /**
+   * Get a high-resolution version of an image URL
+   * @param {string} imageUrl - Original image URL
+   * @returns {string} High-res image URL
+   */
+  function getHighResImage(imageUrl) {
+    if (!imageUrl) return '';
+    return imageUrl
+      .replace('50x50', '500x500')
+      .replace('150x150', '500x500')
+      .replace('175x175', '500x500');
+  }
+
   return {
     setBaseUrl,
     getBaseUrl,
@@ -303,6 +326,7 @@ const API = (() => {
     getBestDownloadUrl,
     getDownloadUrl,
     getImageUrl,
+    getHighResImage,
     normalizeSong,
   };
 })();
