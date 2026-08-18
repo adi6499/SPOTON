@@ -43,33 +43,45 @@ const App = (() => {
         document.body.classList.remove('has-player');
       }
 
+      window.expandPlayer = function(pushHistory = true) {
+        if (window.innerWidth > 768 && !document.getElementById('full-player')) return;
+        playerContainer.classList.remove('player-minimized');
+        playerContainer.classList.add('player-expanded');
+        document.body.classList.add('is-player-expanded');
+        if (pushHistory) {
+          history.pushState({ type: 'player' }, '', '#player');
+        }
+      };
+
+      window.minimizePlayer = function(fromPopstate = false) {
+        playerContainer.classList.add('player-minimized');
+        playerContainer.classList.remove('player-expanded');
+        document.body.classList.remove('is-player-expanded');
+        if (!fromPopstate && window.location.hash === '#player') {
+          history.back();
+        }
+      };
+
       if (miniPlayer) {
-        const expandPlayer = (e) => {
-          if (window.innerWidth > 768) return; // Desktop uses bottom bar only
+        miniPlayer.addEventListener('click', (e) => {
+          if (window.innerWidth > 768) return;
           if (e.target.closest('button') || e.target.closest('.mini-player__controls') || e.target.closest('input') || e.target.closest('.mini-player__progress-container')) return;
-          playerContainer.classList.remove('player-minimized');
-          playerContainer.classList.add('player-expanded');
-          document.body.classList.add('is-player-expanded');
-        };
-        miniPlayer.addEventListener('click', expandPlayer);
+          window.expandPlayer(true);
+        });
       }
 
       const btnFullscreen = document.getElementById('btn-fullscreen');
       if (btnFullscreen) {
         btnFullscreen.addEventListener('click', (e) => {
           e.stopPropagation();
-          playerContainer.classList.remove('player-minimized');
-          playerContainer.classList.add('player-expanded');
-          document.body.classList.add('is-player-expanded');
+          window.expandPlayer(true);
         });
       }
 
       if (minimizeBtn) {
         minimizeBtn.addEventListener('click', (e) => {
           e.stopPropagation();
-          playerContainer.classList.add('player-minimized');
-          playerContainer.classList.remove('player-expanded');
-          document.body.classList.remove('is-player-expanded');
+          window.minimizePlayer(false);
         });
       }
 
@@ -541,22 +553,40 @@ const App = (() => {
 
   // ---- Navigation ----
 
+  function navigateToPage(pageId, pushHistory = true) {
+    if (!pageId) return;
+    UI.showPage(pageId);
+
+    // Minimize player if open when changing top-level page
+    const pc = document.getElementById('player-container');
+    if (pc && pc.classList.contains('player-expanded')) {
+      pc.classList.add('player-minimized');
+      pc.classList.remove('player-expanded');
+      document.body.classList.remove('is-player-expanded');
+    }
+
+    if (pushHistory) {
+      const hash = pageId.replace('page-', '');
+      history.pushState({ type: 'page', pageId }, '', '#' + hash);
+    }
+
+    // Load page-specific content
+    if (pageId === 'page-favorites') {
+      UI.renderFavorites(document.getElementById('favorites-container'));
+      bindFavoritesEvents();
+    } else if (pageId === 'page-queue') {
+      UI.renderQueue(document.getElementById('queue-container'));
+      rebindQueueEvents();
+    } else if (pageId === 'page-home') {
+      loadHomePage();
+    }
+  }
+
   function setupNavigationEvents() {
     document.querySelectorAll('.nav-item').forEach(item => {
       item.addEventListener('click', () => {
         const pageId = item.dataset.page;
-        UI.showPage(pageId);
-
-        // Load page-specific content
-        if (pageId === 'page-favorites') {
-          UI.renderFavorites(document.getElementById('favorites-container'));
-          bindFavoritesEvents();
-        } else if (pageId === 'page-queue') {
-          UI.renderQueue(document.getElementById('queue-container'));
-          rebindQueueEvents();
-        } else if (pageId === 'page-home') {
-          loadHomePage();
-        }
+        navigateToPage(pageId, true);
       });
     });
 
@@ -1937,11 +1967,15 @@ const App = (() => {
   }
 
   // ---- Global Functions for new pages ----
-  async function openArtistPage(name, image) {
+  async function openArtistPage(name, image, pushHistory = true) {
     if (!name || name === 'undefined' || name.trim() === '') return;
     UI.showPage('page-artist');
     document.getElementById('btn-minimize-player')?.click();
     
+    if (pushHistory) {
+      history.pushState({ type: 'artist', name, image }, '', '#artist/' + encodeURIComponent(name));
+    }
+
     const imgEl = document.getElementById('artist-page-img');
     const nameEl = document.getElementById('artist-page-name');
     if (nameEl) nameEl.textContent = name;
@@ -1992,10 +2026,14 @@ const App = (() => {
     }
   }
 
-  async function openAlbumPage(id, name, image) {
+  async function openAlbumPage(id, name, image, pushHistory = true) {
     UI.showPage('page-album');
     document.getElementById('btn-minimize-player')?.click();
     
+    if (pushHistory) {
+      history.pushState({ type: 'album', id, name, image }, '', '#album/' + id);
+    }
+
     const imgEl = document.getElementById('album-page-img');
     const nameEl = document.getElementById('album-page-name');
     if (nameEl) nameEl.textContent = name;
@@ -2041,10 +2079,14 @@ const App = (() => {
     }
   }
 
-  async function openPlaylistPage(id, name, image) {
+  async function openPlaylistPage(id, name, image, pushHistory = true) {
     UI.showPage('page-playlist');
     document.getElementById('btn-minimize-player')?.click();
     
+    if (pushHistory) {
+      history.pushState({ type: 'playlist', id, name, image }, '', '#playlist/' + id);
+    }
+
     const imgEl = document.getElementById('playlist-page-img');
     const nameEl = document.getElementById('playlist-page-name');
     if (nameEl) nameEl.textContent = name;
@@ -2089,6 +2131,88 @@ const App = (() => {
       if (container) container.innerHTML = '<div class="empty-state">Error loading playlist</div>';
     }
   }
+
+  // ---- Global Browser Navigation (Popstate & Hash Routing) ----
+  window.addEventListener('popstate', (e) => {
+    const pc = document.getElementById('player-container');
+    const isPlayerExpanded = pc && pc.classList.contains('player-expanded');
+
+    if (isPlayerExpanded) {
+      window.minimizePlayer(true);
+      return;
+    }
+
+    if (e.state) {
+      if (e.state.type === 'player') {
+        window.expandPlayer(false);
+      } else if (e.state.type === 'artist') {
+        openArtistPage(e.state.name, e.state.image, false);
+      } else if (e.state.type === 'album') {
+        openAlbumPage(e.state.id, e.state.name, e.state.image, false);
+      } else if (e.state.type === 'playlist') {
+        openPlaylistPage(e.state.id, e.state.name, e.state.image, false);
+      } else if (e.state.type === 'page') {
+        navigateToPage(e.state.pageId, false);
+      }
+      return;
+    }
+
+    // Default fallback to Home
+    navigateToPage('page-home', false);
+  });
+
+  // ---- Global Mobile Swipe Gestures (Edge Swipe Back & Full Player Swipe Down) ----
+  let touchStartX = 0;
+  let touchStartY = 0;
+  let touchStartTime = 0;
+
+  document.addEventListener('touchstart', (e) => {
+    if (e.touches.length !== 1) return;
+    touchStartX = e.touches[0].clientX;
+    touchStartY = e.touches[0].clientY;
+    touchStartTime = Date.now();
+  }, { passive: true });
+
+  document.addEventListener('touchend', (e) => {
+    if (!touchStartX || e.changedTouches.length !== 1) return;
+    const deltaX = e.changedTouches[0].clientX - touchStartX;
+    const deltaY = e.changedTouches[0].clientY - touchStartY;
+    const deltaTime = Date.now() - touchStartTime;
+
+    const pc = document.getElementById('player-container');
+    const isPlayerExpanded = pc && pc.classList.contains('player-expanded');
+
+    // 1. Swipe down on full player to minimize
+    if (isPlayerExpanded) {
+      if (deltaY > 60 && Math.abs(deltaY) > Math.abs(deltaX) * 1.2 && deltaTime < 600) {
+        window.minimizePlayer(false);
+      }
+      touchStartX = 0;
+      touchStartY = 0;
+      return;
+    }
+
+    // 2. Edge Swipe Right to navigate back (started near left screen edge <= 60px)
+    if (touchStartX <= 65 && deltaX > 70 && Math.abs(deltaX) > Math.abs(deltaY) * 1.3 && deltaTime < 500) {
+      // If we are on an inner page or subview, go back
+      const activePage = document.querySelector('.page.active');
+      const isInnerPage = activePage && (
+        activePage.id === 'page-artist' || 
+        activePage.id === 'page-album' || 
+        activePage.id === 'page-playlist' ||
+        activePage.id === 'page-favorites' ||
+        activePage.id === 'page-queue' ||
+        activePage.id === 'page-settings'
+      );
+
+      if (isInnerPage || window.history.length > 1) {
+        window.history.back();
+      }
+    }
+
+    touchStartX = 0;
+    touchStartY = 0;
+  }, { passive: true });
 
   return { performSearch };
 })();
