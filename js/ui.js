@@ -109,6 +109,7 @@ const UI = (() => {
     const div = document.createElement('div');
     div.className = 'song-card';
     div.dataset.songId = song.id;
+    div.dataset.songData = encodeURIComponent(JSON.stringify(song));
     div.innerHTML = `
       <div class="song-card__img-wrap" data-action="play" data-index="${index}">
         <img class="song-card__img" src="${song.image || ''}" alt="${song.name}" loading="lazy" onerror="this.src='data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><rect fill=%22%231a1a2e%22 width=%22100%22 height=%22100%22/><text x=%2250%22 y=%2255%22 text-anchor=%22middle%22 fill=%22%236c5ce7%22 font-size=%2240%22>♪</text></svg>'">
@@ -209,6 +210,7 @@ const UI = (() => {
     const div = document.createElement('div');
     div.className = `song-list-item ${isActive ? 'active' : ''}`;
     div.dataset.songId = song.id;
+    div.dataset.songData = encodeURIComponent(JSON.stringify(song));
     div.dataset.index = index;
     div.innerHTML = `
       <div class="song-list-item__num">${isActive ? '<span class="now-playing-indicator"><span></span><span></span><span></span></span>' : index + 1}</div>
@@ -547,17 +549,34 @@ const UI = (() => {
 
   function updateProgress(data) {
     const mFill = document.getElementById('mini-progress-fill');
+    const mEdge = document.getElementById('mini-progress-edge');
     const fFill = document.getElementById('full-progress-fill');
     const fThumb = document.getElementById('full-progress-thumb');
+    
     const tCurr = document.getElementById('time-current');
     const tTot = document.getElementById('time-total');
+    
+    const mtCurr = document.getElementById('mini-time-current');
+    const mtTot = document.getElementById('mini-time-total');
 
-    if (mFill && data.progress !== undefined) mFill.style.width = `${data.progress}%`;
-    if (fFill && data.progress !== undefined) fFill.style.width = `${data.progress}%`;
-    if (fThumb && data.progress !== undefined) fThumb.style.left = `${data.progress}%`;
+    if (data.progress !== undefined) {
+      if (mFill) mFill.style.width = `${data.progress}%`;
+      if (mEdge) mEdge.style.width = `${data.progress}%`;
+      if (fFill) fFill.style.width = `${data.progress}%`;
+      if (fThumb) fThumb.style.left = `${data.progress}%`;
+    }
 
-    if (tCurr && data.currentTime !== undefined) tCurr.textContent = formatDuration(data.currentTime);
-    if (tTot && data.duration !== undefined) tTot.textContent = formatDuration(data.duration);
+    if (data.currentTime !== undefined) {
+      const formatted = formatDuration(data.currentTime);
+      if (tCurr) tCurr.textContent = formatted;
+      if (mtCurr) mtCurr.textContent = formatted;
+    }
+    
+    if (data.duration !== undefined) {
+      const formatted = formatDuration(data.duration);
+      if (tTot) tTot.textContent = formatted;
+      if (mtTot) mtTot.textContent = formatted;
+    }
   }
 
   function updateRepeatButton(mode) {
@@ -638,6 +657,17 @@ const UI = (() => {
     });
   }
 
+  function renderSidebarPlaylists() {
+    const container = document.getElementById('sidebar-playlists');
+    if (!container) return;
+    const playlists = Storage.getPlaylists() || [];
+    container.innerHTML = playlists.map(p => `
+      <button class="nav-item" data-page="playlist-${p.id}" onclick="window.location.hash='playlist/${p.id}'" style="padding: 4px 8px; border-radius: 4px; font-size: 14px; opacity: 0.8; margin-bottom: 2px;">
+        <span style="white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${p.name}</span>
+      </button>
+    `).join('');
+  }
+
   return {
     showToast,
     formatDuration,
@@ -664,5 +694,6 @@ const UI = (() => {
     renderArtistCard,
     showContextMenu,
     closeContextMenu,
+    renderSidebarPlaylists,
   };
 })();

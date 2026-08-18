@@ -5,29 +5,29 @@
    ======================================== */
 
 :root {
-  /* Default Theme: Dark */
-  --bg-base: #000000;
-  --bg-elevated: #0a0a0f;
-  --bg-surface: #12121a;
+  /* Default Theme: Dark (Spotify Style) */
+  --bg-base: #121212;
+  --bg-elevated: #181818;
+  --bg-surface: #282828;
   
   --bg-card: rgba(255, 255, 255, 0.04);
-  --bg-card-hover: rgba(255, 255, 255, 0.08);
-  --bg-glass: rgba(18, 18, 30, 0.65);
-  --bg-glass-heavy: rgba(10, 10, 20, 0.85);
-  --bg-input: rgba(255, 255, 255, 0.08);
+  --bg-card-hover: #282828;
+  --bg-glass: #181818;
+  --bg-glass-heavy: #121212;
+  --bg-input: rgba(255, 255, 255, 0.1);
 
   --text-primary: #ffffff;
-  --text-secondary: rgba(255, 255, 255, 0.65);
-  --text-tertiary: rgba(255, 255, 255, 0.4);
+  --text-secondary: #b3b3b3;
+  --text-tertiary: #a7a7a7;
 
-  --border: rgba(255, 255, 255, 0.08);
-  --border-hover: rgba(255, 255, 255, 0.15);
+  --border: rgba(255, 255, 255, 0.1);
+  --border-hover: rgba(255, 255, 255, 0.2);
   
-  /* Default Accent: Purple */
-  --accent-color: #8b5cf6;
-  --accent-light: #a78bfa;
-  --accent-dark: #7c3aed;
-  --accent-glow: rgba(139, 92, 246, 0.3);
+  /* Default Accent: Spotify Green */
+  --accent-color: #1DB954;
+  --accent-light: #1ed760;
+  --accent-dark: #1aa34a;
+  --accent-glow: rgba(29, 185, 84, 0.3);
   --accent-gradient: linear-gradient(135deg, var(--accent-color), var(--accent-light));
 
   /* Feedback Colors */
@@ -195,19 +195,11 @@ ul { list-style: none; }
 ::-webkit-scrollbar-thumb:hover { background: var(--text-tertiary); }
 
 /* Dynamic Background */
-#dynamic-bg {
-  position: fixed;
-  top: 0; left: 0; right: 0; bottom: 0;
-  z-index: 0;
-  opacity: 0;
-  background-size: cover;
-  background-position: center;
-  filter: blur(100px) saturate(1.5) brightness(0.2);
-  transition: opacity 1.5s ease, background-image 1.5s ease;
-  pointer-events: none;
-}
+#dynamic-bg { display: none !important; }
 #dynamic-bg.active { opacity: 1; }
 body.theme-light #dynamic-bg { filter: blur(100px) saturate(1.2) brightness(0.9); }
+
+.aurora-bg { display: none !important; }
 
 :root {
   /* Colors - Base (Dark Theme Default) */
@@ -511,22 +503,24 @@ body.color-orange { --primary: #e17055; --primary-hover: #b85a44; --primary-glow
    Music Cards
    ======================================== */
 .song-card {
-  background: transparent;
-  width: 140px; /* Mobile size */
+  background: var(--bg-card);
+  width: 160px;
   flex-shrink: 0;
-  transition: transform var(--anim-micro);
+  transition: background var(--anim-micro);
   cursor: pointer;
   position: relative;
+  padding: 16px;
+  border-radius: 8px;
 }
 
 .song-card__img-wrap {
   width: 100%;
   aspect-ratio: 1;
-  border-radius: var(--radius-md);
+  border-radius: 4px;
   overflow: hidden;
   position: relative;
-  margin-bottom: var(--space-sm);
-  box-shadow: var(--shadow-sm);
+  margin-bottom: var(--space-md);
+  box-shadow: 0 8px 24px rgba(0,0,0,0.5);
 }
 
 .song-card__img {
@@ -538,45 +532,37 @@ body.color-orange { --primary: #e17055; --primary-hover: #b85a44; --primary-glow
 
 .song-card__play-overlay {
   position: absolute;
-  inset: 0;
-  background: rgba(0,0,0,0.4);
+  right: 8px;
+  bottom: 8px;
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  background: var(--accent-color);
   display: flex;
   align-items: center;
   justify-content: center;
   opacity: 0;
-  transition: opacity var(--anim-ui);
+  transform: translateY(8px);
+  transition: all 0.3s ease;
+  box-shadow: 0 8px 8px rgba(0,0,0,0.3);
 }
 
 .play-icon {
-  width: 48px;
-  height: 48px;
-  color: white;
-  filter: drop-shadow(0 4px 12px rgba(0,0,0,0.5));
-  transform: translateY(10px);
-  transition: transform var(--anim-ui);
+  width: 24px;
+  height: 24px;
+  color: black;
+  margin-left: 4px;
 }
 
 /* Hover effects (Desktop only) */
 @media (hover: hover) {
   .song-card:hover { 
-    transform: scale(1.04) translateY(-4px) perspective(1000px) rotateX(2deg) rotateY(-2deg); 
-    box-shadow: -5px 15px 30px rgba(108, 92, 231, 0.25), 5px 15px 30px rgba(253, 121, 168, 0.2); 
-    z-index: 10;
+    background: var(--bg-card-hover);
   }
-  .song-card:hover .song-card__img { transform: scale(1.02); }
-  .song-card:hover .song-card__play-overlay { opacity: 1; }
-  .song-card:hover .play-icon { transform: translateY(0) scale(1.1); }
-  .song-card::after {
-    content: '';
-    position: absolute;
-    inset: 0;
-    border-radius: var(--radius-md);
-    background: linear-gradient(135deg, rgba(255,255,255,0.4) 0%, rgba(255,255,255,0) 40%);
-    opacity: 0;
-    transition: opacity 0.4s;
-    pointer-events: none;
+  .song-card:hover .song-card__play-overlay { 
+    opacity: 1; 
+    transform: translateY(0);
   }
-  .song-card:hover::after { opacity: 1; }
 }
 
 .song-card__info { padding: 0 4px; }
@@ -963,21 +949,17 @@ body:not(.has-player) #player-container {
   pointer-events: none !important;
 }
 
-/* --- MINIMIZED STATE (Mini Player) --- */
+/* --- MINIMIZED STATE (Spotify Bottom Bar) --- */
 #player-container.player-minimized {
-  bottom: calc(var(--nav-height) + var(--safe-bottom) + 8px);
-  left: var(--space-sm);
-  right: var(--space-sm);
-  height: 60px;
-  background: var(--bg-glass-heavy);
-  backdrop-filter: blur(30px);
-  -webkit-backdrop-filter: blur(30px);
-  border: 1px solid var(--border);
-  border-radius: var(--radius-lg);
+  bottom: 0;
+  left: var(--sidebar-width);
+  right: 0;
+  height: 90px;
+  background: #000000;
+  border-top: 1px solid var(--border);
   transform: translateY(300%) !important;
-  cursor: pointer;
+  cursor: default;
   z-index: 500;
-  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.5);
   transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.3s ease;
 }
 

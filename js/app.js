@@ -14,6 +14,19 @@ const App = (() => {
       setupNavigationEvents();
       setupDelegatedEvents();
       initSettings();
+      
+      UI.renderSidebarPlaylists();
+      const btnCreatePl = document.getElementById('btn-create-playlist');
+      if (btnCreatePl) {
+        btnCreatePl.addEventListener('click', () => {
+          const name = prompt('Enter playlist name:');
+          if (name) {
+            const newPl = Storage.createPlaylist(name);
+            UI.renderSidebarPlaylists();
+            window.location.hash = `playlist/${newPl.id}`;
+          }
+        });
+      }
 
       loadHomePage();
 
@@ -304,10 +317,10 @@ const App = (() => {
     try {
       const [results, moreSongs] = await Promise.all([
         API.searchAll(query),
-        API.searchSongs(query, 30)
+        API.searchSongs(query, 50)
       ]);
       
-      // Override limited global search song results with the extended list
+      // Override limited global search song results with the extended list (50+ songs)
       if (results && moreSongs && moreSongs.length > 0) {
         results.songs = { results: moreSongs };
       }
@@ -883,13 +896,29 @@ const App = (() => {
         const item = btn.closest('[data-song-id]');
         const songId = item?.dataset.songId;
         if (!songId) return;
-
-        const song = queue.find(s => s.id === songId);
+        let song = queue.find(s => s.id === songId) || recent.find(s => s.id === songId);
+        if (!song && item.dataset.songData) {
+          try { song = JSON.parse(decodeURIComponent(item.dataset.songData)); } catch(e){}
+        }
+        song = song || Player.getCurrentTrack(); // Fallback
+        
         if (song) {
           const rect = btn.getBoundingClientRect();
+          
+          const playlists = Storage.getPlaylists() || [];
+          const playlistItems = playlists.map(p => ({
+            label: `Add to ${p.name}`,
+            icon: '📁',
+            onClick: () => {
+              Storage.addSongToPlaylist(p.id, song);
+              UI.showToast(`Added to ${p.name}`, 'success');
+            }
+          }));
+
           UI.showContextMenu(rect.left, rect.bottom + 5, [
             { label: 'Play Next', icon: '▶️', onClick: () => { Player.playNext(song); UI.showToast('Added to Play Next'); } },
             { label: 'Add to Queue', icon: '🎵', onClick: () => { Player.addToQueue(song); UI.showToast('Added to Queue'); } },
+            ...playlistItems,
             { label: 'Start Radio', icon: '📻', onClick: () => startRadioForSong(song) },
             { type: 'divider' },
             { label: 'Go to Artist', icon: '👤', onClick: () => {
@@ -1044,7 +1073,7 @@ const App = (() => {
     if (themeSelect) themeSelect.value = settings.theme || 'system';
     
     const colorSelect = document.getElementById('select-color');
-    if (colorSelect) colorSelect.value = settings.color || 'purple';
+    if (colorSelect) colorSelect.value = settings.color || 'green';
     
     const toggleGlass = document.getElementById('toggle-glass');
     if (toggleGlass) toggleGlass.checked = settings.glassEffect === true;
@@ -1087,6 +1116,29 @@ const App = (() => {
     if (!eqContainer || eqContainer.children.length > 0) return;
     
     const settings = Storage.getSettings();
+    const toggleEq = document.getElementById('toggle-equalizer');
+    const eqView = document.getElementById('eq-container-view');
+    
+    if (toggleEq) {
+      toggleEq.checked = !!settings.eqEnabled;
+      eqView.style.display = settings.eqEnabled ? 'block' : 'none';
+      
+      toggleEq.addEventListener('change', (e) => {
+        const enabled = e.target.checked;
+        eqView.style.display = enabled ? 'block' : 'none';
+        Storage.updateSettings({ eqEnabled: enabled });
+        if (enabled) {
+          const currentEQ = Storage.getSettings().eq || Array(10).fill(0);
+          currentEQ.forEach((val, i) => Player.setEqBand(i, val));
+        } else {
+          // If disabled, reset bands to 0 if WebAudio is already running
+          for (let i=0; i<10; i++) {
+             Player.setEqBand(i, 0);
+          }
+        }
+      });
+    }
+
     const freqs = ['60', '170', '310', '600', '1k', '3k', '6k', '12k', '14k', '16k'];
     const savedEQ = settings.eq || Array(10).fill(0);
     freqs.forEach((freq, i) => {
@@ -1097,14 +1149,18 @@ const App = (() => {
         <div class="eq-label">${freq}</div>
       `;
       eqContainer.appendChild(band);
-      Player.setEqBand(i, savedEQ[i]);
+      if (settings.eqEnabled) {
+        Player.setEqBand(i, savedEQ[i]);
+      }
     });
     
     eqContainer.addEventListener('input', (e) => {
       if (e.target.classList.contains('eq-slider')) {
         const idx = parseInt(e.target.dataset.index);
         const val = parseFloat(e.target.value);
-        Player.setEqBand(idx, val);
+        if (Storage.getSettings().eqEnabled) {
+          Player.setEqBand(idx, val);
+        }
         
         const newEQ = Storage.getSettings().eq || Array(10).fill(0);
         newEQ[idx] = val;
@@ -1359,7 +1415,14 @@ const App = (() => {
           const details = await API.getArtistDetails(id);
           renderEntityPage('Artist', details);
         } else if (type === 'playlist') {
-          const details = await API.getPlaylistDetails(id);
+          let details = null;
+          const localPlaylists = Storage.getPlaylists() || [];
+          const localPl = localPlaylists.find(p => p.id === id);
+          if (localPl) {
+            details = { ...localPl, songs: localPl.songs || [] };
+          } else {
+            details = await API.getPlaylistDetails(id);
+          }
           renderEntityPage('Playlist', details);
         } else if (type === 'song') {
           const details = await API.getSongDetails(id);
@@ -1426,23 +1489,11 @@ const App = (() => {
     view.innerHTML = `
       <h1 style="margin-bottom:24px; font-size:32px; font-weight:800;">Your Library</h1>
       
-      <div class="stats-grid">
-        <div class="stat-card">
-          <div class="stat-value">${stats.totalListens}</div>
-          <div class="stat-label">Total Songs Played</div>
+      <div class="shelf" style="margin-bottom: 40px;">
+        <div class="shelf-header">
+          <h2 class="shelf-title">Playlists</h2>
         </div>
-        <div class="stat-card">
-          <div class="stat-value">${Math.floor(stats.totalTimeMs / 60000)}</div>
-          <div class="stat-label">Minutes Listened</div>
-        </div>
-        <div class="stat-card">
-          <div class="stat-value">${topArtists[0] || 'None'}</div>
-          <div class="stat-label">Top Artist</div>
-        </div>
-        <div class="stat-card">
-          <div class="stat-value">${topGenres[0] || 'None'}</div>
-          <div class="stat-label">Top Genre</div>
-        </div>
+        <div class="song-grid" id="library-playlists" style="grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));"></div>
       </div>
 
       <div class="shelf">
@@ -1456,6 +1507,25 @@ const App = (() => {
       <h2 style="margin-top:40px; margin-bottom:20px;">Listening History</h2>
       <div class="history-list" id="library-history"></div>
     `;
+
+    // Render Playlists
+    const playlistsContainer = document.getElementById('library-playlists');
+    const playlists = Storage.getPlaylists() || [];
+    if (playlists.length > 0) {
+      playlistsContainer.innerHTML = playlists.map(p => {
+        const d = document.createElement('div');
+        const card = UI.renderPlaylistCard({ id: p.id, title: p.name, subtitle: `${p.songs ? p.songs.length : 0} songs`, image: false }, 0);
+        return card.outerHTML;
+      }).join('');
+      // Attach click events
+      playlistsContainer.querySelectorAll('.playlist-card').forEach(card => {
+        card.addEventListener('click', () => {
+          window.location.hash = `playlist/${card.dataset.playlistId}`;
+        });
+      });
+    } else {
+      playlistsContainer.innerHTML = '<p style="color:var(--text-sec)">No playlists yet.</p>';
+    }
 
     // Render Favorites
     const favs = Storage.getFavorites().slice(0, 5);
@@ -1608,7 +1678,7 @@ const App = (() => {
   function applyTheme() {
     const settings = Storage.getSettings();
     const theme = settings.theme || 'system';
-    const color = settings.color || 'purple';
+    const color = settings.color || 'green';
 
     document.body.classList.remove('theme-light', 'theme-dark');
     if (theme === 'light' || (theme === 'system' && window.matchMedia('(prefers-color-scheme: light)').matches)) {

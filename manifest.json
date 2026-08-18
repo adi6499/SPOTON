@@ -1,15 +1,15 @@
 {
-  "name": "MusicFlow Premium",
+  "name": "MusicFlow",
   "short_name": "MusicFlow",
-  "start_url": ".",
+  "start_url": "./",
   "display": "standalone",
-  "background_color": "#12121a",
-  "theme_color": "#6c5ce7",
-  "description": "A premium, Apple Music inspired streaming experience.",
+  "background_color": "#121212",
+  "theme_color": "#1DB954",
+  "description": "A Spotify-inspired streaming music experience.",
   "icons": [
     {
-      "src": "data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect fill='%236c5ce7' width='100' height='100'/><text x='50' y='55' text-anchor='middle' fill='%23ffffff' font-size='40'>MF</text></svg>",
-      "type": "image/svg+xml",
+      "src": "assets/logo.jpg",
+      "type": "image/jpeg",
       "sizes": "512x512"
     }
   ]

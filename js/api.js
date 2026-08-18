@@ -78,7 +78,7 @@ const API = (() => {
    * @param {number} limit - Max results (default 20)
    * @returns {Promise<Array>} Array of song objects
    */
-  async function searchSongs(query, limit = 20) {
+  async function searchSongs(query, limit = 50) {
     const data = await request(`/api/search/songs?query=${encodeURIComponent(query)}&limit=${limit}`);
     return data?.data?.results || [];
   }
@@ -89,7 +89,7 @@ const API = (() => {
    * @param {number} limit - Max results
    * @returns {Promise<Array>} Array of album objects
    */
-  async function searchAlbums(query, limit = 10) {
+  async function searchAlbums(query, limit = 50) {
     const data = await request(`/api/search/albums?query=${encodeURIComponent(query)}&limit=${limit}`);
     return data?.data?.results || [];
   }
@@ -100,7 +100,7 @@ const API = (() => {
    * @param {number} limit - Max results
    * @returns {Promise<Array>} Array of artist objects
    */
-  async function searchArtists(query, limit = 10) {
+  async function searchArtists(query, limit = 50) {
     const data = await request(`/api/search/artists?query=${encodeURIComponent(query)}&limit=${limit}`);
     return data?.data?.results || [];
   }
@@ -143,9 +143,9 @@ const API = (() => {
     const keys = Object.keys(queries);
     const promises = keys.map(k => {
       const q = queries[k];
-      if (q.type === 'songs') return searchSongs(q.query, 15);
-      if (q.type === 'artists') return searchArtists(q.query, 12);
-      if (q.type === 'albums') return searchAlbums(q.query, 12);
+      if (q.type === 'songs') return searchSongs(q.query, 50);
+      if (q.type === 'artists') return searchArtists(q.query, 20);
+      if (q.type === 'albums') return searchAlbums(q.query, 20);
       return Promise.resolve([]);
     });
 
