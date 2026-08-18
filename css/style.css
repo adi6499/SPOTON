@@ -1138,7 +1138,40 @@ body.has-player #player-container.player-minimized {
   display: none !important;
 }
 
-/* --- EXPANDED STATE (Mobile Fullscreen Player) --- */
+/* --- Butter-Smooth Spring Sheet Animations for Full Player --- */
+@keyframes fullPlayerSlideUp {
+  0% {
+    transform: translate3d(0, 100%, 0);
+    opacity: 0.5;
+  }
+  100% {
+    transform: translate3d(0, 0, 0);
+    opacity: 1;
+  }
+}
+
+@keyframes fullPlayerSlideDown {
+  0% {
+    transform: translate3d(0, 0, 0);
+    opacity: 1;
+  }
+  100% {
+    transform: translate3d(0, 100%, 0);
+    opacity: 0.4;
+  }
+}
+
+@keyframes artworkContentBloom {
+  0% {
+    transform: scale(0.92) translate3d(0, 18px, 0);
+    opacity: 0.6;
+  }
+  100% {
+    transform: scale(1) translate3d(0, 0, 0);
+    opacity: 1;
+  }
+}
+
 #player-container.player-expanded {
   position: fixed;
   top: 0;
@@ -1153,9 +1186,19 @@ body.has-player #player-container.player-minimized {
   background: radial-gradient(circle at 50% 22%, var(--dynamic-color, rgba(29, 185, 84, 0.55)) 0%, var(--dynamic-color-sec, rgba(29, 185, 84, 0.25)) 48%, #121212 85%);
   backdrop-filter: blur(50px);
   -webkit-backdrop-filter: blur(50px);
-  transform: translateY(0) !important;
   overflow: hidden;
-  transition: background 1.2s cubic-bezier(0.4, 0, 0.2, 1);
+  animation: fullPlayerSlideUp 0.35s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  will-change: transform, opacity;
+}
+
+#player-container.player-closing {
+  animation: fullPlayerSlideDown 0.28s cubic-bezier(0.16, 1, 0.3, 1) forwards !important;
+  pointer-events: none !important;
+}
+
+#player-container.player-expanded .full-player__artwork,
+#player-container.player-expanded .full-player__info {
+  animation: artworkContentBloom 0.38s cubic-bezier(0.16, 1, 0.3, 1) forwards;
 }
 
 body.is-playing #player-container.player-expanded {
