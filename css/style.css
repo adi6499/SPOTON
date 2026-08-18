@@ -630,49 +630,133 @@ body.has-player .page {
 }
 
 /* ========================================
-   Skeletons
+   Global Animated Top Progress Loader
+   ======================================== */
+.app-loader {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 3px;
+  background: linear-gradient(90deg, #6c5ce7, #fd79a8, #00cec9, #6c5ce7);
+  background-size: 300% 100%;
+  z-index: 100000;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.25s ease;
+  box-shadow: 0 0 10px rgba(108, 92, 231, 0.8), 0 0 5px rgba(253, 121, 168, 0.8);
+}
+
+.app-loader.is-loading {
+  opacity: 1;
+  animation: appLoaderFlow 1.2s linear infinite;
+}
+
+@keyframes appLoaderFlow {
+  0% { background-position: 0% 50%; }
+  100% { background-position: 100% 50%; }
+}
+
+/* ========================================
+   Ultra-Rich Shimmering Skeletons
    ======================================== */
 .loading-grid {
   display: flex;
   gap: var(--space-md);
   overflow-x: auto;
+  padding: 4px 0;
 }
+
+.loading-grid-wrap {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+  gap: var(--space-md);
+  padding: var(--space-md) 0;
+}
+
+@media (min-width: 768px) {
+  .loading-grid-wrap {
+    grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+  }
+}
+
 .skeleton-card {
   width: 140px;
   flex-shrink: 0;
   display: flex;
   flex-direction: column;
-  gap: var(--space-sm);
+  gap: 10px;
+  padding: 10px;
+  border-radius: var(--radius-md);
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.05);
 }
 @media (min-width: 768px) {
   .skeleton-card { width: 180px; }
 }
+
+.skeleton-list-item {
+  display: flex;
+  align-items: center;
+  gap: var(--space-md);
+  padding: 10px 14px;
+  border-radius: var(--radius-md);
+  background: rgba(255, 255, 255, 0.02);
+  margin-bottom: 6px;
+  border: 1px solid rgba(255, 255, 255, 0.03);
+}
+
 .skeleton {
-  background: var(--bg-card);
+  background: rgba(255, 255, 255, 0.06);
   border-radius: var(--radius-sm);
   position: relative;
   overflow: hidden;
 }
+
 .skeleton::after {
   content: "";
   position: absolute;
   top: 0; right: 0; bottom: 0; left: 0;
-  background: linear-gradient(90deg, transparent, rgba(255,255,255,0.05), transparent);
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    rgba(255, 255, 255, 0.04) 20%,
+    rgba(255, 255, 255, 0.16) 50%,
+    rgba(255, 255, 255, 0.04) 80%,
+    transparent 100%
+  );
   transform: translateX(-100%);
-  animation: shimmer 1.5s infinite;
+  animation: shimmer 1.3s cubic-bezier(0.4, 0, 0.2, 1) infinite;
 }
+
 .skeleton-img {
   width: 100%;
   aspect-ratio: 1;
-  border-radius: var(--radius-md);
+  border-radius: 12px;
 }
+
+.skeleton-list-img {
+  width: 46px;
+  height: 46px;
+  border-radius: 8px;
+  flex-shrink: 0;
+}
+
 .skeleton-text {
   height: 14px;
   width: 80%;
+  border-radius: 4px;
 }
+
 .skeleton-text.short {
-  width: 60%;
+  width: 50%;
+  height: 12px;
 }
+
+.skeleton-text.full {
+  width: 100%;
+}
+
 @keyframes shimmer {
   100% { transform: translateX(100%); }
 }

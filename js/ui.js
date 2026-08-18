@@ -778,8 +778,19 @@ const UI = (() => {
 
   // ---- Loading States ----
 
+  function showGlobalLoader() {
+    const loader = document.getElementById('app-loader');
+    if (loader) loader.classList.add('is-loading');
+  }
+
+  function hideGlobalLoader() {
+    const loader = document.getElementById('app-loader');
+    if (loader) loader.classList.remove('is-loading');
+  }
+
   function showLoading(container, type = 'card') {
-    if (type === 'card' || type === 'album') {
+    if (!container) return;
+    if (type === 'card' || type === 'album' || type === 'song') {
       container.innerHTML = `
         <div class="loading-grid">
           ${Array(8).fill('<div class="skeleton-card"><div class="skeleton skeleton-img"></div><div class="skeleton skeleton-text"></div><div class="skeleton skeleton-text short"></div></div>').join('')}
@@ -787,19 +798,33 @@ const UI = (() => {
     } else if (type === 'artist') {
       container.innerHTML = `
         <div class="loading-grid">
-          ${Array(8).fill('<div class="skeleton-card"><div class="skeleton skeleton-img skeleton-circle"></div><div class="skeleton skeleton-text" style="margin: 0 auto;"></div></div>').join('')}
+          ${Array(8).fill('<div class="skeleton-card"><div class="skeleton skeleton-img" style="border-radius:50%;"></div><div class="skeleton skeleton-text" style="margin: 0 auto;"></div></div>').join('')}
+        </div>`;
+    } else if (type === 'list' || type === 'queue' || type === 'favorites') {
+      container.innerHTML = `
+        <div class="loading-list">
+          ${Array(7).fill('<div class="skeleton-list-item"><div class="skeleton skeleton-list-img"></div><div style="flex:1;"><div class="skeleton skeleton-text" style="margin-bottom:6px;"></div><div class="skeleton skeleton-text short"></div></div></div>').join('')}
+        </div>`;
+    } else if (type === 'grid') {
+      container.innerHTML = `
+        <div class="loading-grid-wrap">
+          ${Array(10).fill('<div class="skeleton-card" style="width:100%;"><div class="skeleton skeleton-img"></div><div class="skeleton skeleton-text"></div><div class="skeleton skeleton-text short"></div></div>').join('')}
         </div>`;
     }
   }
 
   function hideLoading(container) {
-    const loading = container.querySelector('.loading-grid');
+    if (!container) return;
+    const loading = container.querySelector('.loading-grid, .loading-list, .loading-grid-wrap, .loading-shelf');
     if (loading) loading.remove();
   }
 
   // ---- Page Navigation ----
 
   function showPage(pageId) {
+    showGlobalLoader();
+    setTimeout(hideGlobalLoader, 350);
+
     document.querySelectorAll('.page').forEach(p => {
       p.classList.remove('active');
     });
@@ -846,6 +871,8 @@ const UI = (() => {
     updateDynamicBackground,
     showLoading,
     hideLoading,
+    showGlobalLoader,
+    hideGlobalLoader,
     showPage,
     renderAlbumCard,
     renderPlaylistCard,

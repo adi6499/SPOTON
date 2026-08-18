@@ -743,7 +743,8 @@ const App = (() => {
   async function performSearch(query) {
     UI.showPage('page-search');
     const container = document.getElementById('search-results');
-    UI.showLoading(container);
+    UI.showLoading(container, 'grid');
+    UI.showGlobalLoader();
 
     // Also update nav
     document.querySelectorAll('.nav-item').forEach(item => {
@@ -848,6 +849,8 @@ const App = (() => {
           <div class="empty-state__title">Search failed</div>
           <div class="empty-state__subtitle">Please check your connection and try again.</div>
         </div>`;
+    } finally {
+      UI.hideGlobalLoader();
     }
   }
 
