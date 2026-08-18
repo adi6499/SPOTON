@@ -460,18 +460,18 @@
   <div id="toast-container"></div>
 
   <!-- Scripts (order matters: dependencies first) -->
-  <script src="js/api.js?v=2"></script>
-  <script src="js/storage.js?v=2"></script>
-  <script src="js/player.js?v=2"></script>
-  <script src="js/ui.js?v=2"></script>
-  <script src="js/download.js?v=2"></script>
-  <script src="js/app.js?v=2"></script>
+  <script src="js/api.js?v=3"></script>
+  <script src="js/storage.js?v=3"></script>
+  <script src="js/player.js?v=3"></script>
+  <script src="js/ui.js?v=3"></script>
+  <script src="js/download.js?v=3"></script>
+  <script src="js/app.js?v=3"></script>
   <script>
     // Clear old service worker caches to force fresh files
     if ('caches' in window) {
       caches.keys().then(names => {
         names.forEach(name => {
-          if (name !== 'musicflow-v2') caches.delete(name);
+          if (name !== 'musicflow-v3') caches.delete(name);
         });
       });
     }

@@ -5,8 +5,12 @@
 const API = (() => {
   // Public JioSaavn API instances (unofficial)
   // Users can self-host on Vercel for reliability
+  const localApiUrl = window.location.hostname === 'localhost' 
+    ? 'http://localhost:3001' 
+    : `http://${window.location.hostname}:3001`;
+
   const INSTANCES = [
-    'http://localhost:3001',
+    localApiUrl,
     'https://saavn.dev',
     'https://jiosaavn-api-privatecvc2.vercel.app',
     'https://saavn.me',
