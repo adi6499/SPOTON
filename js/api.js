@@ -239,8 +239,10 @@ const API = (() => {
     if (!trackName) return null;
     const cleanTitle = trackName.replace(/\(.*?\)|\[.*?\]/g, '').trim();
     const cleanArtist = (artistName || '').split(',')[0].split('&')[0].trim();
+    const settings = (typeof Storage !== 'undefined' && Storage.getSettings) ? Storage.getSettings() : {};
+    const musixmatchKey = settings.musixmatchApiKey || '';
 
-    // 1. Try LRCLIB exact match (supports both synced & plain lyrics)
+    // 1. Try LRCLIB exact match (supports full synced & plain lyrics)
     try {
       let url = `https://lrclib.net/api/get?track_name=${encodeURIComponent(cleanTitle)}&artist_name=${encodeURIComponent(cleanArtist)}`;
       if (duration) url += `&duration=${Math.round(duration)}`;
@@ -256,7 +258,25 @@ const API = (() => {
       }
     } catch (e) {}
 
-    // 2. Try LRCLIB search query
+    // 2. Try Musixmatch API (if API key is configured)
+    if (musixmatchKey) {
+      try {
+        const mxTarget = `https://api.musixmatch.com/ws/1.1/matcher.lyrics.get?q_track=${encodeURIComponent(cleanTitle)}&q_artist=${encodeURIComponent(cleanArtist)}&apikey=${musixmatchKey}`;
+        const mxRes = await fetch(`https://api.allorigins.win/raw?url=${encodeURIComponent(mxTarget)}`);
+        if (mxRes.ok) {
+          const mxData = await mxRes.json();
+          const lyricsBody = mxData?.message?.body?.lyrics?.lyrics_body;
+          if (lyricsBody) {
+            return {
+              synced: null,
+              plain: lyricsBody.replace(/\*\*\*.*$/s, '').trim()
+            };
+          }
+        }
+      } catch (e) {}
+    }
+
+    // 3. Try LRCLIB search query
     try {
       const searchRes = await fetch(`https://lrclib.net/api/search?q=${encodeURIComponent(cleanTitle + ' ' + cleanArtist)}`);
       if (searchRes.ok) {
@@ -271,7 +291,7 @@ const API = (() => {
       }
     } catch (e) {}
 
-    // 3. Fallback to Lyrics.ovh
+    // 4. Fallback to Lyrics.ovh
     try {
       const ovhRes = await fetch(`https://api.lyrics.ovh/v1/${encodeURIComponent(cleanArtist)}/${encodeURIComponent(cleanTitle)}`);
       if (ovhRes.ok) {

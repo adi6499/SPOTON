@@ -1295,6 +1295,9 @@ const App = (() => {
     
     const qualEl = document.getElementById('select-quality');
     if (qualEl) qualEl.value = settings.audioQuality || '320kbps';
+
+    const mxKeyEl = document.getElementById('input-musixmatch-key');
+    if (mxKeyEl) mxKeyEl.value = settings.musixmatchApiKey || '';
     
     const speedEl = document.getElementById('select-speed');
     if (speedEl) speedEl.value = Player.getPlaybackSpeed();
@@ -1406,6 +1409,11 @@ const App = (() => {
         Storage.updateSettings({ languages: selected });
         Storage.clearHomeCache();
       });
+    });
+
+    document.getElementById('input-musixmatch-key')?.addEventListener('input', (e) => {
+      const key = e.target.value.trim();
+      Storage.updateSettings({ musixmatchApiKey: key });
     });
 
     document.getElementById('select-quality')?.addEventListener('change', (e) => {
