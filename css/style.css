@@ -1031,6 +1031,8 @@ body.has-player #player-container.player-minimized {
   border-radius: 6px;
   object-fit: cover;
   flex-shrink: 0;
+  will-change: transform;
+  transform-origin: center center;
 }
 
 .mini-player__info {
@@ -1148,11 +1150,31 @@ body.has-player #player-container.player-minimized {
   z-index: 99999 !important;
   border-radius: 0;
   border: none;
-  background: linear-gradient(180deg, var(--dynamic-color, rgba(29, 185, 84, 0.5)) 0%, #121212 55%);
+  background: radial-gradient(circle at 50% 22%, var(--dynamic-color, rgba(29, 185, 84, 0.55)) 0%, var(--dynamic-color-sec, rgba(29, 185, 84, 0.25)) 48%, #121212 85%);
   backdrop-filter: blur(50px);
   -webkit-backdrop-filter: blur(50px);
   transform: translateY(0) !important;
   overflow: hidden;
+  transition: background 1.2s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+body.is-playing #player-container.player-expanded {
+  animation: dynamic-ambient-flow 16s ease-in-out infinite alternate;
+}
+
+@keyframes dynamic-ambient-flow {
+  0% {
+    background: radial-gradient(circle at 50% 18%, var(--dynamic-color, rgba(29, 185, 84, 0.58)) 0%, var(--dynamic-color-sec, rgba(29, 185, 84, 0.22)) 46%, #121214 85%);
+  }
+  33% {
+    background: radial-gradient(circle at 62% 26%, var(--dynamic-color-sec, rgba(29, 185, 84, 0.52)) 0%, var(--dynamic-color, rgba(29, 185, 84, 0.26)) 50%, #141215 88%);
+  }
+  66% {
+    background: radial-gradient(circle at 38% 30%, var(--dynamic-color, rgba(29, 185, 84, 0.54)) 0%, var(--dynamic-color-sec, rgba(29, 185, 84, 0.2)) 48%, #101214 86%);
+  }
+  100% {
+    background: radial-gradient(circle at 54% 20%, var(--dynamic-color-sec, rgba(29, 185, 84, 0.60)) 0%, var(--dynamic-color, rgba(29, 185, 84, 0.24)) 52%, #121212 85%);
+  }
 }
 
 #player-container.player-expanded #mini-player {
@@ -1244,8 +1266,11 @@ body.is-player-expanded .bottom-nav,
   border-radius: var(--radius-xl);
   object-fit: cover;
   box-shadow: 0 16px 40px rgba(0, 0, 0, 0.7), 0 0 30px var(--dynamic-color, rgba(29, 185, 84, 0.3));
-  transition: transform 0.04s linear, opacity 0.4s ease;
+  transition: opacity 0.4s ease, filter 0.4s ease;
   will-change: transform;
+  transform-origin: center center;
+  -webkit-backface-visibility: hidden;
+  backface-visibility: hidden;
 }
 
 /* Dynamic Glow when playing */

@@ -627,26 +627,34 @@ const UI = (() => {
     img.onload = () => {
       try {
         const canvas = document.createElement('canvas');
-        canvas.width = 30;
-        canvas.height = 30;
+        canvas.width = 32;
+        canvas.height = 32;
         const ctx = canvas.getContext('2d');
-        ctx.drawImage(img, 0, 0, 30, 30);
-        const data = ctx.getImageData(0, 0, 30, 30).data;
+        ctx.drawImage(img, 0, 0, 32, 32);
+        const data = ctx.getImageData(0, 0, 32, 32).data;
         let r = 0, g = 0, b = 0, count = 0;
-        for (let i = 0; i < data.length; i += 16) {
+        let r2 = 0, g2 = 0, b2 = 0, count2 = 0;
+        for (let i = 0; i < data.length; i += 8) {
           const red = data[i], green = data[i + 1], blue = data[i + 2], alpha = data[i + 3];
           if (alpha < 128) continue;
           const brightness = (red + green + blue) / 3;
           // Keep rich, saturated colors (filter out pure gray/black/white)
-          if (brightness > 20 && brightness < 235) {
-            r += red;
-            g += green;
-            b += blue;
-            count++;
+          if (brightness > 25 && brightness < 235) {
+            if (count === 0 || Math.abs(red - r / Math.max(1, count)) < 55) {
+              r += red; g += green; b += blue; count++;
+            } else {
+              r2 += red; g2 += green; b2 += blue; count2++;
+            }
           }
         }
         if (count > 0) {
-          callback(Math.round(r / count), Math.round(g / count), Math.round(b / count));
+          const domR = Math.round(r / count);
+          const domG = Math.round(g / count);
+          const domB = Math.round(b / count);
+          const secR = count2 > 0 ? Math.round(r2 / count2) : Math.min(255, Math.round(domR * 0.8 + 25));
+          const secG = count2 > 0 ? Math.round(g2 / count2) : Math.min(255, Math.round(domG * 0.7 + 35));
+          const secB = count2 > 0 ? Math.round(b2 / count2) : Math.min(255, Math.round(domB * 1.2 + 20));
+          callback(domR, domG, domB, secR, secG, secB);
           return;
         }
       } catch (e) {
@@ -662,23 +670,38 @@ const UI = (() => {
     let hash = 0;
     for (let i = 0; i < str.length; i++) hash = str.charCodeAt(i) + ((hash << 5) - hash);
     const hue = Math.abs(hash % 360);
-    // Convert HSL to RGB approximation
-    const c = 0.6, x = c * (1 - Math.abs((hue / 60) % 2 - 1)), m = 0.2;
-    let r1 = 0, g1 = 0, b1 = 0;
-    if (hue < 60) { r1 = c; g1 = x; }
-    else if (hue < 120) { r1 = x; g1 = c; }
-    else if (hue < 180) { g1 = c; b1 = x; }
-    else if (hue < 240) { g1 = x; b1 = c; }
-    else if (hue < 300) { r1 = x; b1 = c; }
-    else { r1 = c; b1 = x; }
-    callback(Math.round((r1 + m) * 255), Math.round((g1 + m) * 255), Math.round((b1 + m) * 255));
+    const hue2 = (hue + 45) % 360;
+    
+    function hslToRgb(h, s, l) {
+      const c = (1 - Math.abs(2 * l - 1)) * s;
+      const x = c * (1 - Math.abs((h / 60) % 2 - 1));
+      const m = l - c / 2;
+      let r1 = 0, g1 = 0, b1 = 0;
+      if (h < 60) { r1 = c; g1 = x; }
+      else if (h < 120) { r1 = x; g1 = c; }
+      else if (h < 180) { g1 = c; b1 = x; }
+      else if (h < 240) { g1 = x; b1 = c; }
+      else if (h < 300) { r1 = x; b1 = c; }
+      else { r1 = c; b1 = x; }
+      return [Math.round((r1 + m) * 255), Math.round((g1 + m) * 255), Math.round((b1 + m) * 255)];
+    }
+    
+    const [r, g, b] = hslToRgb(hue, 0.7, 0.45);
+    const [r2, g2, b2] = hslToRgb(hue2, 0.75, 0.5);
+    callback(r, g, b, r2, g2, b2);
   }
 
   function updateDynamicBackground(imageUrl) {
     if (!imageUrl) return;
-    extractDominantColor(imageUrl, (r, g, b) => {
-      document.documentElement.style.setProperty('--dynamic-color', `rgba(${r}, ${g}, ${b}, 0.45)`);
-      document.documentElement.style.setProperty('--dynamic-color-dim', `rgba(${r}, ${g}, ${b}, 0.12)`);
+    extractDominantColor(imageUrl, (r, g, b, r2, g2, b2) => {
+      const secR = r2 ?? r;
+      const secG = g2 ?? g;
+      const secB = b2 ?? b;
+      document.documentElement.style.setProperty('--dynamic-color', `rgba(${r}, ${g}, ${b}, 0.55)`);
+      document.documentElement.style.setProperty('--dynamic-color-sec', `rgba(${secR}, ${secG}, ${secB}, 0.40)`);
+      document.documentElement.style.setProperty('--dynamic-color-dim', `rgba(${r}, ${g}, ${b}, 0.15)`);
+      document.documentElement.style.setProperty('--dynamic-rgb', `${r}, ${g}, ${b}`);
+      document.documentElement.style.setProperty('--dynamic-rgb-sec', `${secR}, ${secG}, ${secB}`);
       
       const bg = document.getElementById('dynamic-bg');
       if (bg) {

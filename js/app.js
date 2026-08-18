@@ -126,19 +126,21 @@ const App = (() => {
   function startAudioReactivePulse() {
     if (audioPulseFrame) return;
 
-    function renderPulse() {
+    function renderPulse(now) {
       const pc = document.getElementById('player-container');
       const isPlayerExpanded = pc && pc.classList.contains('player-expanded');
-      const isPlaying = document.body.classList.contains('is-playing');
+      const isPlaying = document.body.classList.contains('is-playing') || (typeof Player !== 'undefined' && Player.getIsPlaying && Player.getIsPlaying());
       const fullArtworkImg = document.getElementById('full-player-img');
+      const miniArtworkImg = document.getElementById('mini-player-img');
       const glowAura = document.querySelector('.artwork-glow-aura');
       const settings = (typeof Storage !== 'undefined' && Storage.getSettings) ? Storage.getSettings() : {};
       const isBeatPulseEnabled = settings.beatPulse !== false; // Default true (ON)
 
-      if (isPlaying && isPlayerExpanded && fullArtworkImg && isBeatPulseEnabled) {
-        const analyser = Player.getAnalyserNode();
+      if (isPlaying && isBeatPulseEnabled) {
         let beatPower = 0;
         let hasAnalyserSignal = false;
+
+        const analyser = (typeof Player !== 'undefined' && Player.getAnalyserNode) ? Player.getAnalyserNode() : null;
 
         if (analyser) {
           try {
@@ -162,14 +164,14 @@ const App = (() => {
               hasAnalyserSignal = true;
 
               // Combined instant energy
-              const instantEnergy = (bassAvg * 0.7) + (midAvg * 0.3);
+              const instantEnergy = (bassAvg * 0.72) + (midAvg * 0.28);
 
               // Transient Onset Detection (micro-beat kick)
               const deltaEnergy = Math.max(0, instantEnergy - prevBassEnergy);
               prevBassEnergy = (prevBassEnergy * 0.82) + (instantEnergy * 0.18);
 
-              if (deltaEnergy > 0.05) {
-                beatDecay = Math.min(1.0, beatDecay + deltaEnergy * 2.5);
+              if (deltaEnergy > 0.04) {
+                beatDecay = Math.min(1.0, beatDecay + deltaEnergy * 2.8);
               } else {
                 beatDecay *= 0.85; // snappy micro-beat recovery
               }
@@ -179,21 +181,62 @@ const App = (() => {
           } catch (err) {}
         }
 
-        // Distinct, punchy scaling on live music micro-beats (scale 1.000 to 1.110)
-        const scale = 1.0 + (beatPower * 0.11);
-        fullArtworkImg.style.transform = `scale(${scale.toFixed(3)})`;
-        fullArtworkImg.style.boxShadow = `0 ${Math.round(16 + beatPower * 32)}px ${Math.round(35 + beatPower * 45)}px rgba(0,0,0,0.85), 0 0 ${Math.round(25 + beatPower * 70)}px var(--dynamic-color, rgba(29, 185, 84, 0.75))`;
+        // Mobile Fallback / CORS Fallback / Universal Rhythm Engine:
+        // If analyser has no signal (CORS blocked on mobile / WebAudio muted),
+        // synthesize a vibrant, tempo-locked rhythmic beat with primary kick transients and micro-beat bounces!
+        if (!hasAnalyserSignal) {
+          const currentTime = (typeof Player !== 'undefined' && Player.getCurrentTime) ? Player.getCurrentTime() : 0;
+          const time = (currentTime > 0) ? currentTime : ((now || performance.now()) / 1000);
+          
+          // 126 BPM rhythm pulse (~0.476 sec/beat)
+          const beatDuration = 60 / 126;
+          const phase = (time % beatDuration) / beatDuration; // 0.0 -> 1.0
+          
+          // Snappy exponential kick decay on each beat
+          const kick = Math.pow(Math.max(0, 1 - phase * 2.6), 2.2);
+          
+          // Off-beat micro-pulse (8th note groove / micro-snare)
+          const subPhase = ((time + (beatDuration * 0.5)) % beatDuration) / beatDuration;
+          const microBeat = Math.pow(Math.max(0, 1 - subPhase * 3.4), 2.8) * 0.48;
+          
+          // Micro-flutter breathing wave for live dynamic depth
+          const organicFlutter = (Math.sin(time * 3.14) * 0.5 + 0.5) * 0.22;
+          
+          beatPower = Math.min(1.0, (kick * 0.75) + microBeat + organicFlutter);
+        }
+
+        // Distinct, punchy scaling on live music micro-beats (scale 1.000 to 1.115)
+        const scale = 1.0 + (beatPower * 0.115);
+        const transformValue = `scale(${scale.toFixed(3)})`;
+
+        // Apply to full-screen mobile / desktop player artwork
+        if (fullArtworkImg && isPlayerExpanded) {
+          fullArtworkImg.style.transform = transformValue;
+          fullArtworkImg.style.boxShadow = `0 ${Math.round(16 + beatPower * 32)}px ${Math.round(35 + beatPower * 45)}px rgba(0,0,0,0.85), 0 0 ${Math.round(25 + beatPower * 70)}px var(--dynamic-color, rgba(29, 185, 84, 0.75))`;
+        }
+
+        // Also scale mini player artwork slightly for consistency when minimized
+        if (miniArtworkImg && !isPlayerExpanded) {
+          const miniScale = 1.0 + (beatPower * 0.06);
+          miniArtworkImg.style.transform = `scale(${miniScale.toFixed(3)})`;
+        }
 
         // Pulse dynamic glowing aura behind artwork
-        if (glowAura) {
+        if (glowAura && isPlayerExpanded) {
           const auraScale = 0.90 + (beatPower * 0.52);
           const auraOpacity = 0.45 + (beatPower * 0.55);
           glowAura.style.transform = `scale(${auraScale.toFixed(3)})`;
           glowAura.style.opacity = auraOpacity.toFixed(2);
         }
-      } else if (fullArtworkImg && (!isPlaying || !isBeatPulseEnabled)) {
-        fullArtworkImg.style.transform = '';
-        fullArtworkImg.style.boxShadow = '';
+      } else {
+        // Paused or pulse disabled: reset transforms
+        if (fullArtworkImg) {
+          fullArtworkImg.style.transform = '';
+          fullArtworkImg.style.boxShadow = '';
+        }
+        if (miniArtworkImg) {
+          miniArtworkImg.style.transform = '';
+        }
         if (glowAura) {
           glowAura.style.transform = '';
           glowAura.style.opacity = '';
