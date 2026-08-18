@@ -10,6 +10,7 @@ const API = (() => {
     : `http://${window.location.hostname}:3001`;
 
   const INSTANCES = [
+    'https://spoton-trpn.vercel.app',
     localApiUrl,
     'https://saavn.dev',
     'https://jiosaavn-api-privatecvc2.vercel.app',
