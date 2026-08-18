@@ -223,10 +223,32 @@ const App = (() => {
 
         // Pulse dynamic glowing aura behind artwork
         if (glowAura && isPlayerExpanded) {
-          const auraScale = 0.90 + (beatPower * 0.52);
-          const auraOpacity = 0.45 + (beatPower * 0.55);
+          const auraScale = 0.94 + (beatPower * 0.50);
+          const auraOpacity = 0.65 + (beatPower * 0.35);
           glowAura.style.transform = `scale(${auraScale.toFixed(3)})`;
           glowAura.style.opacity = auraOpacity.toFixed(2);
+        }
+
+        // Pulse and modulate ambient fluid mesh backdrop orbs
+        if (isPlayerExpanded) {
+          const orb1 = document.querySelector('.ambient-mesh-orb.orb-1');
+          const orb2 = document.querySelector('.ambient-mesh-orb.orb-2');
+          const orb3 = document.querySelector('.ambient-mesh-orb.orb-3');
+          if (orb1) {
+            const o1Scale = 1.0 + (beatPower * 0.22);
+            orb1.style.transform = `scale(${o1Scale.toFixed(3)})`;
+            orb1.style.opacity = (0.75 + beatPower * 0.25).toFixed(2);
+          }
+          if (orb2) {
+            const o2Scale = 1.0 + (beatPower * 0.18);
+            orb2.style.transform = `scale(${o2Scale.toFixed(3)})`;
+            orb2.style.opacity = (0.70 + beatPower * 0.25).toFixed(2);
+          }
+          if (orb3) {
+            const o3Scale = 1.0 + (beatPower * 0.15);
+            orb3.style.transform = `scale(${o3Scale.toFixed(3)})`;
+            orb3.style.opacity = (0.60 + beatPower * 0.25).toFixed(2);
+          }
         }
       } else {
         // Paused or pulse disabled: reset transforms

@@ -627,39 +627,71 @@ const UI = (() => {
     img.onload = () => {
       try {
         const canvas = document.createElement('canvas');
-        canvas.width = 32;
-        canvas.height = 32;
+        canvas.width = 40;
+        canvas.height = 40;
         const ctx = canvas.getContext('2d');
-        ctx.drawImage(img, 0, 0, 32, 32);
-        const data = ctx.getImageData(0, 0, 32, 32).data;
-        let r = 0, g = 0, b = 0, count = 0;
-        let r2 = 0, g2 = 0, b2 = 0, count2 = 0;
-        for (let i = 0; i < data.length; i += 8) {
+        ctx.drawImage(img, 0, 0, 40, 40);
+        const data = ctx.getImageData(0, 0, 40, 40).data;
+        
+        const buckets = [];
+        
+        for (let i = 0; i < data.length; i += 4) {
           const red = data[i], green = data[i + 1], blue = data[i + 2], alpha = data[i + 3];
-          if (alpha < 128) continue;
-          const brightness = (red + green + blue) / 3;
-          // Keep rich, saturated colors (filter out pure gray/black/white)
-          if (brightness > 25 && brightness < 235) {
-            if (count === 0 || Math.abs(red - r / Math.max(1, count)) < 55) {
-              r += red; g += green; b += blue; count++;
-            } else {
-              r2 += red; g2 += green; b2 += blue; count2++;
-            }
+          if (alpha < 140) continue;
+          
+          const max = Math.max(red, green, blue) / 255;
+          const min = Math.min(red, green, blue) / 255;
+          const chroma = max - min;
+          const l = (max + min) / 2;
+          
+          // Skip pure black, pure white, and pure neutral grays
+          if (l < 0.12 || l > 0.94 || chroma < 0.14) continue;
+          
+          let h = 0;
+          if (chroma > 0) {
+            if (max === red / 255) h = ((green / 255 - blue / 255) / chroma) % 6;
+            else if (max === green / 255) h = (blue / 255 - red / 255) / chroma + 2;
+            else h = (red / 255 - green / 255) / chroma + 4;
+            h = Math.round(h * 60);
+            if (h < 0) h += 360;
           }
+          
+          const s = chroma / (1 - Math.abs(2 * l - 1) + 1e-4);
+          // High score for vivid, saturated, medium-lightness colors
+          const score = (chroma * 4.5) + (1 - Math.abs(l - 0.52) * 1.5);
+          
+          buckets.push({ h, s, l, r: red, g: green, b: blue, score });
         }
-        if (count > 0) {
-          const domR = Math.round(r / count);
-          const domG = Math.round(g / count);
-          const domB = Math.round(b / count);
-          const secR = count2 > 0 ? Math.round(r2 / count2) : Math.min(255, Math.round(domR * 0.8 + 25));
-          const secG = count2 > 0 ? Math.round(g2 / count2) : Math.min(255, Math.round(domG * 0.7 + 35));
-          const secB = count2 > 0 ? Math.round(b2 / count2) : Math.min(255, Math.round(domB * 1.2 + 20));
-          callback(domR, domG, domB, secR, secG, secB);
+        
+        if (buckets.length > 0) {
+          buckets.sort((a, b) => b.score - a.score);
+          const best = buckets[0];
+          
+          // Find vibrant secondary color with distinct hue (at least 35 deg apart)
+          let second = buckets.find(b => Math.abs(b.h - best.h) > 35 && Math.abs(b.h - best.h) < 325) || buckets[Math.min(buckets.length - 1, 8)];
+          
+          function hsl2rgb(h, s, l) {
+            const c = (1 - Math.abs(2 * l - 1)) * s;
+            const x = c * (1 - Math.abs((h / 60) % 2 - 1));
+            const m = l - c / 2;
+            let r1 = 0, g1 = 0, b1 = 0;
+            if (h < 60) { r1 = c; g1 = x; }
+            else if (h < 120) { r1 = x; g1 = c; }
+            else if (h < 180) { g1 = c; b1 = x; }
+            else if (h < 240) { g1 = x; b1 = c; }
+            else if (h < 300) { r1 = x; b1 = c; }
+            else { r1 = c; b1 = x; }
+            return [Math.round((r1 + m) * 255), Math.round((g1 + m) * 255), Math.round((b1 + m) * 255)];
+          }
+          
+          const [domR, domG, domB] = hsl2rgb(best.h, Math.max(0.72, best.s), 0.54);
+          const [secR, secG, secB] = hsl2rgb(second ? second.h : (best.h + 45) % 360, Math.max(0.78, second ? second.s : 0.8), 0.58);
+          const [triR, triG, triB] = hsl2rgb((best.h + 85) % 360, 0.85, 0.52);
+          
+          callback(domR, domG, domB, secR, secG, secB, triR, triG, triB);
           return;
         }
-      } catch (e) {
-        // Fallback for CORS restricted canvases
-      }
+      } catch (e) {}
       fallbackColor(imageUrl, callback);
     };
     img.onerror = () => fallbackColor(imageUrl, callback);
@@ -671,6 +703,7 @@ const UI = (() => {
     for (let i = 0; i < str.length; i++) hash = str.charCodeAt(i) + ((hash << 5) - hash);
     const hue = Math.abs(hash % 360);
     const hue2 = (hue + 45) % 360;
+    const hue3 = (hue + 90) % 360;
     
     function hslToRgb(h, s, l) {
       const c = (1 - Math.abs(2 * l - 1)) * s;
@@ -686,26 +719,33 @@ const UI = (() => {
       return [Math.round((r1 + m) * 255), Math.round((g1 + m) * 255), Math.round((b1 + m) * 255)];
     }
     
-    const [r, g, b] = hslToRgb(hue, 0.7, 0.45);
-    const [r2, g2, b2] = hslToRgb(hue2, 0.75, 0.5);
-    callback(r, g, b, r2, g2, b2);
+    const [r, g, b] = hslToRgb(hue, 0.85, 0.52);
+    const [r2, g2, b2] = hslToRgb(hue2, 0.88, 0.56);
+    const [r3, g3, b3] = hslToRgb(hue3, 0.90, 0.50);
+    callback(r, g, b, r2, g2, b2, r3, g3, b3);
   }
 
   function updateDynamicBackground(imageUrl) {
     if (!imageUrl) return;
-    extractDominantColor(imageUrl, (r, g, b, r2, g2, b2) => {
+    extractDominantColor(imageUrl, (r, g, b, r2, g2, b2, r3, g3, b3) => {
       const secR = r2 ?? r;
       const secG = g2 ?? g;
       const secB = b2 ?? b;
-      document.documentElement.style.setProperty('--dynamic-color', `rgba(${r}, ${g}, ${b}, 0.55)`);
-      document.documentElement.style.setProperty('--dynamic-color-sec', `rgba(${secR}, ${secG}, ${secB}, 0.40)`);
-      document.documentElement.style.setProperty('--dynamic-color-dim', `rgba(${r}, ${g}, ${b}, 0.15)`);
+      const triR = r3 ?? Math.min(255, Math.round(r * 0.7 + 50));
+      const triG = g3 ?? Math.min(255, Math.round(g * 0.5 + 40));
+      const triB = b3 ?? Math.min(255, Math.round(b * 1.3));
+
+      document.documentElement.style.setProperty('--dynamic-color', `rgba(${r}, ${g}, ${b}, 0.75)`);
+      document.documentElement.style.setProperty('--dynamic-color-sec', `rgba(${secR}, ${secG}, ${secB}, 0.65)`);
+      document.documentElement.style.setProperty('--dynamic-color-tri', `rgba(${triR}, ${triG}, ${triB}, 0.55)`);
+      document.documentElement.style.setProperty('--dynamic-color-dim', `rgba(${r}, ${g}, ${b}, 0.20)`);
       document.documentElement.style.setProperty('--dynamic-rgb', `${r}, ${g}, ${b}`);
       document.documentElement.style.setProperty('--dynamic-rgb-sec', `${secR}, ${secG}, ${secB}`);
+      document.documentElement.style.setProperty('--dynamic-rgb-tri', `${triR}, ${triG}, ${triB}`);
       
       const bg = document.getElementById('dynamic-bg');
       if (bg) {
-        bg.style.background = `radial-gradient(circle at 50% 0%, rgba(${r}, ${g}, ${b}, 0.5) 0%, transparent 70%)`;
+        bg.style.background = `radial-gradient(circle at 50% 0%, rgba(${r}, ${g}, ${b}, 0.6) 0%, transparent 70%)`;
       }
     });
   }
