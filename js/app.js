@@ -349,42 +349,6 @@ const App = (() => {
       }, { passive: true });
     }
 
-            setTimeout(() => {
-              playerContainer.style.transform = '';
-              fullPlayer.style.transform = '';
-              fullPlayer.style.opacity = '';
-              if (bottomNav) {
-                bottomNav.style.transform = '';
-                bottomNav.style.display = '';
-              }
-              playerContainer.classList.remove('is-animating-snap');
-              window.minimizePlayer(false);
-            }, 320);
-          } else {
-            // Snap back open
-            playerContainer.style.transform = 'translate3d(0, 0, 0)';
-            fullPlayer.style.transform = 'scale(1)';
-            fullPlayer.style.opacity = '1';
-            if (bottomNav) bottomNav.style.transform = 'translate3d(0, 100%, 0)';
-
-            setTimeout(() => {
-              playerContainer.style.transform = '';
-              fullPlayer.style.transform = '';
-              fullPlayer.style.opacity = '';
-              if (bottomNav) {
-                bottomNav.style.transform = '';
-                bottomNav.style.display = '';
-              }
-              playerContainer.classList.remove('is-animating-snap');
-            }, 320);
-          }
-        }
-
-        fpTouchStartY = 0;
-        fpTouchStartX = 0;
-      }, { passive: true });
-    }
-
     Player.on('play', () => {
       UI.updatePlayPauseButton(true);
     });
