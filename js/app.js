@@ -2424,26 +2424,34 @@ const App = (() => {
 
       // Render albums section if available
       if (artistAlbums.length > 0 && albumsContainer && albumsSection) {
-        albumsContainer.innerHTML = '';
-        albumsSection.style.display = 'block';
-        artistAlbums.forEach(album => {
-          const card = document.createElement('div');
-          card.className = 'song-card album-card';
-          const imgUrl = API.getHighResImage(album.image || album.coverImage || '');
-          card.innerHTML = `
-            <div class="song-card__img-wrap" style="border-radius: var(--radius-md);">
-              <img class="song-card__img" src="${imgUrl}" alt="${album.name || album.title}" loading="lazy" style="border-radius: var(--radius-md);">
-            </div>
-            <div class="song-card__info">
-              <div class="song-card__name">${album.name || album.title}</div>
-              <div class="song-card__artist">${album.year || 'Album'}</div>
-            </div>
-          `;
-          card.onclick = () => {
-            if (album.id) openAlbumPage(album.id, album.name || album.title, imgUrl);
-          };
-          albumsContainer.appendChild(card);
-        });
+        try {
+          albumsContainer.innerHTML = '';
+          albumsSection.style.display = 'block';
+          artistAlbums.forEach(album => {
+            try {
+              const card = document.createElement('div');
+              card.className = 'song-card album-card';
+              const imgUrl = API.getHighResImage(API.getImageUrl(album) || album.image || album.coverImage || '');
+              card.innerHTML = `
+                <div class="song-card__img-wrap" style="border-radius: var(--radius-md);">
+                  <img class="song-card__img" src="${imgUrl}" alt="${album.name || album.title || 'Album'}" loading="lazy" style="border-radius: var(--radius-md);">
+                </div>
+                <div class="song-card__info">
+                  <div class="song-card__name">${album.name || album.title || 'Album'}</div>
+                  <div class="song-card__artist">${album.year || 'Album'}</div>
+                </div>
+              `;
+              card.onclick = () => {
+                if (album.id) openAlbumPage(album.id, album.name || album.title || 'Album', imgUrl);
+              };
+              albumsContainer.appendChild(card);
+            } catch (errAlbum) {
+              console.warn('Error rendering album card:', errAlbum);
+            }
+          });
+        } catch (e) {
+          console.warn('Error displaying albums section:', e);
+        }
       }
 
       // Bind Play All & Artist Radio
@@ -2475,25 +2483,33 @@ const App = (() => {
 
     } catch (err) {
       console.error('[App] openArtistPage error:', err);
-      if (songsContainer) songsContainer.innerHTML = '<div class="empty-state">Error loading artist</div>';
+      if (songsContainer && (!artistState || artistState.songs.length === 0)) {
+        songsContainer.innerHTML = '<div class="empty-state">Error loading artist</div>';
+      }
     }
   }
 
   function renderArtistSongList(artistState) {
     const container = document.getElementById('artist-songs-container');
-    if (!container) return;
+    if (!container || !artistState || !artistState.songs) return;
     container.innerHTML = '';
 
     artistState.songs.forEach((song, i) => {
-      const el = UI.renderSongListItem(song, i, { showRemove: false });
-      container.appendChild(el);
+      try {
+        const el = UI.renderSongListItem(song, i, { showRemove: false });
+        if (el) container.appendChild(el);
+      } catch (errItem) {
+        console.warn('Error rendering song list item:', errItem);
+      }
     });
 
     container.querySelectorAll('[data-action="play"]').forEach(el => {
       el.addEventListener('click', async () => {
         const index = parseInt(el.dataset.index, 10);
-        Player.setQueue(artistState.songs, index);
-        await Player.playSong(artistState.songs[index]);
+        if (!isNaN(index) && artistState.songs[index]) {
+          Player.setQueue(artistState.songs, index);
+          await Player.playSong(artistState.songs[index]);
+        }
       });
     });
   }

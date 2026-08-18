@@ -440,11 +440,20 @@ const API = (() => {
 
   /**
    * Get a high-resolution version of an image URL
-   * @param {string} imageUrl - Original image URL
+   * @param {string|Array|Object} imageUrl - Original image URL or object
    * @returns {string} High-res image URL
    */
   function getHighResImage(imageUrl) {
     if (!imageUrl) return '';
+    if (typeof imageUrl !== 'string') {
+      if (Array.isArray(imageUrl)) {
+        const best = imageUrl[imageUrl.length - 1];
+        imageUrl = best?.url || best?.link || '';
+      } else if (typeof imageUrl === 'object') {
+        imageUrl = imageUrl.url || imageUrl.link || '';
+      }
+    }
+    if (typeof imageUrl !== 'string') return '';
     return imageUrl
       .replace('50x50', '500x500')
       .replace('150x150', '500x500')
