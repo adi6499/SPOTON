@@ -541,6 +541,10 @@ const UI = (() => {
   }
 
   function updatePlayPauseButton(isPlaying) {
+    document.body.classList.toggle('is-playing', isPlaying);
+    const pc = document.getElementById('player-container');
+    if (pc) pc.classList.toggle('is-playing', isPlaying);
+
     document.querySelectorAll('.btn-play').forEach(btn => {
       btn.innerHTML = isPlaying 
         ? '<svg viewBox="0 0 24 24" fill="currentColor"><rect x="6" y="4" width="4" height="16"/><rect x="14" y="4" width="4" height="16"/></svg>'
