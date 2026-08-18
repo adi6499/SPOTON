@@ -474,20 +474,20 @@
   <div id="toast-container"></div>
 
   <!-- Scripts (order matters: dependencies first) -->
-  <script src="js/api.js?v=6"></script>
-  <script src="js/storage.js?v=6"></script>
-  <script src="js/player.js?v=6"></script>
-  <script src="js/ui.js?v=6"></script>
-  <script src="js/download.js?v=6"></script>
-  <script src="js/app.js?v=6"></script>
+  <script src="js/api.js?v=9"></script>
+  <script src="js/storage.js?v=9"></script>
+  <script src="js/player.js?v=9"></script>
+  <script src="js/ui.js?v=9"></script>
+  <script src="js/download.js?v=9"></script>
+  <script src="js/app.js?v=9"></script>
   <script>
-    // Clear old service worker caches to force fresh files
-    if ('caches' in window) {
-      caches.keys().then(names => {
-        names.forEach(name => {
-          if (name !== 'musicflow-v4') caches.delete(name);
-        });
-      });
+    // The service worker handles cache cleanup during its activate event.
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.register('./sw.js')
+        .then(reg => {
+          reg.update(); // Force update check on every page load
+        })
+        .catch(err => console.error('SW Registration failed:', err));
     }
   </script>
 </body>

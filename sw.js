@@ -1,4 +1,4 @@
-const CACHE_NAME = 'musicflow-v8';
+const CACHE_NAME = 'musicflow-v10';
 const ASSETS = [
   './',
   './index.html',
@@ -37,9 +37,14 @@ self.addEventListener('fetch', (event) => {
   if (event.request.url.includes('images') || event.request.url.includes('c.saavncdn.com')) return;
 
   event.respondWith(
-    caches.match(event.request, { ignoreSearch: true })
-      .then(response => {
-        return response || fetch(event.request);
-      })
+    fetch(event.request).then(response => {
+      // If network fetch succeeds, update the cache asynchronously
+      const resClone = response.clone();
+      caches.open(CACHE_NAME).then(cache => cache.put(event.request, resClone));
+      return response;
+    }).catch(() => {
+      // If network fails (offline), return from cache
+      return caches.match(event.request, { ignoreSearch: true });
+    })
   );
 });
