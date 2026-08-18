@@ -9,7 +9,6 @@ const Player = (() => {
   let inactiveAudio = audio2;
   
   [audio, audio2].forEach(a => {
-    a.crossOrigin = 'anonymous';
     a.preload = 'auto';
   });
 
@@ -258,12 +257,16 @@ const Player = (() => {
     onQueueUpdate?.(queue, currentIndex);
   }
 
+  let _loadId = 0; // Guard against concurrent/double play calls
+
   async function loadAndPlay(song, isCrossfade = false) {
+    const thisLoadId = ++_loadId; // Increment to cancel any previous pending load
+
     try {
       // Ensure Web Audio context is initialized and resumed before playing
       if (!audioCtx) initWebAudio();
       if (audioCtx && audioCtx.state === 'suspended') {
-        audioCtx.resume();
+        await audioCtx.resume();
       }
 
       // Fire track change immediately so UI shows something right away
@@ -285,6 +288,10 @@ const Player = (() => {
       // If no stream URL, fetch full song details
       if (!streamUrl) {
         const details = await API.getSongDetails(song.id);
+
+        // Check if a newer load was triggered while we were fetching
+        if (thisLoadId !== _loadId) return;
+
         if (details && details.length > 0) {
           streamUrl = API.getDownloadUrl(details[0], qual);
           
@@ -303,28 +310,8 @@ const Player = (() => {
         return;
       }
 
-      // Helper: wait for audio to be ready before playing
-      function waitForCanPlay(audioEl) {
-        return new Promise((resolve, reject) => {
-          // If already has enough data, resolve immediately
-          if (audioEl.readyState >= 3) {
-            resolve();
-            return;
-          }
-          const onReady = () => {
-            audioEl.removeEventListener('canplay', onReady);
-            audioEl.removeEventListener('error', onErr);
-            resolve();
-          };
-          const onErr = (e) => {
-            audioEl.removeEventListener('canplay', onReady);
-            audioEl.removeEventListener('error', onErr);
-            reject(e);
-          };
-          audioEl.addEventListener('canplay', onReady);
-          audioEl.addEventListener('error', onErr);
-        });
-      }
+      // Check again if a newer load was triggered
+      if (thisLoadId !== _loadId) return;
 
       if (isCrossfade) {
         // Swap active audio
@@ -333,9 +320,7 @@ const Player = (() => {
         inactiveAudio = oldAudio;
         
         activeAudio.src = streamUrl;
-        activeAudio.load();
         activeAudio.volume = 0;
-        await waitForCanPlay(activeAudio);
         await activeAudio.play();
         
         // Simple linear crossfade over 3 seconds
@@ -354,9 +339,7 @@ const Player = (() => {
         }, 150);
       } else {
         activeAudio.src = streamUrl;
-        activeAudio.load();
         activeAudio.volume = getVolume();
-        await waitForCanPlay(activeAudio);
         await activeAudio.play();
       }
 

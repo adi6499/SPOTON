@@ -269,14 +269,7 @@ const UI = (() => {
       else {
         const normalized = item.raw ? item : API.normalizeSong(item);
         card = renderSongCard(normalized, i);
-        card.onclick = (e) => {
-          if (e.target.closest('button')) return; // ignore action buttons
-          
-          // Generate a source list from the shelf items
-          const sourceList = items.map(itm => itm.raw ? itm : API.normalizeSong(itm));
-          Player.setQueue(sourceList, i);
-          Player.playSong(sourceList[i]);
-        };
+        // Play click is handled by bindSongCardEvents in app.js
       }
       card.classList.add('song-card--shelf');
       container.appendChild(card);
