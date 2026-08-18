@@ -221,56 +221,57 @@
       </main>
     </div>
 
-    <!-- ======== PLAYER CONTAINER (Phase 4) ======== -->
+    <!-- ======== PLAYER CONTAINER ======== -->
     <div id="player-container" class="player-minimized">
-      <!-- MINI PLAYER (Spotify Bottom Bar) -->
+      <!-- MINI PLAYER -->
       <div id="mini-player" class="mini-player" role="button" tabindex="0" aria-label="Expand player">
         
-        <!-- Left: Track Info -->
-        <div class="mini-player__track" style="flex: 1; min-width: 0;">
+        <!-- Track Info -->
+        <div class="mini-player__track">
            <img class="mini-player__img" id="mini-player-img" src="" alt="Artwork">
-           <div class="mini-player__info" style="display: flex; flex-direction: column; justify-content: center; min-width: 0;">
-             <div class="mini-player__name" id="mini-player-name" style="font-weight: 500; font-size: 14px;">Not Playing</div>
-             <div class="mini-player__artist" id="mini-player-artist" style="font-size: 12px; opacity: 0.7;">-</div>
+           <div class="mini-player__info">
+             <div class="mini-player__name" id="mini-player-name">Not Playing</div>
+             <div class="mini-player__artist" id="mini-player-artist">-</div>
            </div>
-           <button class="btn-icon btn-fav" data-action="fav-current" title="Favorite" style="margin-left: 8px;">
-             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>
-           </button>
         </div>
 
-        <!-- Center: Controls & Progress -->
-        <div class="mini-player__center" style="flex: 2; display: flex; flex-direction: column; align-items: center; max-width: 600px;">
-          <div class="mini-player__controls" style="display: flex; gap: 16px; align-items: center; margin-bottom: 8px;">
-            <button class="btn-icon hide-mobile" data-action="toggle-shuffle" style="opacity: 0.7;"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M16 3h5v5M4 20L21 3M21 16v5h-5M15 15l6 6M4 4l5 5"/></svg></button>
-            <button class="btn-icon hide-mobile" data-action="prev"><svg viewBox="0 0 24 24" fill="currentColor"><polygon points="19,4 9,12 19,20"/><line x1="5" y1="4" x2="5" y2="20" stroke="currentColor" stroke-width="2"/></svg></button>
+        <!-- Center: Controls & Progress (Desktop & Mobile) -->
+        <div class="mini-player__center">
+          <div class="mini-player__controls">
+            <button class="btn-icon hide-mobile" data-action="toggle-shuffle" title="Shuffle"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M16 3h5v5M4 20L21 3M21 16v5h-5M15 15l6 6M4 4l5 5"/></svg></button>
+            <button class="btn-icon hide-mobile" data-action="prev" title="Previous"><svg viewBox="0 0 24 24" fill="currentColor"><polygon points="19,4 9,12 19,20"/><line x1="5" y1="4" x2="5" y2="20" stroke="currentColor" stroke-width="2"/></svg></button>
             
-            <!-- Play Button (Circle) -->
-            <button class="btn-icon btn-play" data-action="toggle-play" style="background: white; color: black; border-radius: 50%; padding: 8px; width: 32px; height: 32px;">
-              <svg viewBox="0 0 24 24" fill="currentColor" style="width:16px; height:16px;"><polygon points="5,3 19,12 5,21"/></svg>
+            <button class="btn-icon btn-fav hide-desktop" data-action="fav-current" title="Favorite">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>
             </button>
             
-            <button class="btn-icon hide-mobile" data-action="next"><svg viewBox="0 0 24 24" fill="currentColor"><polygon points="5,4 15,12 5,20"/><line x1="19" y1="4" x2="19" y2="20" stroke="currentColor" stroke-width="2"/></svg></button>
-            <button class="btn-icon hide-mobile" data-action="toggle-repeat" style="opacity: 0.7;"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="17 1 21 5 17 9"/><path d="M3 11V9a4 4 0 0 1 4-4h14"/><polyline points="7 23 3 19 7 15"/><path d="M21 13v2a4 4 0 0 1-4 4H3"/></svg></button>
+            <button class="btn-icon btn-play" data-action="toggle-play" aria-label="Play">
+              <svg viewBox="0 0 24 24" fill="currentColor"><polygon points="5,3 19,12 5,21"/></svg>
+            </button>
+            
+            <button class="btn-icon hide-mobile" data-action="next" title="Next"><svg viewBox="0 0 24 24" fill="currentColor"><polygon points="5,4 15,12 5,20"/><line x1="19" y1="4" x2="19" y2="20" stroke="currentColor" stroke-width="2"/></svg></button>
+            <button class="btn-icon hide-mobile" data-action="toggle-repeat" title="Repeat"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="17 1 21 5 17 9"/><path d="M3 11V9a4 4 0 0 1 4-4h14"/><polyline points="7 23 3 19 7 15"/><path d="M21 13v2a4 4 0 0 1-4 4H3"/></svg></button>
           </div>
-          <div class="mini-player__progress-container hide-mobile" style="width: 100%; display: flex; align-items: center; gap: 8px; font-size: 11px; opacity: 0.7;">
+          <div class="mini-player__progress-container hide-mobile">
             <span id="mini-time-current">0:00</span>
-            <div class="mini-player__progress" id="mini-progress" style="flex: 1; height: 4px; background: rgba(255,255,255,0.1); border-radius: 2px; position: relative;">
-              <div id="mini-progress-fill" style="height: 100%; background: white; border-radius: 2px; width: 0%;"></div>
+            <div class="mini-player__progress" id="mini-progress">
+              <div id="mini-progress-fill"></div>
             </div>
             <span id="mini-time-total">0:00</span>
           </div>
         </div>
 
-        <!-- Right: Extras -->
-        <div class="mini-player__right hide-mobile" style="flex: 1; display: flex; justify-content: flex-end; align-items: center; gap: 12px; opacity: 0.7;">
+        <!-- Right: Extras (Desktop) -->
+        <div class="mini-player__right hide-mobile">
+          <button class="btn-icon btn-fav hide-mobile" data-action="fav-current" title="Favorite"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg></button>
           <button class="btn-icon" data-action="queue" title="Queue"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg></button>
           <button class="btn-icon" data-action="volume-toggle" title="Volume"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14"/><path d="M15.54 8.46a5 5 0 0 1 0 7.07"/></svg></button>
-          <input type="range" class="volume-slider" id="volume-slider" min="0" max="100" value="80" aria-label="Volume" style="width: 80px;">
+          <input type="range" class="volume-slider" min="0" max="100" value="80" aria-label="Volume">
           <button class="btn-icon" id="btn-fullscreen" title="Full Screen"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="15 3 21 3 21 9"/><polyline points="9 21 3 21 3 15"/><line x1="21" y1="3" x2="14" y2="10"/><line x1="3" y1="21" x2="10" y2="14"/></svg></button>
         </div>
 
         <!-- Mobile progress bar (edge) -->
-        <div class="mini-player__progress-edge" id="mini-progress-edge" style="position: absolute; bottom: 0; left: 0; height: 2px; background: var(--accent-color); width: 0%;"></div>
+        <div class="mini-player__progress-edge" id="mini-progress-edge"></div>
       </div>
 
       <!-- FULL PLAYER -->
@@ -532,12 +533,12 @@
   <div id="toast-container"></div>
 
   <!-- Scripts (order matters: dependencies first) -->
-  <script src="js/api.js?v=16"></script>
-  <script src="js/storage.js?v=16"></script>
-  <script src="js/player.js?v=16"></script>
-  <script src="js/ui.js?v=16"></script>
-  <script src="js/download.js?v=16"></script>
-  <script src="js/app.js?v=16"></script>
+  <script src="js/api.js?v=17"></script>
+  <script src="js/storage.js?v=17"></script>
+  <script src="js/player.js?v=17"></script>
+  <script src="js/ui.js?v=17"></script>
+  <script src="js/download.js?v=17"></script>
+  <script src="js/app.js?v=17"></script>
   <script>
     // The service worker handles cache cleanup during its activate event.
     if ('serviceWorker' in navigator) {

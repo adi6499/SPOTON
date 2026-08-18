@@ -1058,22 +1058,77 @@ body.has-player #player-container.player-minimized {
 .mini-player__controls {
   display: flex;
   align-items: center;
-  gap: var(--space-sm);
+  gap: 12px;
 }
 
-.mini-player__progress {
+.mini-player__progress-edge {
   position: absolute;
-  bottom: 0; left: 8px; right: 8px;
+  bottom: 0;
+  left: 0;
   height: 2px;
-  background: rgba(255,255,255,0.1);
-  border-radius: 1px;
-  overflow: hidden;
-}
-#mini-progress-fill {
-  height: 100%;
   background: var(--primary);
   width: 0%;
   transition: width 0.1s linear;
+}
+
+/* Responsive Helper Classes */
+.hide-mobile {
+  display: none !important;
+}
+.hide-desktop {
+  display: flex !important;
+}
+
+@media (min-width: 769px) {
+  .hide-mobile {
+    display: flex !important;
+  }
+  .hide-desktop {
+    display: none !important;
+  }
+
+  .mini-player__center {
+    flex: 2;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    max-width: 650px;
+  }
+
+  .mini-player__right {
+    flex: 1;
+    display: flex;
+    justify-content: flex-end;
+    align-items: center;
+    gap: 12px;
+    opacity: 0.85;
+  }
+
+  .mini-player__progress-container {
+    width: 100%;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 11px;
+    opacity: 0.75;
+  }
+
+  .mini-player__progress {
+    flex: 1;
+    height: 4px;
+    background: rgba(255, 255, 255, 0.15);
+    border-radius: 2px;
+    position: relative;
+    cursor: pointer;
+  }
+  
+  #mini-progress-fill {
+    height: 100%;
+    background: var(--text);
+    border-radius: 2px;
+    width: 0%;
+    transition: width 0.1s linear;
+  }
 }
 
 /* Hide Full Player in Minimized State */
