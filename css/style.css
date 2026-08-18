@@ -1042,6 +1042,144 @@ body.theme-light .bottom-nav {
   }
 }
 
+/* Small Phone Optimization (iPhone SE, Galaxy A/S small, <= 480px width) */
+@media (max-width: 480px) {
+  .header {
+    padding: 10px 12px;
+    gap: 8px;
+  }
+  .search-bar {
+    height: 40px;
+    font-size: 13px;
+    padding: 0 32px 0 38px;
+  }
+  .search-icon {
+    left: 12px;
+    width: 16px;
+    height: 16px;
+  }
+  .settings-btn {
+    width: 40px;
+    height: 40px;
+    flex-shrink: 0;
+  }
+  .bottom-nav {
+    height: 52px;
+    left: 10px;
+    right: 10px;
+    bottom: calc(var(--safe-bottom, 0px) + 8px);
+    padding: 0 10px;
+  }
+  .nav-item {
+    font-size: 9.5px;
+    gap: 2px;
+  }
+  .nav-item svg {
+    width: 20px;
+    height: 20px;
+  }
+  #player-container.player-minimized {
+    height: 56px;
+    left: 8px;
+    right: 8px;
+    bottom: calc(var(--safe-bottom, 0px) + 68px);
+    border-radius: 16px !important;
+  }
+  .mini-player {
+    padding: 0 10px;
+  }
+  .mini-player__track {
+    gap: 8px;
+  }
+  .mini-player__img {
+    width: 38px;
+    height: 38px;
+    border-radius: 10px !important;
+  }
+  .mini-player__name {
+    font-size: 12.5px;
+  }
+  .mini-player__artist {
+    font-size: 10.5px;
+  }
+  .mini-player .btn-icon {
+    width: 36px;
+    height: 36px;
+    padding: 4px;
+  }
+  .song-card {
+    width: clamp(126px, 38vw, 150px);
+    padding: 8px;
+  }
+  .song-card__title {
+    font-size: 13px;
+  }
+  .song-card__subtitle {
+    font-size: 11px;
+  }
+  .section-title {
+    font-size: 18px;
+  }
+  .section-header {
+    margin-top: 18px;
+    margin-bottom: 10px;
+  }
+  body.has-player .page {
+    padding-bottom: calc(var(--safe-bottom, 0px) + 140px);
+  }
+}
+
+/* Compact Vertical Height Optimization (iPhone SE, short screens <= 720px height) */
+@media (max-height: 720px) {
+  .full-player {
+    padding: calc(var(--space-xs) + var(--safe-top)) 16px calc(10px + var(--safe-bottom));
+    justify-content: space-around;
+  }
+  .full-player__artwork {
+    max-height: 210px;
+    max-width: 210px;
+    margin: 4px auto;
+  }
+  .full-player__info {
+    margin: 4px 0;
+  }
+  .full-player__title {
+    font-size: 18px;
+  }
+  .full-player__artist {
+    font-size: 12.5px;
+  }
+  .full-player__controls {
+    margin: 4px 0;
+    gap: 8px;
+  }
+  .btn-massive {
+    width: 56px;
+    height: 56px;
+  }
+  .btn-massive svg {
+    width: 26px;
+    height: 26px;
+  }
+  .btn-large {
+    width: 36px;
+    height: 36px;
+  }
+  .btn-large svg {
+    width: 22px;
+    height: 22px;
+  }
+  .full-player__progress {
+    margin: 4px 0;
+  }
+  .full-player__bottom-actions {
+    margin-top: 2px;
+  }
+  .volume-slider {
+    width: 75px;
+  }
+}
+
 /* Micro-Interactions & Glass Sheen Animations */
 .btn-icon, .btn-play, .song-card, .song-list-item, .nav-item {
   transition: transform 0.15s cubic-bezier(0.4, 0, 0.2, 1), background-color 0.2s ease, box-shadow 0.2s ease;
