@@ -50,21 +50,7 @@ const Player = (() => {
         const AudioCtxClass = window.AudioContext || window.webkitAudioContext;
         if (AudioCtxClass) {
           audioCtx = new AudioCtxClass();
-          
           const inputGain = audioCtx.createGain();
-          
-          try {
-            if (!sourceNode1) {
-              sourceNode1 = audioCtx.createMediaElementSource(audio);
-              sourceNode1.connect(inputGain);
-            }
-            if (!sourceNode2) {
-              sourceNode2 = audioCtx.createMediaElementSource(audio2);
-              sourceNode2.connect(inputGain);
-            }
-          } catch (e) {
-            console.warn('[Player] MediaElementSource init:', e);
-          }
           
           const freqs = [60, 170, 310, 600, 1000, 3000, 6000, 12000, 14000, 16000];
           let prevNode = inputGain;
@@ -346,13 +332,6 @@ const Player = (() => {
     try {
       if (!isFading) {
         stopInactiveAudio();
-      }
-
-      // Unlock Web Audio for Safari/iOS/Android synchronously during user gesture
-      if (!audioCtx) {
-        initWebAudio();
-      } else if (audioCtx.state === 'suspended') {
-        await audioCtx.resume().catch(() => {});
       }
 
       // Fire track change immediately so UI shows something right away
