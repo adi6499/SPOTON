@@ -11,32 +11,14 @@ const Player = (() => {
   [audio, audio2].forEach(a => {
     a.preload = 'auto';
     a.playsInline = true;
+    a.muted = false;
+    a.volume = 0.8;
     a.setAttribute('playsinline', 'true');
     a.setAttribute('webkit-playsinline', 'true');
     if (!a.parentNode && document.body) {
       document.body.appendChild(a);
     }
   });
-
-  // iOS Safari Background Audio Session Activator (Warm-up)
-  const unlockIOSAudioSession = () => {
-    try {
-      const silentWav = 'data:audio/wav;base64,UklGRigAAABXQVZFZm10IBIAAAABAAEARKwAAIhYAQACABAAAABkYXRhAgAAAAEA';
-      if (!audio.src) {
-        audio.src = silentWav;
-        audio.play().then(() => {
-          audio.pause();
-          audio.currentTime = 0;
-        }).catch(() => {});
-      }
-    } catch (_) {}
-    document.removeEventListener('touchstart', unlockIOSAudioSession);
-    document.removeEventListener('touchend', unlockIOSAudioSession);
-    document.removeEventListener('click', unlockIOSAudioSession);
-  };
-  document.addEventListener('touchstart', unlockIOSAudioSession, { passive: true, once: true });
-  document.addEventListener('touchend', unlockIOSAudioSession, { passive: true, once: true });
-  document.addEventListener('click', unlockIOSAudioSession, { passive: true, once: true });
 
   let queue = [];
   let currentIndex = -1;
@@ -462,7 +444,8 @@ const Player = (() => {
       } else {
         stopInactiveAudio();
         activeAudio.src = streamUrl;
-        activeAudio.volume = getVolume();
+        activeAudio.muted = false;
+        activeAudio.volume = Math.max(0.1, getVolume());
         await activeAudio.play();
       }
 
