@@ -1313,23 +1313,13 @@ body.theme-light #player-container.player-minimized {
   animation: artworkContentBloom 0.38s cubic-bezier(0.16, 1, 0.3, 1) forwards;
 }
 
-body.is-playing #player-container.player-expanded {
-  animation: dynamic-ambient-flow 16s ease-in-out infinite alternate;
+#player-container.player-expanded .ambient-mesh-container {
+  opacity: 0.55;
+  transition: opacity 0.5s ease;
 }
 
-@keyframes dynamic-ambient-flow {
-  0% {
-    background: radial-gradient(circle at 50% 18%, var(--dynamic-color, rgba(29, 185, 84, 0.58)) 0%, var(--dynamic-color-sec, rgba(29, 185, 84, 0.22)) 46%, #121214 85%);
-  }
-  33% {
-    background: radial-gradient(circle at 62% 26%, var(--dynamic-color-sec, rgba(29, 185, 84, 0.52)) 0%, var(--dynamic-color, rgba(29, 185, 84, 0.26)) 50%, #141215 88%);
-  }
-  66% {
-    background: radial-gradient(circle at 38% 30%, var(--dynamic-color, rgba(29, 185, 84, 0.54)) 0%, var(--dynamic-color-sec, rgba(29, 185, 84, 0.2)) 48%, #101214 86%);
-  }
-  100% {
-    background: radial-gradient(circle at 54% 20%, var(--dynamic-color-sec, rgba(29, 185, 84, 0.60)) 0%, var(--dynamic-color, rgba(29, 185, 84, 0.24)) 52%, #121212 85%);
-  }
+body.is-playing #player-container.player-expanded .ambient-mesh-container {
+  opacity: 0.75;
 }
 
 #player-container.player-expanded #mini-player {

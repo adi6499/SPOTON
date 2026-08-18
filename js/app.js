@@ -331,11 +331,11 @@ const App = (() => {
         }
 
         if (isDraggingUp) {
-          // Locked 1:1 directly to finger Y position
-          const sheetY = Math.max(0, currentY);
+          // Sheet smoothly emerges from bottom corresponding to upward finger travel
+          const sheetY = Math.max(0, window.innerHeight + deltaY);
           playerContainer.style.transform = `translate3d(0, ${sheetY}px, 0)`;
           if (bottomNav) {
-            const navProg = Math.min(1, Math.max(0, (window.innerHeight - sheetY) / (window.innerHeight * 0.75)));
+            const navProg = Math.min(1, Math.max(0, -deltaY / (window.innerHeight * 0.5)));
             bottomNav.style.transform = `translate3d(0, ${(navProg * 100).toFixed(1)}%, 0)`;
           }
         }
@@ -343,8 +343,7 @@ const App = (() => {
 
       miniPlayer.addEventListener('touchend', (e) => {
         if (!mStartY) return;
-        const endY = e.changedTouches[0].clientY;
-        const deltaY = endY - mStartY;
+        const deltaY = e.changedTouches[0].clientY - mStartY;
         const deltaX = e.changedTouches[0].clientX - mStartX;
         const deltaTime = Date.now() - mStartTime;
         const velocity = deltaY / Math.max(1, deltaTime);
@@ -355,8 +354,8 @@ const App = (() => {
           if (bottomNav) bottomNav.classList.remove('is-gesture-dragging');
           playerContainer.classList.add('is-animating-snap');
 
-          // If dragged above 65% of screen or flicked up
-          if (endY < window.innerHeight * 0.65 || velocity < -0.28) {
+          // If dragged up past 120px or flicked up fast
+          if (deltaY < -120 || velocity < -0.28) {
             playerContainer.style.transform = 'translate3d(0, 0, 0)';
             if (bottomNav) bottomNav.style.transform = 'translate3d(0, 100%, 0)';
 
@@ -365,9 +364,9 @@ const App = (() => {
               if (bottomNav) bottomNav.style.transform = '';
               playerContainer.classList.remove('is-animating-snap');
               window.expandPlayer(true);
-            }, 320);
+            }, 300);
           } else {
-            // Snap back down
+            // Snap back down to bottom
             playerContainer.style.transform = 'translate3d(0, 100vh, 0)';
             if (bottomNav) bottomNav.style.transform = 'translate3d(0, 0, 0)';
 
@@ -375,7 +374,7 @@ const App = (() => {
               playerContainer.style.transform = '';
               if (bottomNav) bottomNav.style.transform = '';
               playerContainer.classList.remove('is-animating-snap');
-            }, 320);
+            }, 300);
           }
         } else {
           // Horizontal skip on mini player
