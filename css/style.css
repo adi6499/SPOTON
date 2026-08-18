@@ -1507,6 +1507,24 @@ body:not(.is-playing) .full-player__artwork img,
   text-overflow: ellipsis;
 }
 
+.clickable-artist-link {
+  cursor: pointer;
+  color: var(--text-secondary);
+  transition: color 0.2s ease, text-decoration 0.2s ease, transform 0.15s ease;
+  display: inline-block;
+  pointer-events: auto !important;
+}
+
+.clickable-artist-link:hover {
+  color: var(--text) !important;
+  text-decoration: underline;
+  transform: translateY(-1px);
+}
+
+.clickable-artist-link:active {
+  transform: scale(0.96);
+}
+
 /* Progress */
 .full-player__progress-area {
   margin-bottom: var(--space-xs);

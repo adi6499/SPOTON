@@ -75,11 +75,12 @@ const API = (() => {
   /**
    * Search for songs
    * @param {string} query - Search term
-   * @param {number} limit - Max results (default 20)
+   * @param {number} limit - Max results (default 50)
+   * @param {number} page - Page number (default 1)
    * @returns {Promise<Array>} Array of song objects
    */
-  async function searchSongs(query, limit = 50) {
-    const data = await request(`/api/search/songs?query=${encodeURIComponent(query)}&limit=${limit}`);
+  async function searchSongs(query, limit = 50, page = 1) {
+    const data = await request(`/api/search/songs?query=${encodeURIComponent(query)}&limit=${limit}&page=${page}`);
     return data?.data?.results || [];
   }
 
@@ -221,11 +222,36 @@ const API = (() => {
   /**
    * Get artist details
    * @param {string} id - Artist ID
+   * @param {number} songCount - Number of top songs
+   * @param {number} albumCount - Number of albums
    * @returns {Promise<Object>} Artist object
    */
-  async function getArtistDetails(id) {
-    const data = await request(`/api/artists/${id}`);
+  async function getArtistDetails(id, songCount = 50, albumCount = 50) {
+    const data = await request(`/api/artists/${id}?songCount=${songCount}&albumCount=${albumCount}`);
     return data?.data || null;
+  }
+
+  /**
+   * Get paginated songs for an artist
+   * @param {string} id - Artist ID
+   * @param {number} page - Page index (0-indexed)
+   * @param {string} sortBy - 'popularity' | 'latest' | 'alphabetical'
+   * @returns {Promise<Array>}
+   */
+  async function getArtistSongs(id, page = 0, sortBy = 'popularity', sortOrder = 'desc') {
+    const data = await request(`/api/artists/${id}/songs?page=${page}&sortBy=${sortBy}&sortOrder=${sortOrder}`);
+    return data?.data?.songs || data?.data?.results || data?.data || [];
+  }
+
+  /**
+   * Get paginated albums for an artist
+   * @param {string} id - Artist ID
+   * @param {number} page - Page index (0-indexed)
+   * @returns {Promise<Array>}
+   */
+  async function getArtistAlbums(id, page = 0) {
+    const data = await request(`/api/artists/${id}/albums?page=${page}`);
+    return data?.data?.albums || data?.data?.results || data?.data || [];
   }
 
   /**
@@ -437,6 +463,8 @@ const API = (() => {
     getAlbumDetails,
     getPlaylistDetails,
     getArtistDetails,
+    getArtistSongs,
+    getArtistAlbums,
     getLyrics,
     getBestDownloadUrl,
     getDownloadUrl,

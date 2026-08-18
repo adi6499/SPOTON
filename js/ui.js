@@ -524,11 +524,37 @@ const UI = (() => {
 
     if (mImg) mImg.src = track.image || '';
     if (mName) mName.textContent = track.name || 'Unknown';
-    if (mArtist) mArtist.textContent = track.artists || 'Unknown';
-
     if (fImg) fImg.src = highResImg || '';
     if (fName) fName.textContent = track.name || 'Unknown';
-    if (fArtist) fArtist.textContent = track.artists || 'Unknown';
+
+    const renderArtistChips = (container, artistsText, trackImg) => {
+      if (!container) return;
+      if (!artistsText || artistsText === 'Unknown' || artistsText === '-') {
+        container.textContent = artistsText || 'Unknown';
+        return;
+      }
+      container.innerHTML = '';
+      const list = artistsText.split(/[,/&]+/).map(a => a.trim()).filter(Boolean);
+      list.forEach((artName, idx) => {
+        const span = document.createElement('span');
+        span.className = 'clickable-artist-link';
+        span.textContent = artName;
+        span.title = `View artist: ${artName}`;
+        span.onclick = (e) => {
+          e.stopPropagation();
+          if (window.openArtistPage) {
+            window.openArtistPage(artName, trackImg);
+          }
+        };
+        container.appendChild(span);
+        if (idx < list.length - 1) {
+          container.appendChild(document.createTextNode(', '));
+        }
+      });
+    };
+
+    renderArtistChips(mArtist, track.artists, track.image);
+    renderArtistChips(fArtist, track.artists, highResImg || track.image);
 
     const isFav = Storage.isFavorite(track.id);
     document.querySelectorAll('.full-player .btn-fav, .mini-player .btn-fav').forEach(btn => {

@@ -2136,62 +2136,275 @@ const App = (() => {
   }
 
   // ---- Global Functions for new pages ----
+  let _activeArtistState = null;
+
+  window.openArtistPage = openArtistPage;
+  window.openAlbumPage = openAlbumPage;
+
   async function openArtistPage(name, image, pushHistory = true) {
     if (!name || name === 'undefined' || name.trim() === '') return;
+    const cleanName = name.trim();
     UI.showPage('page-artist');
     document.getElementById('btn-minimize-player')?.click();
     
     if (pushHistory) {
-      history.pushState({ type: 'artist', name, image }, '', '#artist/' + encodeURIComponent(name));
+      history.pushState({ type: 'artist', name: cleanName, image }, '', '#artist/' + encodeURIComponent(cleanName));
     }
 
     const imgEl = document.getElementById('artist-page-img');
     const nameEl = document.getElementById('artist-page-name');
-    if (nameEl) nameEl.textContent = name;
+    const subtitleEl = document.getElementById('artist-page-subtitle');
+    const countEl = document.getElementById('artist-songs-count');
+    const loadMoreContainer = document.getElementById('artist-load-more-container');
+    const loadMoreBtn = document.getElementById('btn-artist-load-more');
+    const albumsSection = document.getElementById('artist-albums-section');
+    const albumsContainer = document.getElementById('artist-albums-container');
+    const songsContainer = document.getElementById('artist-songs-container');
+
+    if (nameEl) nameEl.textContent = cleanName;
+    if (subtitleEl) subtitleEl.textContent = 'Verified Artist • Fetching catalog...';
+    if (countEl) countEl.textContent = 'Loading songs...';
+    if (loadMoreContainer) loadMoreContainer.style.display = 'none';
+    if (albumsSection) albumsSection.style.display = 'none';
     if (imgEl) {
       imgEl.src = image || 'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><rect fill="%231a1a2e" width="100" height="100"/><text x="50" y="55" text-anchor="middle" fill="%236c5ce7" font-size="40">👤</text></svg>';
     }
-
-    const container = document.getElementById('artist-songs-container');
-    if (container) {
-      container.innerHTML = '<div class="loading-shelf"></div>';
+    if (songsContainer) {
+      songsContainer.innerHTML = '<div class="loading-shelf"></div>';
     }
 
-    try {
-      const results = await API.searchSongs(name, 50);
-      if (container) {
-        if (results && results.length > 0) {
-          container.innerHTML = '';
-          const normSongs = results.map(API.normalizeSong);
-          normSongs.forEach((song, i) => {
-            const el = UI.renderSongListItem(song, i, { showRemove: false });
-            container.appendChild(el);
-          });
-          
-          container.querySelectorAll('[data-action="play"]').forEach(el => {
-            el.addEventListener('click', async () => {
-              const index = parseInt(el.dataset.index, 10);
-              Player.setQueue(normSongs, index);
-              await Player.playSong(normSongs[index]);
-            });
-          });
+    const artistState = {
+      name: cleanName,
+      artistId: null,
+      songs: [],
+      seenIds: new Set(),
+      currentPage: 1,
+      hasMore: true,
+      isLoadingMore: false
+    };
+    _activeArtistState = artistState;
 
-          // Bind Start Mix button
-          const mixBtn = document.getElementById('btn-artist-mix');
-          if (mixBtn) {
-            mixBtn.onclick = async () => {
-              const shuffled = [...normSongs].sort(() => Math.random() - 0.5);
-              Player.setQueue(shuffled, 0);
-              await Player.playSong(shuffled[0]);
-              UI.showToast(`Starting ${name} Mix`, 'success');
-            };
+    try {
+      // 1. Discover Artist profile & ID for deep catalog access
+      let artistMeta = null;
+      try {
+        const searchRes = await API.searchArtists(cleanName, 5);
+        if (searchRes && searchRes.length > 0) {
+          const match = searchRes.find(a => (a.name || a.title || '').toLowerCase() === cleanName.toLowerCase()) || searchRes[0];
+          if (match) {
+            artistMeta = match;
+            artistState.artistId = match.id;
+            if (imgEl && match.image) {
+              const hiRes = API.getHighResImage ? API.getHighResImage(API.getImageUrl(match) || match.image) : match.image;
+              imgEl.src = hiRes;
+            }
+          }
+        }
+      } catch (_) {}
+
+      // 2. Fetch initial batch of songs
+      let initialSongs = [];
+      let artistAlbums = [];
+
+      if (artistState.artistId) {
+        try {
+          const details = await API.getArtistDetails(artistState.artistId, 50, 20);
+          if (details) {
+            if (details.topSongs && details.topSongs.length > 0) {
+              initialSongs.push(...details.topSongs);
+            } else if (details.songs && details.songs.length > 0) {
+              initialSongs.push(...details.songs);
+            }
+            if (details.topAlbums && details.topAlbums.length > 0) {
+              artistAlbums = details.topAlbums;
+            } else if (details.albums && details.albums.length > 0) {
+              artistAlbums = details.albums;
+            }
+            if (details.fanCount) {
+              if (subtitleEl) subtitleEl.textContent = `${Number(details.fanCount).toLocaleString()} Listeners • Full Catalog`;
+            }
+          }
+        } catch (_) {}
+      }
+
+      // Also search songs by query to supplement and find all related tracks
+      try {
+        const searchSongsRes = await API.searchSongs(cleanName, 50, 1);
+        if (searchSongsRes && searchSongsRes.length > 0) {
+          initialSongs.push(...searchSongsRes);
+        }
+      } catch (_) {}
+
+      if (_activeArtistState !== artistState) return;
+
+      // Deduplicate & normalize songs
+      initialSongs.forEach(s => {
+        const norm = API.normalizeSong(s);
+        if (norm && norm.id && !artistState.seenIds.has(norm.id)) {
+          artistState.seenIds.add(norm.id);
+          artistState.songs.push(norm);
+        }
+      });
+
+      if (subtitleEl && !subtitleEl.textContent.includes('Listeners')) {
+        subtitleEl.textContent = `Artist • Discography`;
+      }
+
+      // Render songs
+      if (songsContainer) {
+        songsContainer.innerHTML = '';
+        if (artistState.songs.length > 0) {
+          renderArtistSongList(artistState);
+          if (countEl) countEl.textContent = `${artistState.songs.length} Songs Loaded`;
+
+          // Show load more button
+          if (loadMoreContainer) {
+            loadMoreContainer.style.display = 'block';
           }
         } else {
-          container.innerHTML = '<div class="empty-state">No songs found</div>';
+          songsContainer.innerHTML = '<div class="empty-state">No songs found for this artist</div>';
+          if (countEl) countEl.textContent = '0 Songs';
         }
       }
+
+      // Render albums section if available
+      if (artistAlbums.length > 0 && albumsContainer && albumsSection) {
+        albumsContainer.innerHTML = '';
+        albumsSection.style.display = 'block';
+        artistAlbums.forEach(album => {
+          const card = document.createElement('div');
+          card.className = 'song-card album-card';
+          const imgUrl = API.getHighResImage(album.image || album.coverImage || '');
+          card.innerHTML = `
+            <div class="song-card__img-wrap" style="border-radius: var(--radius-md);">
+              <img class="song-card__img" src="${imgUrl}" alt="${album.name || album.title}" loading="lazy" style="border-radius: var(--radius-md);">
+            </div>
+            <div class="song-card__info">
+              <div class="song-card__name">${album.name || album.title}</div>
+              <div class="song-card__artist">${album.year || 'Album'}</div>
+            </div>
+          `;
+          card.onclick = () => {
+            if (album.id) openAlbumPage(album.id, album.name || album.title, imgUrl);
+          };
+          albumsContainer.appendChild(card);
+        });
+      }
+
+      // Bind Play All & Artist Radio
+      const playAllBtn = document.getElementById('btn-artist-play-all');
+      if (playAllBtn) {
+        playAllBtn.onclick = async () => {
+          if (artistState.songs.length === 0) return;
+          Player.setQueue(artistState.songs, 0);
+          await Player.playSong(artistState.songs[0]);
+          UI.showToast(`Playing all songs by ${cleanName}`, 'success');
+        };
+      }
+
+      const mixBtn = document.getElementById('btn-artist-mix');
+      if (mixBtn) {
+        mixBtn.onclick = async () => {
+          if (artistState.songs.length === 0) return;
+          const shuffled = [...artistState.songs].sort(() => Math.random() - 0.5);
+          Player.setQueue(shuffled, 0);
+          await Player.playSong(shuffled[0]);
+          UI.showToast(`Starting ${cleanName} Radio Mix`, 'success');
+        };
+      }
+
+      // Bind Load More button
+      if (loadMoreBtn) {
+        loadMoreBtn.onclick = () => loadMoreArtistSongs(artistState);
+      }
+
     } catch (err) {
-      if (container) container.innerHTML = '<div class="empty-state">Error loading artist</div>';
+      console.error('[App] openArtistPage error:', err);
+      if (songsContainer) songsContainer.innerHTML = '<div class="empty-state">Error loading artist</div>';
+    }
+  }
+
+  function renderArtistSongList(artistState) {
+    const container = document.getElementById('artist-songs-container');
+    if (!container) return;
+    container.innerHTML = '';
+
+    artistState.songs.forEach((song, i) => {
+      const el = UI.renderSongListItem(song, i, { showRemove: false });
+      container.appendChild(el);
+    });
+
+    container.querySelectorAll('[data-action="play"]').forEach(el => {
+      el.addEventListener('click', async () => {
+        const index = parseInt(el.dataset.index, 10);
+        Player.setQueue(artistState.songs, index);
+        await Player.playSong(artistState.songs[index]);
+      });
+    });
+  }
+
+  async function loadMoreArtistSongs(artistState) {
+    if (!artistState || artistState.isLoadingMore || !artistState.hasMore) return;
+    artistState.isLoadingMore = true;
+
+    const loadMoreBtn = document.getElementById('btn-artist-load-more');
+    const countEl = document.getElementById('artist-songs-count');
+    if (loadMoreBtn) {
+      loadMoreBtn.textContent = 'Loading more songs...';
+      loadMoreBtn.disabled = true;
+    }
+
+    artistState.currentPage += 1;
+    let newSongs = [];
+
+    try {
+      // Try paginated artist songs if ID exists
+      if (artistState.artistId && API.getArtistSongs) {
+        try {
+          const res = await API.getArtistSongs(artistState.artistId, artistState.currentPage - 1);
+          if (res && res.length > 0) {
+            newSongs.push(...res);
+          }
+        } catch (_) {}
+      }
+
+      // Also search next page of songs
+      try {
+        const searchRes = await API.searchSongs(artistState.name, 50, artistState.currentPage);
+        if (searchRes && searchRes.length > 0) {
+          newSongs.push(...searchRes);
+        }
+      } catch (_) {}
+
+      let addedCount = 0;
+      newSongs.forEach(s => {
+        const norm = API.normalizeSong(s);
+        if (norm && norm.id && !artistState.seenIds.has(norm.id)) {
+          artistState.seenIds.add(norm.id);
+          artistState.songs.push(norm);
+          addedCount++;
+        }
+      });
+
+      if (addedCount > 0) {
+        renderArtistSongList(artistState);
+        if (countEl) countEl.textContent = `${artistState.songs.length} Songs Loaded`;
+      } else {
+        artistState.hasMore = false;
+        if (loadMoreBtn) {
+          loadMoreBtn.textContent = `All ${artistState.songs.length} Songs Loaded`;
+          loadMoreBtn.disabled = true;
+          loadMoreBtn.style.opacity = '0.6';
+        }
+      }
+    } catch (e) {
+      console.warn('[App] loadMoreArtistSongs failed', e);
+    } finally {
+      artistState.isLoadingMore = false;
+      if (artistState.hasMore && loadMoreBtn) {
+        loadMoreBtn.textContent = 'Load More Songs';
+        loadMoreBtn.disabled = false;
+      }
     }
   }
 

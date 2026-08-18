@@ -154,17 +154,36 @@
               <img id="artist-page-img" class="artist-header__img" src="" alt="Artist">
               <div class="artist-header__info">
                 <h1 id="artist-page-name" class="artist-header__name">Artist Name</h1>
-                <button id="btn-artist-mix" class="btn-primary" style="margin-top: var(--space-md);">
-                  <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor" style="margin-right: 8px; vertical-align: middle;"><polygon points="5,3 19,12 5,21"/></svg>
-                  Start Mix
-                </button>
+                <p id="artist-page-subtitle" class="artist-header__subtitle" style="font-size: 13px; color: var(--text-sec); margin-top: 4px;">Verified Artist</p>
+                <div class="artist-header__actions" style="display: flex; gap: 12px; margin-top: var(--space-md); flex-wrap: wrap;">
+                  <button id="btn-artist-play-all" class="btn-primary">
+                    <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor" style="margin-right: 8px; vertical-align: middle;"><polygon points="5,3 19,12 5,21"/></svg>
+                    Play All
+                  </button>
+                  <button id="btn-artist-mix" class="btn-secondary" style="border: 1px solid var(--border); background: var(--bg-surface);">
+                    <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" style="margin-right: 8px; vertical-align: middle;"><polyline points="16 3 21 3 21 8"/><line x1="4" y1="20" x2="21" y2="3"/><polyline points="21 16 21 21 16 21"/><line x1="15" y1="15" x2="21" y2="21"/><line x1="4" y1="4" x2="9" y2="9"/></svg>
+                    Artist Radio
+                  </button>
+                </div>
               </div>
             </div>
           </div>
           <div class="artist-content">
-            <h2 class="shelf-title" style="margin-left:var(--space-xl); margin-top:var(--space-xl);">Top Songs</h2>
+            <div style="display: flex; justify-content: space-between; align-items: center; padding: var(--space-xl) var(--space-xl) var(--space-xs);">
+              <h2 class="shelf-title" style="margin: 0;">All Songs & Tracks</h2>
+              <span id="artist-songs-count" style="font-size: 12px; color: var(--text-sec); font-weight: 600;">0 Songs</span>
+            </div>
             <div id="artist-songs-container" class="song-list" style="padding: 0 var(--space-xl);">
               <div class="loading-shelf"></div>
+            </div>
+            <div id="artist-load-more-container" style="padding: var(--space-lg) var(--space-xl); text-align: center; display: none;">
+              <button id="btn-artist-load-more" class="btn-secondary" style="padding: 12px 28px; font-weight: 600; border-radius: var(--radius-full); border: 1px solid var(--border); background: var(--bg-surface); color: var(--text); cursor: pointer;">
+                Load More Songs
+              </button>
+            </div>
+            <div id="artist-albums-section" style="display: none; padding: var(--space-lg) var(--space-xl);">
+              <h2 class="shelf-title" style="margin: var(--space-lg) 0 var(--space-md);">Albums & Discography</h2>
+              <div id="artist-albums-container" class="horizontal-shelf"></div>
             </div>
           </div>
         </div>
