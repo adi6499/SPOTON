@@ -428,6 +428,16 @@
           </div>
 
           <div class="settings-group">
+            <h3>Audio Animations & Beat Scaling</h3>
+            <label class="switch-wrap">
+              <span>Beat-Reactive Artwork Scaling</span>
+              <input type="checkbox" id="toggle-beat-pulse" checked>
+              <span class="switch-slider"></span>
+            </label>
+            <p class="settings-desc" style="margin-top: 6px;">Pumps and scales the album artwork and glowing aura in sync with the music rhythm.</p>
+          </div>
+
+          <div class="settings-group">
             <h3>Song Lyrics Provider (Musixmatch)</h3>
             <p class="settings-desc">Enter your Musixmatch API Key for licensed lyrics metadata.</p>
             <input type="text" id="input-musixmatch-key" class="settings-select" placeholder="Paste Musixmatch API Key..." style="margin-top: 8px; width: 100%; box-sizing: border-box; text-align: left; padding: 10px 14px; font-family: monospace;">
@@ -541,12 +551,12 @@
   <div id="toast-container"></div>
 
   <!-- Scripts (order matters: dependencies first) -->
-  <script src="js/api.js?v=23"></script>
-  <script src="js/storage.js?v=23"></script>
-  <script src="js/player.js?v=23"></script>
-  <script src="js/ui.js?v=23"></script>
-  <script src="js/download.js?v=23"></script>
-  <script src="js/app.js?v=23"></script>
+  <script src="js/api.js?v=24"></script>
+  <script src="js/storage.js?v=24"></script>
+  <script src="js/player.js?v=24"></script>
+  <script src="js/ui.js?v=24"></script>
+  <script src="js/download.js?v=24"></script>
+  <script src="js/app.js?v=24"></script>
   <script>
     // The service worker handles cache cleanup during its activate event.
     if ('serviceWorker' in navigator) {

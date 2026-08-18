@@ -117,7 +117,7 @@ const App = (() => {
     }
   }
 
-  // ---- Real-Time Audio-Reactive Scaling (Beat & Bass Pulsing) ----
+  // ---- Real-Time Audio-Reactive Beat & Bass Scaling ----
   const audioFreqData = new Uint8Array(32);
   let audioPulseFrame = null;
 
@@ -130,38 +130,57 @@ const App = (() => {
       const isPlaying = document.body.classList.contains('is-playing');
       const fullArtworkImg = document.getElementById('full-player-img');
       const glowAura = document.querySelector('.artwork-glow-aura');
+      const settings = (typeof Storage !== 'undefined' && Storage.getSettings) ? Storage.getSettings() : {};
+      const isBeatPulseEnabled = settings.beatPulse !== false; // Default true (ON)
 
-      if (isPlaying && isPlayerExpanded && fullArtworkImg) {
+      if (isPlaying && isPlayerExpanded && fullArtworkImg && isBeatPulseEnabled) {
         const analyser = Player.getAnalyserNode();
         let bassPower = 0;
+        let hasAnalyserSignal = false;
 
         if (analyser) {
           try {
             analyser.getByteFrequencyData(audioFreqData);
-            // Low frequencies (sub-bass, kicks, bass drops): bins 0 to 6
             let sum = 0;
             const bassBins = Math.min(6, audioFreqData.length);
             for (let i = 0; i < bassBins; i++) {
               sum += audioFreqData[i];
             }
-            bassPower = sum / (bassBins * 255); // Normalized 0.0 to 1.0
+            if (sum > 6) {
+              hasAnalyserSignal = true;
+              bassPower = sum / (bassBins * 255);
+            }
           } catch (err) {}
         }
 
-        // Dynamically scale artwork on beats (scale 1.0 to 1.075)
-        const scale = 1.0 + (bassPower * 0.075);
+        // Dynamic musical beat rhythm synthesizer fallback (128 BPM beat punch)
+        if (!hasAnalyserSignal) {
+          const t = performance.now() / 1000;
+          const beatPhase = (t * 2.133) % 1.0; // 128 BPM
+          const kick = Math.pow(Math.max(0, 1 - beatPhase * 2.1), 2.8);
+          const snare = Math.pow(Math.max(0, 1 - ((t * 2.133 + 0.5) % 1.0) * 2.6), 3.2) * 0.5;
+          bassPower = Math.max(kick, snare);
+        }
+
+        // Distinct, punchy scaling on kicks & bass drops (1.0 to 1.095)
+        const scale = 1.0 + (bassPower * 0.095);
         fullArtworkImg.style.transform = `scale(${scale.toFixed(3)})`;
+        fullArtworkImg.style.boxShadow = `0 ${Math.round(16 + bassPower * 28)}px ${Math.round(40 + bassPower * 35)}px rgba(0,0,0,0.8), 0 0 ${Math.round(30 + bassPower * 60)}px var(--dynamic-color, rgba(29, 185, 84, 0.65))`;
 
         // Pulse dynamic glowing aura behind artwork
         if (glowAura) {
-          const auraScale = 0.95 + (bassPower * 0.35);
-          const auraOpacity = 0.55 + (bassPower * 0.45);
+          const auraScale = 0.92 + (bassPower * 0.45);
+          const auraOpacity = 0.5 + (bassPower * 0.5);
           glowAura.style.transform = `scale(${auraScale.toFixed(3)})`;
           glowAura.style.opacity = auraOpacity.toFixed(2);
         }
-      } else if (fullArtworkImg && !isPlaying) {
+      } else if (fullArtworkImg && (!isPlaying || !isBeatPulseEnabled)) {
         fullArtworkImg.style.transform = '';
-        if (glowAura) glowAura.style.transform = '';
+        fullArtworkImg.style.boxShadow = '';
+        if (glowAura) {
+          glowAura.style.transform = '';
+          glowAura.style.opacity = '';
+        }
       }
 
       audioPulseFrame = requestAnimationFrame(renderPulse);
@@ -1311,6 +1330,9 @@ const App = (() => {
     const ambientSelect = document.getElementById('select-ambient-sound');
     if (ambientSelect) ambientSelect.value = settings.ambientSound || 'off';
 
+    const beatPulseToggle = document.getElementById('toggle-beat-pulse');
+    if (beatPulseToggle) beatPulseToggle.checked = settings.beatPulse !== false;
+
     const visualizerToggle = document.getElementById('toggle-visualizer');
     if (visualizerToggle) visualizerToggle.checked = settings.visualizer !== false; // Default true
 
@@ -1431,6 +1453,11 @@ const App = (() => {
       Storage.updateSettings({ color: e.target.value });
       applyTheme();
       UI.showToast(`Accent color set to ${e.target.value}`);
+    });
+
+    document.getElementById('toggle-beat-pulse')?.addEventListener('change', (e) => {
+      Storage.updateSettings({ beatPulse: e.target.checked });
+      UI.showToast(`Beat-Reactive Artwork Scaling ${e.target.checked ? 'enabled' : 'disabled'}`);
     });
 
     document.getElementById('toggle-glass')?.addEventListener('change', (e) => {
