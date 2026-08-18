@@ -80,8 +80,12 @@ const App = (() => {
         lyricsBtn.addEventListener('click', () => {
           const isHidden = lyricsPanel.style.display === 'none';
           lyricsPanel.style.display = isHidden ? 'flex' : 'none';
-          artworkImg.style.opacity = isHidden ? '0.2' : '1';
+          artworkImg.style.opacity = isHidden ? '0.15' : '1';
           lyricsBtn.style.opacity = isHidden ? '1' : '0.5';
+          if (isHidden) {
+            const track = Player.getCurrentTrack();
+            if (track) loadLyrics(track);
+          }
         });
       }
 
@@ -179,6 +183,9 @@ const App = (() => {
 
     Player.on('timeupdate', (data) => {
       UI.updateProgress(data);
+      if (data && data.currentTime !== undefined) {
+        updateSyncedLyrics(data.currentTime);
+      }
     });
 
     Player.on('trackchange', (track) => {
@@ -195,6 +202,12 @@ const App = (() => {
       const codecEl = document.getElementById('full-player-codec');
       if (codecEl && Player.getStreamCodecDisplay) {
         codecEl.textContent = Player.getStreamCodecDisplay();
+      }
+
+      // Auto-load lyrics if lyrics panel is open or preload
+      const lyricsPanel = document.getElementById('lyrics-panel');
+      if (track) {
+        loadLyrics(track, lyricsPanel && lyricsPanel.style.display !== 'none');
       }
 
       // Refresh favorites view if active
@@ -215,6 +228,103 @@ const App = (() => {
       if (queuePage && queuePage.classList.contains('active')) {
         UI.renderQueue(document.getElementById('queue-container'));
         rebindQueueEvents();
+      }
+    });
+  }
+
+  // ---- Live Lyrics Controller (Spotify Style) ----
+
+  let activeLyricsData = null;
+  let parsedLyricsLines = [];
+  let currentLyricsSongId = null;
+
+  async function loadLyrics(song, force = false) {
+    if (!song) return;
+    if (!force && currentLyricsSongId === song.id && activeLyricsData) return;
+
+    currentLyricsSongId = song.id;
+    const lyricsContent = document.querySelector('.lyrics-content');
+    if (!lyricsContent) return;
+
+    lyricsContent.innerHTML = '<div style="opacity:0.6; padding: 40px 0;">Searching for lyrics...</div>';
+    activeLyricsData = null;
+    parsedLyricsLines = [];
+
+    try {
+      const data = await API.getLyrics(song.name, song.artists, song.duration);
+      if (currentLyricsSongId !== song.id) return; // Song changed while fetching
+
+      if (!data || (!data.synced && !data.plain)) {
+        lyricsContent.innerHTML = '<div style="opacity:0.6; padding: 40px 0;">Lyrics not available for this song.</div>';
+        return;
+      }
+
+      activeLyricsData = data;
+
+      if (data.synced) {
+        // Parse LRC format: [mm:ss.xx] Lyric line
+        const rawLines = data.synced.split('\n');
+        parsedLyricsLines = [];
+        rawLines.forEach(line => {
+          const match = line.match(/\[(\d+):(\d+\.?\d*)\](.*)/);
+          if (match) {
+            const time = parseInt(match[1]) * 60 + parseFloat(match[2]);
+            const text = match[3].trim();
+            if (text) {
+              parsedLyricsLines.push({ time, text });
+            }
+          }
+        });
+
+        if (parsedLyricsLines.length > 0) {
+          lyricsContent.innerHTML = parsedLyricsLines.map((item, idx) => `
+            <div class="lyrics-line" data-idx="${idx}" data-time="${item.time}">${item.text}</div>
+          `).join('');
+
+          lyricsContent.querySelectorAll('.lyrics-line').forEach(el => {
+            el.addEventListener('click', (e) => {
+              e.stopPropagation();
+              const time = parseFloat(el.dataset.time);
+              if (!isNaN(time)) Player.seek(time);
+            });
+          });
+          return;
+        }
+      }
+
+      // Plain lyrics fallback
+      lyricsContent.innerHTML = data.plain.split('\n').map(line => `
+        <div class="lyrics-line">${line || '&nbsp;'}</div>
+      `).join('');
+    } catch (e) {
+      if (currentLyricsSongId === song.id) {
+        lyricsContent.innerHTML = '<div style="opacity:0.6; padding: 40px 0;">Lyrics unavailable.</div>';
+      }
+    }
+  }
+
+  function updateSyncedLyrics(currentTime) {
+    if (!parsedLyricsLines || parsedLyricsLines.length === 0) return;
+    const lyricsPanel = document.getElementById('lyrics-panel');
+    if (!lyricsPanel || lyricsPanel.style.display === 'none') return;
+
+    let activeIndex = -1;
+    for (let i = 0; i < parsedLyricsLines.length; i++) {
+      if (currentTime >= parsedLyricsLines[i].time) {
+        activeIndex = i;
+      } else {
+        break;
+      }
+    }
+
+    const lines = lyricsPanel.querySelectorAll('.lyrics-line');
+    lines.forEach((line, idx) => {
+      const isActive = idx === activeIndex;
+      if (line.classList.contains('active') !== isActive) {
+        line.classList.toggle('active', isActive);
+        if (isActive) {
+          line.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }
       }
     });
   }

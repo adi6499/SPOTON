@@ -228,6 +228,63 @@ const API = (() => {
     return data?.data || null;
   }
 
+  /**
+   * Get lyrics (synced or plain) for a track
+   * @param {string} trackName - Song name
+   * @param {string} artistName - Artist name
+   * @param {number} duration - Duration in seconds
+   * @returns {Promise<Object|null>}
+   */
+  async function getLyrics(trackName, artistName, duration) {
+    if (!trackName) return null;
+    const cleanTitle = trackName.replace(/\(.*?\)|\[.*?\]/g, '').trim();
+    const cleanArtist = (artistName || '').split(',')[0].split('&')[0].trim();
+
+    // 1. Try LRCLIB exact match (supports both synced & plain lyrics)
+    try {
+      let url = `https://lrclib.net/api/get?track_name=${encodeURIComponent(cleanTitle)}&artist_name=${encodeURIComponent(cleanArtist)}`;
+      if (duration) url += `&duration=${Math.round(duration)}`;
+      const res = await fetch(url);
+      if (res.ok) {
+        const data = await res.json();
+        if (data.syncedLyrics || data.plainLyrics) {
+          return {
+            synced: data.syncedLyrics || null,
+            plain: data.plainLyrics || data.syncedLyrics
+          };
+        }
+      }
+    } catch (e) {}
+
+    // 2. Try LRCLIB search query
+    try {
+      const searchRes = await fetch(`https://lrclib.net/api/search?q=${encodeURIComponent(cleanTitle + ' ' + cleanArtist)}`);
+      if (searchRes.ok) {
+        const results = await searchRes.json();
+        if (results && results.length > 0) {
+          const match = results[0];
+          return {
+            synced: match.syncedLyrics || null,
+            plain: match.plainLyrics || match.syncedLyrics
+          };
+        }
+      }
+    } catch (e) {}
+
+    // 3. Fallback to Lyrics.ovh
+    try {
+      const ovhRes = await fetch(`https://api.lyrics.ovh/v1/${encodeURIComponent(cleanArtist)}/${encodeURIComponent(cleanTitle)}`);
+      if (ovhRes.ok) {
+        const ovhData = await ovhRes.json();
+        if (ovhData.lyrics) {
+          return { synced: null, plain: ovhData.lyrics };
+        }
+      }
+    } catch (e) {}
+
+    return null;
+  }
+
   // ---- Helpers ----
 
   /**
@@ -360,6 +417,7 @@ const API = (() => {
     getAlbumDetails,
     getPlaylistDetails,
     getArtistDetails,
+    getLyrics,
     getBestDownloadUrl,
     getDownloadUrl,
     getImageUrl,
