@@ -1259,8 +1259,31 @@ const App = (() => {
   function registerServiceWorker() {
     if ('serviceWorker' in navigator) {
       navigator.serviceWorker.register('sw.js')
-        .then(reg => console.log('[SW] Registered:', reg.scope))
+        .then(reg => {
+          console.log('[SW] Registered:', reg.scope);
+
+          reg.addEventListener('updatefound', () => {
+            const newWorker = reg.installing;
+            newWorker.addEventListener('statechange', () => {
+              if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
+                // New update available and installed
+                UI.showToast('New update available! Click here to refresh.', 'success', {
+                  duration: 10000,
+                  onClick: () => window.location.reload()
+                });
+              }
+            });
+          });
+        })
         .catch(err => console.warn('[SW] Registration failed:', err));
+
+      let refreshing = false;
+      navigator.serviceWorker.addEventListener('controllerchange', () => {
+        if (refreshing) return;
+        refreshing = true;
+        // Optionally auto-reload, but we prompt the user instead to not interrupt playback
+        // window.location.reload(); 
+      });
     }
   }
 

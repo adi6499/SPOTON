@@ -7,7 +7,7 @@ const UI = (() => {
 
   let toastTimeout = null;
 
-  function showToast(message, type = 'info') {
+  function showToast(message, type = 'info', options = {}) {
     let container = document.getElementById('toast-container');
     if (!container) {
       container = document.createElement('div');
@@ -21,14 +21,23 @@ const UI = (() => {
       <span class="toast-icon">${type === 'success' ? '✓' : type === 'error' ? '✕' : 'ℹ'}</span>
       <span class="toast-msg">${message}</span>
     `;
-    container.appendChild(toast);
+    
+    if (options.onClick) {
+      toast.style.cursor = 'pointer';
+      toast.addEventListener('click', () => {
+        options.onClick();
+        toast.classList.remove('show');
+      });
+    }
 
+    container.appendChild(toast);
     requestAnimationFrame(() => toast.classList.add('show'));
 
+    const duration = options.duration || 3000;
     setTimeout(() => {
       toast.classList.remove('show');
       toast.addEventListener('transitionend', () => toast.remove());
-    }, 3000);
+    }, duration);
   }
 
   // ---- Context Menu System ----
