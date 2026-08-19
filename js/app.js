@@ -2072,8 +2072,10 @@ const App = (() => {
     const stats = Storage.getStats();
     const history = Storage.getListeningHistory();
 
-    const topArtists = Object.entries(stats.artists).sort((a,b)=>b[1]-a[1]).slice(0,3).map(a=>a[0]);
-    const topGenres = Object.entries(stats.genres).sort((a,b)=>b[1]-a[1]).slice(0,3).map(a=>a[0]);
+    const safeTopArtists = stats.topArtists || {};
+    const safeTopGenres = stats.topGenres || {};
+    const topArtists = Object.entries(safeTopArtists).sort((a,b)=>b[1]-a[1]).slice(0,3).map(a=>a[0]);
+    const topGenres = Object.entries(safeTopGenres).sort((a,b)=>b[1]-a[1]).slice(0,3).map(a=>a[0]);
 
     view.innerHTML = `
       <h1 style="margin-bottom:24px; font-size:32px; font-weight:800;">Your Library</h1>
@@ -2387,7 +2389,16 @@ const App = (() => {
         radioQueue.unshift(song);
 
         Player.setQueue(radioQueue, 0);
-        await Player.playSong(song);
+        
+        // Only restart playback if it's a different song
+        const currentTrack = Player.getCurrentTrack();
+        if (!currentTrack || currentTrack.id !== song.id) {
+          await Player.playSong(song);
+        } else {
+          // If it's already playing, we just needed to update the queue silently
+          // We can ensure the UI updates if needed
+        }
+        
         UI.showToast(`Radio started based on ${song.name}`, 'success');
       } else {
         UI.showToast('Could not load radio mix', 'error');

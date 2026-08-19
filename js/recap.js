@@ -3,7 +3,7 @@ const Recap = (() => {
     const history = Storage.getListeningHistory();
     const stats = Storage.getStats();
     
-    if (history.length < 5) {
+    if (!history || history.length < 5) {
       return null;
     }
 
@@ -12,16 +12,21 @@ const Recap = (() => {
     const songCounts = {};
 
     history.forEach(session => {
-      const duration = session.song.duration || 180; // default 3 mins
-      totalMinutes += (session.listenCount * duration) / 60;
+      // session is a flat object: { id, name, artists, album, image, duration, playedAt }
+      const duration = session.duration || 180; // default 3 mins if missing
+      totalMinutes += duration / 60; // 1 play = 1 duration
       
-      const artists = session.song.artists.split(',').map(a => a.trim());
-      artists.forEach(a => {
-        if (!a || a === '-') return;
-        artistCounts[a] = (artistCounts[a] || 0) + session.listenCount;
-      });
+      if (session.artists) {
+        const artists = session.artists.split(',').map(a => a.trim());
+        artists.forEach(a => {
+          if (!a || a === '-') return;
+          artistCounts[a] = (artistCounts[a] || 0) + 1; // 1 occurrence = 1 count
+        });
+      }
 
-      songCounts[session.song.name] = (songCounts[session.song.name] || 0) + session.listenCount;
+      if (session.name) {
+        songCounts[session.name] = (songCounts[session.name] || 0) + 1;
+      }
     });
 
     const topArtists = Object.entries(artistCounts)
@@ -34,8 +39,8 @@ const Recap = (() => {
 
     return {
       totalMinutes: Math.round(totalMinutes),
-      totalSongs: stats.totalSongsPlayed || 0,
-      topArtists: topArtists,
+      totalSongs: stats.totalSongsPlayed || history.length || 0,
+      topArtists: topArtists.length > 0 ? topArtists : ['Unknown'],
       topSong: topSongEntry ? topSongEntry[0] : 'Unknown'
     };
   }
@@ -87,7 +92,7 @@ const Recap = (() => {
       if (navigator.share) {
         navigator.share({
           title: 'My MusicFlow Recap',
-          text: \`I listened to \${data.totalMinutes} minutes of music! My top artist is \${data.topArtists[0]}.\`,
+          text: `I listened to ${data.totalMinutes} minutes of music! My top artist is ${data.topArtists[0]}.`,
           url: window.location.href
         }).catch(console.error);
       } else {
