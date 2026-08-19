@@ -1,4 +1,4 @@
-const CACHE_NAME = 'musicflow-v25';
+const CACHE_NAME = 'musicflow-v33';
 const ASSETS = [
   './',
   './index.html',
@@ -7,6 +7,7 @@ const ASSETS = [
   './js/storage.js',
   './js/player.js',
   './js/ui.js',
+  './js/recommendations.js',
   './js/download.js',
   './js/app.js',
   './assets/logo.jpg'

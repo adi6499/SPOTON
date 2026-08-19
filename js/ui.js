@@ -304,13 +304,58 @@ const UI = (() => {
       return;
     }
 
-    const header = document.createElement('div');
-    header.className = 'section-header';
-    header.innerHTML = `
-      <h2 class="section-title">Your Favorites</h2>
+    const recapBanner = document.createElement('div');
+    recapBanner.style.background = 'linear-gradient(135deg, var(--accent-color), var(--accent-dark))';
+    recapBanner.style.padding = '16px 20px';
+    recapBanner.style.borderRadius = 'var(--radius-lg)';
+    recapBanner.style.marginBottom = '24px';
+    recapBanner.style.display = 'flex';
+    recapBanner.style.justifyContent = 'space-between';
+    recapBanner.style.alignItems = 'center';
+    recapBanner.style.cursor = 'pointer';
+    recapBanner.style.boxShadow = 'var(--shadow-md)';
+    recapBanner.innerHTML = `
+      <div>
+        <div style="font-weight: 800; font-size: 18px; color: #fff;">Your Music Recap</div>
+        <div style="font-size: 13px; color: rgba(255,255,255,0.8); margin-top: 4px;">See your listening stats</div>
+      </div>
+      <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="#fff" stroke-width="2"><polyline points="9 18 15 12 9 6"/></svg>
+    `;
+    recapBanner.onclick = () => {
+      document.querySelectorAll('.nav-item').forEach(nav => nav.classList.remove('active'));
+      UI.showPage('page-recap');
+      Recap.renderRecap(document.getElementById('recap-container'));
+      history.pushState({ type: 'page', pageId: 'page-recap' }, '', '#recap');
+    };
+    container.appendChild(recapBanner);
+
+    const recentlyAdded = [...favs].reverse().slice(0, 8); // top 8 recently added
+
+    // Recently Added Shelf
+    if (recentlyAdded.length > 0) {
+      const recentHeader = document.createElement('div');
+      recentHeader.className = 'section-header';
+      recentHeader.innerHTML = `<h2 class="section-title">Recently Added</h2>`;
+      container.appendChild(recentHeader);
+
+      const recentGrid = document.createElement('div');
+      recentGrid.className = 'shelf-grid horizontal-scroll';
+      recentlyAdded.forEach((song) => {
+        const originalIndex = favs.findIndex(s => s.id === song.id);
+        recentGrid.appendChild(renderSongCard(song, originalIndex));
+      });
+      container.appendChild(recentGrid);
+    }
+
+    // All Favorites List
+    const allHeader = document.createElement('div');
+    allHeader.className = 'section-header';
+    allHeader.style.marginTop = '24px';
+    allHeader.innerHTML = `
+      <h2 class="section-title">All Favorites</h2>
       <span class="section-count">${favs.length} songs</span>
     `;
-    container.appendChild(header);
+    container.appendChild(allHeader);
 
     const list = document.createElement('div');
     list.className = 'song-list';

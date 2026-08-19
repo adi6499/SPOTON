@@ -13,6 +13,8 @@ const Storage = (() => {
     LISTENING_HISTORY: 'mf_listening_history',
     STATS: 'mf_stats',
     HOME_CACHE: 'mf_home_cache',
+    FOLLOWED_ARTISTS: 'mf_followed_artists',
+    DAILY_MIX_CACHE: 'mf_daily_mix_cache',
   };
 
   const MAX_RECENT = 50;
@@ -74,6 +76,44 @@ const Storage = (() => {
     } else {
       addFavorite(song);
       return true;
+    }
+  }
+
+  // ---- Followed Artists ----
+
+  function getFollowedArtists() {
+    return get(KEYS.FOLLOWED_ARTISTS, []);
+  }
+
+  function followArtist(artist) {
+    const followed = getFollowedArtists();
+    if (followed.some(a => a.id === artist.id)) return false;
+    followed.unshift({
+      id: artist.id,
+      name: artist.name,
+      image: artist.image,
+      followedAt: Date.now(),
+    });
+    set(KEYS.FOLLOWED_ARTISTS, followed);
+    return true;
+  }
+
+  function unfollowArtist(artistId) {
+    const followed = getFollowedArtists().filter(a => a.id !== artistId);
+    set(KEYS.FOLLOWED_ARTISTS, followed);
+  }
+
+  function isArtistFollowed(artistId) {
+    return getFollowedArtists().some(a => a.id === artistId);
+  }
+
+  function toggleFollowArtist(artist) {
+    if (isArtistFollowed(artist.id)) {
+      unfollowArtist(artist.id);
+      return false; // Now unfollowed
+    } else {
+      followArtist(artist);
+      return true; // Now followed
     }
   }
 
@@ -210,6 +250,7 @@ const Storage = (() => {
       totalSongsPlayed: 0,
       totalListeningTime: 0, // seconds
       topArtists: {},
+      topGenres: {}
     });
   }
 
@@ -220,7 +261,13 @@ const Storage = (() => {
     
     // Top artists simple tracker
     const artist = song.artists ? song.artists.split(',')[0].trim() : 'Unknown';
+    stats.topArtists = stats.topArtists || {};
     stats.topArtists[artist] = (stats.topArtists[artist] || 0) + 1;
+    
+    // Top genres tracker (derived from language or genre if available)
+    const genre = song.language ? song.language : 'Unknown';
+    stats.topGenres = stats.topGenres || {};
+    stats.topGenres[genre] = (stats.topGenres[genre] || 0) + 1;
     
     set(KEYS.STATS, stats);
   }
@@ -246,6 +293,25 @@ const Storage = (() => {
 
   function clearHomeCache() {
     set(KEYS.HOME_CACHE, null);
+  }
+
+  // ---- Daily Mix Cache ----
+
+  function getDailyMixCache() {
+    const cache = get(KEYS.DAILY_MIX_CACHE, null);
+    if (!cache) return null;
+    // 24 hour expiration
+    if (Date.now() - cache.timestamp > 24 * 60 * 60 * 1000) {
+      return null;
+    }
+    return cache.data;
+  }
+
+  function setDailyMixCache(data) {
+    set(KEYS.DAILY_MIX_CACHE, {
+      timestamp: Date.now(),
+      data: data
+    });
   }
 
   // ---- IndexedDB Offline Storage ----
@@ -365,9 +431,16 @@ const Storage = (() => {
     getHomeCache,
     setHomeCache,
     clearHomeCache,
+    getDailyMixCache,
+    setDailyMixCache,
     saveOfflineSong,
     getOfflineSong,
     getOfflineSongs,
-    removeOfflineSong
+    removeOfflineSong,
+    getFollowedArtists,
+    followArtist,
+    unfollowArtist,
+    isArtistFollowed,
+    toggleFollowArtist
   };
 })();

@@ -118,33 +118,109 @@ const API = (() => {
 
   // ---- Recommendations Aggregator ----
 
-  async function getHomeRecommendations() {
-    const cached = Storage.getHomeCache();
-    // Only use cache if it has actual content
-    if (cached && cached.trending && cached.trending.length > 0) {
-      console.log('[API] Using cached home recommendations');
-      return cached;
+  async function getHomeRecommendations(forceRefresh = false) {
+    if (!forceRefresh) {
+      const cached = Storage.getHomeCache();
+      if (cached && cached.trending && cached.trending.length > 0) {
+        return cached;
+      }
     }
 
     const prefs = Storage.getSettings().languages || [];
     const mainLang = prefs.length > 0 ? prefs[0] : '';
     const langSuffix = mainLang ? ` ${mainLang}` : '';
 
+    // Dynamic rotation pools for vibrant and fresh daily discovery
+    const trendingPool = [
+      `trending hits${langSuffix}`,
+      `top 50 viral${langSuffix}`,
+      `latest chartbusters${langSuffix}`,
+      `top songs 2026${langSuffix}`,
+      `billboard hot 100`,
+      `bollywood superhits`,
+      `punjabi pop top hits`
+    ];
+
+    const globalPool = [
+      `top 50 global`,
+      `worldwide viral hits`,
+      `international pop hits`,
+      `top english songs`,
+      `global dance hits`,
+      `billboard global 200`
+    ];
+
+    const newReleasesPool = [
+      `new releases${langSuffix}`,
+      `latest singles 2026`,
+      `fresh new tracks${langSuffix}`,
+      `brand new music`,
+      `hot new arrivals`,
+      `friday music drops`
+    ];
+
+    const chillPool = [
+      'lo-fi chillhop beats',
+      'acoustic coffee morning',
+      'late night vibes songs',
+      'peaceful piano melodies',
+      'ambient chill beats',
+      'monsoon romantic songs',
+      'indie acoustic vibes'
+    ];
+
+    const focusPool = [
+      'deep focus electronic',
+      'braindance synthwave',
+      'phonk drift high energy',
+      'instrumental study flow',
+      'chillwave beats',
+      'lo-fi sleep & study'
+    ];
+
+    const workoutPool = [
+      'workout pump gym hits',
+      'high energy edm festival',
+      'banger hip hop hype',
+      'motivational running beats',
+      'hardstyle edm',
+      'rap gym workout'
+    ];
+
+    const artistPool = [
+      `popular artists${langSuffix}`,
+      'top indian singers',
+      'famous global artists',
+      'top vocalists',
+      'legendary playback singers',
+      'trending rap artists'
+    ];
+
+    const albumPool = [
+      `top albums${langSuffix}`,
+      'best soundtrack albums',
+      'blockbuster movie albums',
+      'trending studio albums',
+      'iconic music albums'
+    ];
+
+    const pick = (arr) => arr[Math.floor(Math.random() * arr.length)];
+
     const queries = {
-      trending: { type: 'songs', query: `trending hits${langSuffix}` },
-      global: { type: 'songs', query: `top 50${langSuffix}` },
-      newReleases: { type: 'songs', query: `new releases${langSuffix}` },
-      chill: { type: 'songs', query: 'lo-fi chill' },
-      focus: { type: 'songs', query: 'deep focus' },
-      workout: { type: 'songs', query: 'workout hits' },
-      popularArtists: { type: 'artists', query: `popular artists${langSuffix}` },
-      popularAlbums: { type: 'albums', query: `top albums${langSuffix}` }
+      trending: { type: 'songs', query: pick(trendingPool) },
+      global: { type: 'songs', query: pick(globalPool) },
+      newReleases: { type: 'songs', query: pick(newReleasesPool) },
+      chill: { type: 'songs', query: pick(chillPool) },
+      focus: { type: 'songs', query: pick(focusPool) },
+      workout: { type: 'songs', query: pick(workoutPool) },
+      popularArtists: { type: 'artists', query: pick(artistPool) },
+      popularAlbums: { type: 'albums', query: pick(albumPool) }
     };
 
     const keys = Object.keys(queries);
     const promises = keys.map(k => {
       const q = queries[k];
-      if (q.type === 'songs') return searchSongs(q.query, 50);
+      if (q.type === 'songs') return searchSongs(q.query, 40);
       if (q.type === 'artists') return searchArtists(q.query, 20);
       if (q.type === 'albums') return searchAlbums(q.query, 20);
       return Promise.resolve([]);
@@ -153,28 +229,26 @@ const API = (() => {
     try {
       const results = await Promise.allSettled(promises);
       const data = {};
-      
       const seenIds = new Set();
-      
+
       keys.forEach((k, index) => {
         let items = results[index].status === 'fulfilled' ? results[index].value : [];
-        
-        // Deduplicate songs across categories
         if (queries[k].type === 'songs') {
+          // Shuffle slightly to give variety
+          items = items.sort(() => Math.random() - 0.5);
           items = items.filter(item => {
             if (seenIds.has(item.id)) return false;
             seenIds.add(item.id);
             return true;
           });
         }
-        
         data[k] = items;
       });
 
-      // Populate hero with a random trending song (if available)
-      data.hero = data.trending.length > 0 ? data.trending[0] : null;
+      // Pick a random exciting hero song from top trending
+      const heroPool = [...(data.trending || []), ...(data.global || []), ...(data.newReleases || [])];
+      data.hero = heroPool.length > 0 ? heroPool[Math.floor(Math.random() * Math.min(10, heroPool.length))] : null;
 
-      // Only cache if we got actual data
       const hasData = keys.some(k => data[k] && data[k].length > 0);
       if (hasData) {
         Storage.setHomeCache(data);
@@ -386,6 +460,24 @@ const API = (() => {
   }
 
   /**
+   * Decode HTML entities in text strings returned by the API
+   * @param {string} str - String with entities like &quot;, &amp;, &#039;
+   * @returns {string} Clean decoded string
+   */
+  function decodeHtml(str) {
+    if (!str || typeof str !== 'string') return str || '';
+    return str
+      .replace(/&amp;/g, '&')
+      .replace(/&quot;/g, '"')
+      .replace(/&#039;/g, "'")
+      .replace(/&apos;/g, "'")
+      .replace(/&lt;/g, '<')
+      .replace(/&gt;/g, '>')
+      .replace(/&#(\d+);/g, (match, dec) => String.fromCharCode(dec))
+      .trim();
+  }
+
+  /**
    * Safely extract artists from various API response formats
    * @param {Object} raw - Raw song from API
    * @returns {string} Comma-separated artists
@@ -393,27 +485,26 @@ const API = (() => {
   function getArtistsString(raw) {
     if (!raw) return 'Unknown Artist';
     
-    if (typeof raw.artists === 'string') return raw.artists;
-    
-    if (Array.isArray(raw.artists)) {
-      return raw.artists.map(a => a.name || a).join(', ');
-    }
-    
-    if (raw.artists && typeof raw.artists === 'object') {
+    let result = 'Unknown Artist';
+    if (typeof raw.artists === 'string') {
+      result = raw.artists;
+    } else if (Array.isArray(raw.artists)) {
+      result = raw.artists.map(a => a.name || a).join(', ');
+    } else if (raw.artists && typeof raw.artists === 'object') {
       if (Array.isArray(raw.artists.primary) && raw.artists.primary.length > 0) {
-        return raw.artists.primary.map(a => a.name || a).join(', ');
+        result = raw.artists.primary.map(a => a.name || a).join(', ');
+      } else if (Array.isArray(raw.artists.all) && raw.artists.all.length > 0) {
+        result = raw.artists.all.map(a => a.name || a).join(', ');
       }
-      if (Array.isArray(raw.artists.all) && raw.artists.all.length > 0) {
-        return raw.artists.all.map(a => a.name || a).join(', ');
-      }
+    } else if (typeof raw.primaryArtists === 'string') {
+      result = raw.primaryArtists;
+    } else if (Array.isArray(raw.primaryArtists)) {
+      result = raw.primaryArtists.map(a => a.name || a).join(', ');
+    } else if (typeof raw.artist === 'string') {
+      result = raw.artist;
     }
     
-    if (typeof raw.primaryArtists === 'string') return raw.primaryArtists;
-    if (Array.isArray(raw.primaryArtists)) return raw.primaryArtists.map(a => a.name || a).join(', ');
-    
-    if (typeof raw.artist === 'string') return raw.artist;
-    
-    return 'Unknown Artist';
+    return decodeHtml(result);
   }
 
   /**
@@ -424,9 +515,9 @@ const API = (() => {
   function normalizeSong(raw) {
     return {
       id: raw.id,
-      name: raw.name || raw.title || 'Unknown',
+      name: decodeHtml(raw.name || raw.title || 'Unknown'),
       artists: getArtistsString(raw),
-      album: raw.album?.name || raw.album || '',
+      album: decodeHtml(raw.album?.name || raw.album || ''),
       duration: raw.duration || 0,
       image: getImageUrl(raw),
       streamUrl: getBestDownloadUrl(raw),
@@ -480,5 +571,6 @@ const API = (() => {
     getImageUrl,
     getHighResImage,
     normalizeSong,
+    decodeHtml,
   };
 })();

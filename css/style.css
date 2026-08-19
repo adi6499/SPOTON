@@ -5,36 +5,36 @@
    ======================================== */
 
 :root {
-  /* Default Theme: Dark (Spotify Style) */
-  --bg-base: #121212;
-  --bg-elevated: #181818;
-  --bg-surface: #282828;
+  /* Default Theme: Dark (Midnight Violet & Coral) */
+  --bg-base: #0a0812;
+  --bg-elevated: #130f24;
+  --bg-surface: #1e1838;
   
-  --bg-card: rgba(255, 255, 255, 0.04);
-  --bg-card-hover: #282828;
-  --bg-glass: #181818;
-  --bg-glass-heavy: #121212;
-  --bg-input: rgba(255, 255, 255, 0.1);
+  --bg-card: rgba(255, 255, 255, 0.03);
+  --bg-card-hover: rgba(255, 255, 255, 0.07);
+  --bg-glass: rgba(19, 15, 36, 0.7);
+  --bg-glass-heavy: rgba(10, 8, 18, 0.9);
+  --bg-input: rgba(255, 255, 255, 0.08);
 
   --text-primary: #ffffff;
-  --text-secondary: #b3b3b3;
-  --text-tertiary: #a7a7a7;
+  --text-secondary: #b9b5d1;
+  --text-tertiary: #8b87a6;
 
-  --border: rgba(255, 255, 255, 0.1);
-  --border-hover: rgba(255, 255, 255, 0.2);
+  --border: rgba(255, 255, 255, 0.06);
+  --border-hover: rgba(255, 255, 255, 0.15);
   
-  /* Default Accent: Spotify Green */
-  --accent-color: #1DB954;
-  --accent-light: #1ed760;
-  --accent-dark: #1aa34a;
-  --accent-glow: rgba(29, 185, 84, 0.3);
-  --accent-gradient: linear-gradient(135deg, var(--accent-color), var(--accent-light));
+  /* Default Accent: Coral */
+  --accent-color: #FF6B6B;
+  --accent-light: #FF8E8B;
+  --accent-dark: #E05454;
+  --accent-glow: rgba(255, 107, 107, 0.35);
+  --accent-gradient: linear-gradient(135deg, var(--accent-color), #FF8E8B);
 
   /* Feedback Colors */
-  --success: #10b981;
-  --error: #ef4444;
-  --warning: #f59e0b;
-  --info: #3b82f6;
+  --success: #20d88b;
+  --error: #ff4757;
+  --warning: #ffa502;
+  --info: #1e90ff;
 
   /* Spacing System */
   --space-xs: 4px;
@@ -93,9 +93,9 @@
 
 /* Theme Options (applied to body class) */
 body.theme-light {
-  --bg-base: #f8fafc;
+  --bg-base: #faf8fb;
   --bg-elevated: #ffffff;
-  --bg-surface: #f1f5f9;
+  --bg-surface: #f4f0f6;
   
   --bg-card: rgba(0, 0, 0, 0.03);
   --bg-card-hover: rgba(0, 0, 0, 0.06);
@@ -852,6 +852,23 @@ body.has-player .page {
   font-family: inherit;
 }
 
+.btn-icon {
+  background: transparent;
+  border: none;
+  color: var(--text-primary);
+  opacity: 0.7;
+  cursor: pointer;
+  transition: opacity var(--anim-micro), transform var(--anim-micro);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 8px 12px;
+  border-radius: var(--radius-sm);
+  font-family: inherit;
+  min-width: 44px;
+  min-height: 44px;
+}
+
 .btn-primary {
   background: var(--accent-color);
   color: white;
@@ -899,12 +916,15 @@ body.theme-light .bottom-nav {
   display: flex;
   flex-direction: column;
   align-items: center;
+  justify-content: center;
   gap: 4px;
   padding: 4px;
   color: var(--text-tertiary);
   font-size: 10px;
   font-weight: 600;
   transition: color var(--anim-micro);
+  min-width: 44px;
+  min-height: 44px;
 }
 .nav-item svg { width: 24px; height: 24px; stroke-width: 2.5; }
 .nav-item.active { color: var(--accent-color); }
@@ -1060,15 +1080,16 @@ body.theme-light .bottom-nav {
     justify-content: space-between;
   }
   .main-scroll-area {
-    padding-bottom: calc(var(--player-bar-height) + var(--nav-height) + var(--safe-bottom) + 40px) !important;
+    padding-bottom: calc(var(--player-bar-height) + var(--nav-height) + var(--safe-bottom, 0px) + 60px) !important;
   }
 }
 
 /* Small Phone Optimization (iPhone SE, Galaxy A/S small, <= 480px width) */
 @media (max-width: 480px) {
   .header {
-    padding: 10px 12px;
+    padding: calc(10px + var(--safe-top, 0px)) 12px 10px;
     gap: 8px;
+    box-sizing: border-box;
   }
   .search-bar {
     height: 40px;
@@ -1147,7 +1168,10 @@ body.theme-light .bottom-nav {
     margin-bottom: 10px;
   }
   body.has-player .page {
-    padding-bottom: calc(var(--safe-bottom, 0px) + 140px);
+    padding-bottom: calc(var(--safe-bottom, 0px) + 160px);
+  }
+  .main-scroll-area {
+    padding-bottom: calc(var(--safe-bottom, 0px) + 180px) !important;
   }
 }
 
@@ -1976,19 +2000,52 @@ body:not(.is-playing) .full-player__artwork img,
 
 /* Range Slider */
 .volume-slider {
-  width: 100px;
-  height: 4px;
+  width: 110px;
+  height: 24px;
   -webkit-appearance: none;
   appearance: none;
-  background: rgba(255,255,255,0.2);
-  border-radius: 2px;
+  background: transparent;
   outline: none;
+  cursor: pointer;
+  touch-action: pan-x;
+}
+.volume-slider::-webkit-slider-runnable-track {
+  width: 100%;
+  height: 5px;
+  background: rgba(255, 255, 255, 0.25);
+  border-radius: 3px;
+  transition: background 0.2s ease;
+}
+.volume-slider:hover::-webkit-slider-runnable-track {
+  background: rgba(255, 255, 255, 0.4);
 }
 .volume-slider::-webkit-slider-thumb {
   -webkit-appearance: none;
-  width: 12px; height: 12px;
+  width: 16px;
+  height: 16px;
+  margin-top: -5.5px;
   background: var(--text-primary);
   border-radius: 50%;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.4);
+  transition: transform 0.15s ease, background 0.15s ease;
+}
+.volume-slider:active::-webkit-slider-thumb,
+.volume-slider:hover::-webkit-slider-thumb {
+  transform: scale(1.25);
+  background: var(--primary);
+}
+.volume-slider::-moz-range-track {
+  width: 100%;
+  height: 5px;
+  background: rgba(255, 255, 255, 0.25);
+  border-radius: 3px;
+}
+.volume-slider::-moz-range-thumb {
+  width: 16px;
+  height: 16px;
+  background: var(--text-primary);
+  border-radius: 50%;
+  border: none;
 }
 
 /* ========================================
@@ -2610,6 +2667,35 @@ body.theme-light.clear-glass #full-player {
   box-shadow: 0 4px 20px rgba(108, 92, 231, 0.4);
   transform: scale(1.04);
   opacity: 1;
+}
+
+.search-clear:hover { opacity: 1; }
+
+.search-dropdown {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  right: 0;
+  background: var(--bg-surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  margin-top: var(--space-xs);
+  box-shadow: var(--shadow-lg);
+  z-index: 1000;
+  overflow: hidden;
+  max-height: 400px;
+  overflow-y: auto;
+}
+.dropdown-item {
+  display: flex;
+  align-items: center;
+  padding: 8px 12px;
+  cursor: pointer;
+  transition: background var(--anim-micro);
+}
+.dropdown-item:hover, .dropdown-item:focus {
+  background: var(--bg-card-hover);
+  outline: none;
 }
 
 /* ========================================

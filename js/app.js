@@ -648,8 +648,11 @@ const App = (() => {
     const clearBtn = document.getElementById('search-clear');
 
     input.addEventListener('focus', () => {
-      if (!input.value.trim()) {
-        renderSearchHistory();
+      const query = input.value.trim();
+      if (!query) {
+        renderSearchHistoryDropdown();
+      } else if (query.length >= 2) {
+        performAutocomplete(query);
       }
     });
 
@@ -658,13 +661,13 @@ const App = (() => {
       clearBtn.classList.toggle('visible', query.length > 0);
 
       if (!query) {
-        renderSearchHistory();
+        renderSearchHistoryDropdown();
         return;
       }
 
       clearTimeout(searchDebounceTimer);
       if (query.length >= 2) {
-        searchDebounceTimer = setTimeout(() => performSearch(query), 400);
+        searchDebounceTimer = setTimeout(() => performAutocomplete(query), 300);
       }
     });
 
@@ -739,6 +742,114 @@ const App = (() => {
       });
     });
   }
+
+  async function performAutocomplete(query) {
+    const dropdown = document.getElementById('search-dropdown');
+    if (!dropdown) return;
+    
+    try {
+      const results = await API.searchAll(query);
+      if (!results || Object.keys(results).length === 0) {
+        dropdown.innerHTML = '<div style="padding: 12px; color: var(--text-sec); font-size: 13px;">No suggestions found</div>';
+      } else {
+        dropdown.innerHTML = '';
+        
+        // Show up to 4 songs and 2 artists
+        const songs = (results.songs?.results || []).slice(0, 4);
+        const artists = (results.artists?.results || []).slice(0, 2);
+        
+        if (artists.length > 0) {
+          const section = document.createElement('div');
+          section.innerHTML = `<div style="padding: 8px 12px; font-size: 11px; text-transform: uppercase; color: var(--text-tertiary); font-weight: 700; letter-spacing: 1px;">Artists</div>`;
+          artists.forEach(a => {
+            const item = document.createElement('div');
+            item.className = 'dropdown-item';
+            item.innerHTML = `
+              <img src="${a.image || ''}" style="width: 32px; height: 32px; border-radius: 50%; object-fit: cover; margin-right: 12px;">
+              <span style="flex:1; font-weight: 500; font-size: 14px;">${a.title || a.name || 'Unknown'}</span>
+            `;
+            item.onclick = (e) => {
+              e.stopPropagation();
+              dropdown.style.display = 'none';
+              if (window.openArtistPage) window.openArtistPage(a.title || a.name, a.image);
+            };
+            section.appendChild(item);
+          });
+          dropdown.appendChild(section);
+        }
+        
+        if (songs.length > 0) {
+          const section = document.createElement('div');
+          section.innerHTML = `<div style="padding: 8px 12px; font-size: 11px; text-transform: uppercase; color: var(--text-tertiary); font-weight: 700; letter-spacing: 1px;">Songs</div>`;
+          songs.forEach((s, idx) => {
+            const normSong = API.normalizeSong ? API.normalizeSong(s) : s;
+            const item = document.createElement('div');
+            item.className = 'dropdown-item';
+            item.innerHTML = `
+              <img src="${normSong.image || ''}" style="width: 32px; height: 32px; border-radius: 4px; object-fit: cover; margin-right: 12px;">
+              <div style="flex:1; overflow: hidden; white-space: nowrap; text-overflow: ellipsis;">
+                <div style="font-weight: 500; font-size: 14px;">${normSong.name}</div>
+                <div style="font-size: 12px; color: var(--text-sec);">${normSong.artists}</div>
+              </div>
+            `;
+            item.onclick = async (e) => {
+              e.stopPropagation();
+              dropdown.style.display = 'none';
+              document.getElementById('search-input').value = '';
+              document.getElementById('search-clear').classList.remove('visible');
+              Player.setQueue([normSong], 0);
+              await Player.playSong(normSong);
+            };
+            section.appendChild(item);
+          });
+          dropdown.appendChild(section);
+        }
+      }
+      dropdown.style.display = 'block';
+    } catch (err) {
+      console.error(err);
+    }
+  }
+
+  function renderSearchHistoryDropdown() {
+    const dropdown = document.getElementById('search-dropdown');
+    if (!dropdown) return;
+    const history = Storage.getSearchHistory();
+    if (history.length === 0) {
+      dropdown.style.display = 'none';
+      return;
+    }
+    
+    dropdown.innerHTML = `<div style="padding: 8px 12px; font-size: 11px; text-transform: uppercase; color: var(--text-tertiary); font-weight: 700; letter-spacing: 1px;">Recent Searches</div>`;
+    history.slice(0, 5).forEach(term => {
+      const item = document.createElement('div');
+      item.className = 'dropdown-item';
+      item.style.padding = '10px 12px';
+      item.innerHTML = `
+        <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" style="margin-right: 12px; opacity: 0.5;">
+          <circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/>
+        </svg>
+        <span style="font-size: 14px;">${term}</span>
+      `;
+      item.onclick = () => {
+        document.getElementById('search-input').value = term;
+        dropdown.style.display = 'none';
+        performSearch(term);
+      };
+      dropdown.appendChild(item);
+    });
+    dropdown.style.display = 'block';
+  }
+
+  document.addEventListener('click', (e) => {
+    const dropdown = document.getElementById('search-dropdown');
+    const searchInput = document.getElementById('search-input');
+    if (dropdown && dropdown.style.display === 'block') {
+      if (!dropdown.contains(e.target) && e.target !== searchInput) {
+        dropdown.style.display = 'none';
+      }
+    }
+  });
 
   async function performSearch(query) {
     UI.showPage('page-search');
@@ -880,6 +991,8 @@ const App = (() => {
     } else if (pageId === 'page-queue') {
       UI.renderQueue(document.getElementById('queue-container'));
       rebindQueueEvents();
+    } else if (pageId === 'page-recap') {
+      Recap.renderRecap(document.getElementById('recap-container'));
     } else if (pageId === 'page-home') {
       loadHomePage();
     }
@@ -2761,6 +2874,80 @@ const App = (() => {
     touchStartX = 0;
     touchStartY = 0;
   }, { passive: true });
+
+  async function checkNewReleasesFromFollowed(followed) {
+    try {
+      const toCheck = followed.sort(() => 0.5 - Math.random()).slice(0, 2);
+      let newReleases = [];
+      const seenIds = Storage.get('mf_seen_releases') || {};
+      
+      for (const artist of toCheck) {
+        const albums = await API.getArtistAlbums(artist.id, 1);
+        if (albums && albums.results && albums.results.length > 0) {
+          const latest = albums.results[0];
+          if (!seenIds[latest.id]) {
+            latest.artistContext = artist.name;
+            newReleases.push(latest);
+            seenIds[latest.id] = true;
+          }
+        }
+      }
+
+      if (newReleases.length > 0) {
+        Storage.set('mf_seen_releases', seenIds);
+        renderNewReleasesShelf(newReleases);
+      }
+    } catch (e) {
+      console.warn('Failed to fetch new releases', e);
+    }
+  }
+
+  function renderNewReleasesShelf(releases) {
+    const homeContainer = document.getElementById('home-content');
+    if (!homeContainer) return;
+    
+    let section = document.getElementById('shelf-followed-releases');
+    let grid;
+    if (!section) {
+      section = document.createElement('section');
+      section.className = 'shelf-section';
+      section.id = 'shelf-followed-releases';
+      
+      const title = document.createElement('h2');
+      title.className = 'shelf-title';
+      title.textContent = 'New From Artists You Follow';
+      section.appendChild(title);
+      
+      grid = document.createElement('div');
+      grid.className = 'shelf-container';
+      grid.id = 'container-followed-releases';
+      section.appendChild(grid);
+      
+      homeContainer.insertBefore(section, homeContainer.children[1] || homeContainer.firstChild);
+    } else {
+      grid = document.getElementById('container-followed-releases');
+    }
+
+    releases.forEach(release => {
+      const item = document.createElement('div');
+      item.className = 'song-card';
+      item.innerHTML = `
+        <div class="song-card__img-container">
+          <img src="${release.image || ''}" alt="${release.title}" loading="lazy">
+        </div>
+        <div class="song-card__info">
+          <div class="song-card__title">${release.title || 'Unknown'}</div>
+          <div class="song-card__subtitle">New Album • ${release.artistContext}</div>
+        </div>
+      `;
+      item.onclick = () => {
+        if (window.openAlbumPage) window.openAlbumPage(release.id, release.title, release.image);
+      };
+      grid.appendChild(item);
+    });
+  }
+
+  window.checkNewReleasesFromFollowed = checkNewReleasesFromFollowed;
 
   return { performSearch };
 })();

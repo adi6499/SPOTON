@@ -6,9 +6,6 @@ const Player = (() => {
   let audio = document.getElementById('main-audio') || new Audio();
   let audio2 = document.getElementById('crossfade-audio') || new Audio();
 
-  audio.crossOrigin = 'anonymous';
-  audio2.crossOrigin = 'anonymous';
-
   if (!document.getElementById('main-audio')) {
     audio.id = 'main-audio';
     audio.style.display = 'none';
@@ -27,8 +24,6 @@ const Player = (() => {
   [audio, audio2].forEach(a => {
     a.preload = 'auto';
     a.playsInline = true;
-    a.muted = false;
-    a.volume = 0.8;
     a.setAttribute('playsinline', 'true');
     a.setAttribute('webkit-playsinline', 'true');
     if (!a.parentNode && document.body) {
@@ -46,6 +41,7 @@ const Player = (() => {
   let sleepTimerId = null;
   let sleepTimerMinutes = 0;
   let targetVolume = 0.8;
+  let gaplessPrefetchedUrl = null;
 
   // Web Audio API Context (Initialized on demand to protect background audio playback)
   let audioCtx = null;
@@ -67,7 +63,8 @@ const Player = (() => {
         if (AudioCtxClass) {
           audioCtx = new AudioCtxClass();
           const inputGain = audioCtx.createGain();
-          
+          gainNode = inputGain;
+          gainNode.gain.value = targetVolume;
           const freqs = [60, 170, 310, 600, 1000, 3000, 6000, 12000, 14000, 16000];
           let prevNode = inputGain;
 
@@ -133,6 +130,14 @@ const Player = (() => {
       if (audioCtx && audioCtx.state === 'suspended') {
         audioCtx.resume().catch(() => {});
       }
+      if (activeAudio) {
+        const isAudioActive = !activeAudio.paused && !activeAudio.ended;
+        if (isAudioActive !== isPlaying) {
+          isPlaying = isAudioActive;
+          if (isPlaying) onPlay?.();
+          else onPause?.();
+        }
+      }
     }
   });
 
@@ -174,7 +179,6 @@ const Player = (() => {
       if (a !== activeAudio) return;
       isPlaying = true;
       onPlay?.();
-      updateMediaSession();
       if ('mediaSession' in navigator) {
         try {
           navigator.mediaSession.playbackState = 'playing';
@@ -196,11 +200,19 @@ const Player = (() => {
     a.addEventListener('timeupdate', () => {
       if (a !== activeAudio) return;
       
-      // Crossfade logic trigger
+      // Crossfade / Gapless logic trigger
       const settings = Storage.getSettings();
-      if (settings.crossfade && a.duration && a.duration - a.currentTime <= 3 && !a._isFading) {
+      const crossfadeConfig = settings.crossfade || { enabled: false, duration: 0 };
+      const prefetchTime = crossfadeConfig.enabled ? (crossfadeConfig.duration || 3) : 10; // Prefetch 10s early for gapless
+      
+      if (a.duration && a.duration - a.currentTime <= prefetchTime && !a._isFading) {
         a._isFading = true;
-        next(true); // Trigger next with crossfade flag
+        if (crossfadeConfig.enabled && crossfadeConfig.duration > 0) {
+          next(true); // Trigger next with crossfade flag
+        } else {
+          // Gapless: just prefetch the next track URL but don't play yet
+          checkAndPrefetchGapless();
+        }
       }
 
       onTimeUpdate?.({
@@ -353,11 +365,7 @@ const Player = (() => {
       // Fire track change immediately so UI shows something right away
       onTrackChange?.(song, currentIndex);
 
-      let qual = Storage.getSettings().audioQuality || '320kbps';
-      // Map lossless selections to best available quality
-      if (['lossless', 'hi-res-48', 'hi-res-96', 'hi-res-192', 'auto'].includes(qual)) {
-        qual = '320kbps';
-      }
+      let qual = getAdaptiveQuality(Storage.getSettings().audioQuality || 'auto');
       let streamUrl = null;
       let updatedSong = song;
 
@@ -415,11 +423,16 @@ const Player = (() => {
         activeAudio.volume = 0;
         await activeAudio.play();
         
-        // Linear crossfade over 3 seconds
+        // Dynamic crossfade duration
+        const durationSecs = Storage.getSettings().crossfade?.duration || 3;
+        const intervalMs = 150;
+        const steps = (durationSecs * 1000) / intervalMs;
+        const volStep = 1 / steps;
+        
         let vol = 0;
         const currentTargetVol = getVolume();
         activeCrossfadeTimer = setInterval(() => {
-          vol += 0.05;
+          vol += volStep;
           if (vol >= 1) {
             activeAudio.volume = currentTargetVol;
             oldAudio.pause();
@@ -435,13 +448,23 @@ const Player = (() => {
             activeAudio.volume = vol * currentTargetVol;
             oldAudio.volume = Math.max(0, (1 - vol) * currentTargetVol);
           }
-        }, 150);
+        }, intervalMs);
       } else {
         stopInactiveAudio();
-        activeAudio.src = streamUrl;
+        // If we already gapless prefetched this song, we can just swap or set src
+        if (gaplessPrefetchedUrl === streamUrl && inactiveAudio.src === streamUrl) {
+           const oldAudio = activeAudio;
+           activeAudio = inactiveAudio;
+           inactiveAudio = oldAudio;
+           oldAudio.pause();
+           oldAudio.currentTime = 0;
+        } else {
+           activeAudio.src = streamUrl;
+        }
         activeAudio.muted = false;
         activeAudio.volume = Math.max(0.1, getVolume());
         await activeAudio.play();
+        gaplessPrefetchedUrl = null;
       }
 
       // Track in recently played
@@ -513,24 +536,65 @@ const Player = (() => {
     }
   }
 
-  function play() {
-    if (activeAudio && activeAudio.src) {
-      if (audioCtx && audioCtx.state === 'suspended') {
-        audioCtx.resume().catch(() => {});
+  async function play() {
+    if (!activeAudio) return;
+    
+    // If no source is loaded yet, but we have a track in queue, load and play it
+    if ((!activeAudio.src || activeAudio.src === '' || activeAudio.src === window.location.href) && currentIndex >= 0 && queue[currentIndex]) {
+      loadAndPlay(queue[currentIndex]);
+      return;
+    }
+
+    if (!activeAudio.src) return;
+
+    if (audioCtx && audioCtx.state === 'suspended') {
+      try {
+        await audioCtx.resume();
+      } catch (err) {
+        console.warn('[Player] audioCtx.resume() failed:', err);
       }
+    }
+
+    // Call activeAudio.play() synchronously after resume
+    try {
       const playPromise = activeAudio.play();
       if (playPromise !== undefined) {
         playPromise.then(() => {
           isPlaying = true;
+          onPlay?.();
           if ('mediaSession' in navigator) {
             try {
               navigator.mediaSession.playbackState = 'playing';
-            } catch (e) {}
+            } catch (_) {}
           }
         }).catch(err => {
-          console.warn('[Player] Resume error:', err);
+          console.warn(`[Player] Resume error (NotAllowedError or similar). Attempting stream reload. Error: ${err.name} - ${err.message}`);
+          const track = getCurrentTrack();
+          if (track) {
+            const savedTime = activeAudio.currentTime || 0;
+            try {
+              activeAudio.load();
+              if (savedTime > 0) activeAudio.currentTime = savedTime;
+              activeAudio.play().then(() => {
+                isPlaying = true;
+                onPlay?.();
+                if ('mediaSession' in navigator) {
+                  try { navigator.mediaSession.playbackState = 'playing'; } catch(_) {}
+                }
+              }).catch(retryErr => {
+                console.warn(`[Player] Direct reload failed, re-fetching track details: ${retryErr.name} - ${retryErr.message}`);
+                loadAndPlay(track);
+              });
+            } catch (_) {
+              loadAndPlay(track);
+            }
+          }
         });
       }
+    } catch (err) {
+      console.warn(`[Player] Play sync error: ${err.name} - ${err.message}`);
+      const track = getCurrentTrack();
+      if (track) loadAndPlay(track);
     }
   }
 
@@ -539,6 +603,7 @@ const Player = (() => {
     if (activeAudio) {
       activeAudio.pause();
       isPlaying = false;
+      onPause?.();
       if ('mediaSession' in navigator) {
         try {
           navigator.mediaSession.playbackState = 'paused';
@@ -548,7 +613,8 @@ const Player = (() => {
   }
 
   function togglePlayPause() {
-    if (isPlaying) {
+    // Check actual audio state first to avoid desync
+    if (activeAudio && !activeAudio.paused && !activeAudio.ended) {
       pause();
     } else {
       play();
@@ -617,6 +683,38 @@ const Player = (() => {
     onQueueUpdate?.(queue, currentIndex);
   }
 
+  async function checkAndPrefetchGapless() {
+    if (queue.length === 0) return;
+    let nextIdx = shuffleMode ? shuffledIndices[(shuffledIndices.indexOf(currentIndex) + 1) % shuffledIndices.length] : currentIndex + 1;
+    if (nextIdx >= queue.length && repeatMode !== 'all') return; // End of queue
+    if (nextIdx >= queue.length) nextIdx = 0;
+    
+    const nextSong = queue[nextIdx];
+    if (!nextSong) return;
+
+    try {
+      const qual = getAdaptiveQuality(Storage.getSettings().audioQuality || 'auto');
+      let streamUrl = null;
+      if (Storage.getOfflineSong(nextSong.id)) {
+        streamUrl = await Storage.getOfflineSong(nextSong.id);
+      } else {
+        const details = await window.API.getSongDetails(nextSong.id);
+        if (details && details.length > 0) {
+          streamUrl = window.API.getDownloadUrl(details[0], qual);
+        }
+      }
+
+      if (streamUrl && inactiveAudio.src !== streamUrl) {
+        inactiveAudio.src = streamUrl;
+        inactiveAudio.load(); // Start buffering
+        gaplessPrefetchedUrl = streamUrl;
+      }
+    } catch (e) {
+      console.warn('[Player] Gapless prefetch failed', e);
+    }
+  }
+
+
   async function previous() {
     stopInactiveAudio();
     if (queue.length === 0) return;
@@ -665,7 +763,19 @@ const Player = (() => {
 
   function setVolume(vol) {
     targetVolume = Math.max(0, Math.min(1, vol));
-    activeAudio.volume = targetVolume;
+    if (gainNode) {
+      // Use Web Audio API for volume control (fixes Safari iOS volume lock)
+      gainNode.gain.value = targetVolume;
+      activeAudio.volume = 1;
+      inactiveAudio.volume = 1;
+    } else {
+      activeAudio.volume = targetVolume;
+      inactiveAudio.volume = targetVolume;
+    }
+    
+    if (targetVolume > 0 && activeAudio.muted) {
+      activeAudio.muted = false;
+    }
     Storage.updateSettings({ volume: targetVolume });
   }
 
@@ -676,6 +786,74 @@ const Player = (() => {
   function mute() {
     activeAudio.muted = !activeAudio.muted;
     return activeAudio.muted;
+  }
+
+  // ---- Audio Quality Realtime Switch ----
+
+  function getAdaptiveQuality(requestedQual) {
+    let qual = requestedQual || 'auto';
+    
+    if (qual === 'auto') {
+      qual = '320kbps'; // Default to high
+      if ('connection' in navigator) {
+        const conn = navigator.connection;
+        if (conn.effectiveType === '2g' || conn.effectiveType === 'slow-2g') {
+          qual = '96kbps';
+        } else if (conn.effectiveType === '3g' || (conn.downlink && conn.downlink < 1.5)) {
+          qual = '160kbps';
+        }
+      }
+    }
+    
+    // Map lossless to 320kbps for now since API doesn't support true lossless
+    if (['lossless', 'hi-res-48', 'hi-res-96', 'hi-res-192'].includes(qual)) {
+      qual = '320kbps';
+    }
+    
+    return qual;
+  }
+
+  async function changeQuality(newQuality) {
+    Storage.updateSettings({ audioQuality: newQuality });
+    const track = getCurrentTrack();
+    if (!track) return;
+
+    const wasPlaying = !activeAudio.paused && !activeAudio.ended;
+    const currentTime = activeAudio.currentTime || 0;
+
+    let qual = getAdaptiveQuality(newQuality);
+
+    let streamUrl = null;
+    if (track.raw && window.API && API.getDownloadUrl) {
+      streamUrl = API.getDownloadUrl(track.raw, qual);
+    } else if (track.downloadUrls && track.downloadUrls.length > 0) {
+      const match = track.downloadUrls.find(u => u.quality === qual);
+      streamUrl = match?.url || match?.link;
+    }
+
+    if (!streamUrl && window.API) {
+      try {
+        const details = await API.getSongDetails(track.id);
+        if (details && details.length > 0) {
+          streamUrl = API.getDownloadUrl(details[0], qual);
+        }
+      } catch (e) {
+        console.warn('[Player] Could not re-fetch stream for quality change:', e);
+      }
+    }
+
+    if (streamUrl) {
+      activeAudio.src = streamUrl;
+      activeAudio.currentTime = currentTime;
+      if (wasPlaying) {
+        activeAudio.play().catch(console.warn);
+      }
+    }
+
+    const codecEl = document.getElementById('full-player-codec');
+    if (codecEl) {
+      codecEl.textContent = newQuality || '320kbps';
+    }
   }
 
   // ---- Repeat & Shuffle ----
@@ -768,22 +946,27 @@ const Player = (() => {
     }
 
     try {
-      navigator.mediaSession.setActionHandler('play', () => play());
-      navigator.mediaSession.setActionHandler('pause', () => pause());
-      navigator.mediaSession.setActionHandler('previoustrack', () => previous());
-      navigator.mediaSession.setActionHandler('nexttrack', () => next(false));
+      navigator.mediaSession.setActionHandler('play', () => {
+        play();
+      });
+      navigator.mediaSession.setActionHandler('pause', () => {
+        pause();
+      });
+      navigator.mediaSession.setActionHandler('previoustrack', () => {
+        previous();
+      });
+      navigator.mediaSession.setActionHandler('nexttrack', () => {
+        next(false);
+      });
       navigator.mediaSession.setActionHandler('seekto', (details) => {
         if (details.seekTime != null) seek(details.seekTime);
       });
-      navigator.mediaSession.setActionHandler('seekbackward', (details) => {
-        const skip = details.seekOffset || 10;
-        seek(Math.max(0, activeAudio.currentTime - skip));
+      // Clear skip handlers so mobile lockscreen shows Previous/Next track controls
+      navigator.mediaSession.setActionHandler('seekbackward', null);
+      navigator.mediaSession.setActionHandler('seekforward', null);
+      navigator.mediaSession.setActionHandler('stop', () => {
+        pause();
       });
-      navigator.mediaSession.setActionHandler('seekforward', (details) => {
-        const skip = details.seekOffset || 10;
-        seek(Math.min(activeAudio.duration || 0, activeAudio.currentTime + skip));
-      });
-      navigator.mediaSession.setActionHandler('stop', () => pause());
     } catch (e) {
       console.warn('[Player] MediaSession setActionHandler error:', e);
     }
@@ -1071,6 +1254,7 @@ const Player = (() => {
     toggleSpatialAudio,
     playAmbientSound,
     setAmbientVolume,
+    changeQuality,
     getStreamCodecDisplay,
     initWebAudio
   };
