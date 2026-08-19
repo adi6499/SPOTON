@@ -5,6 +5,22 @@
 const Player = (() => {
   let audio = document.getElementById('main-audio') || new Audio();
   let audio2 = document.getElementById('crossfade-audio') || new Audio();
+
+  audio.crossOrigin = 'anonymous';
+  audio2.crossOrigin = 'anonymous';
+
+  if (!document.getElementById('main-audio')) {
+    audio.id = 'main-audio';
+    audio.style.display = 'none';
+    if (document.body) document.body.appendChild(audio);
+    else document.addEventListener('DOMContentLoaded', () => document.body.appendChild(audio));
+  }
+  if (!document.getElementById('crossfade-audio')) {
+    audio2.id = 'crossfade-audio';
+    audio2.style.display = 'none';
+    if (document.body) document.body.appendChild(audio2);
+    else document.addEventListener('DOMContentLoaded', () => document.body.appendChild(audio2));
+  }
   let activeAudio = audio;
   let inactiveAudio = audio2;
   
@@ -445,6 +461,56 @@ const Player = (() => {
       console.error('[Player] Play error:', error);
       onError?.(error);
     }
+    
+    // Background prefetch for autoplay to prevent async NotAllowedError on track end
+    checkAndPrefetchAutoplay();
+  }
+
+  async function checkAndPrefetchAutoplay() {
+    const settings = Storage.getSettings();
+    if (!settings.autoplay || queue.length === 0) return;
+    
+    // Only prefetch if we are at the last song in the queue (and not repeating all)
+    if (currentIndex === queue.length - 1 && repeatMode !== 'all') {
+      try {
+        const currentTrack = queue[currentIndex];
+        const artists = currentTrack.artists?.split(',') || [currentTrack.artist];
+        const seedArtist = artists[Math.floor(Math.random() * artists.length)]?.trim();
+        if (!seedArtist) return;
+        
+        let query = seedArtist;
+        if (Math.random() < 0.1) query = "Trending Top Hits";
+        
+        const res = await API.searchSongs(query, 15);
+        if (!res || res.length === 0) return;
+        
+        const recentIds = Storage.getRecent().map(r => r.id);
+        const queueIds = queue.map(q => q.id);
+        const prefs = Storage.getSettings().languages || [];
+        
+        const newSongs = res.filter(s => {
+          if (queueIds.includes(s.id) || recentIds.includes(s.id)) return false;
+          const lang = (s.language || '').toLowerCase();
+          if (prefs.length > 0 && lang !== '' && lang !== 'unknown' && !prefs.includes(lang)) return false;
+          return true;
+        });
+        
+        if (newSongs.length > 0) {
+          const nextSong = window.API ? window.API.normalizeSong(newSongs[0]) : newSongs[0];
+          // Pre-fetch the stream URL so it's instantly ready
+          const details = await API.getSongDetails(nextSong.id);
+          if (details && details.length > 0) {
+            const normalized = window.API ? window.API.normalizeSong(details[0]) : details[0];
+            queue.push({ ...nextSong, ...normalized });
+          } else {
+            queue.push(nextSong);
+          }
+          onQueueUpdate?.(queue, currentIndex);
+        }
+      } catch (e) {
+        console.warn('[Player] Background autoplay prefetch failed:', e);
+      }
+    }
   }
 
   function play() {
@@ -504,17 +570,17 @@ const Player = (() => {
       if (repeatMode === 'all') {
         nextIndex = 0;
       } else {
+        // Fallback if prefetch failed or didn't run in time
         const settings = Storage.getSettings();
         if (settings.autoplay && queue[currentIndex]) {
           try {
             const currentTrack = queue[currentIndex];
             const artists = currentTrack.artists?.split(',') || [currentTrack.artist];
-            const seedArtist = artists[Math.floor(Math.random() * artists.length)].trim();
+            const seedArtist = artists[Math.floor(Math.random() * artists.length)]?.trim();
+            if (!seedArtist) return;
             
             let query = seedArtist;
-            if (Math.random() < 0.1) {
-              query = "Trending Top Hits";
-            }
+            if (Math.random() < 0.1) query = "Trending Top Hits";
 
             const res = await API.searchSongs(query, 15);
             

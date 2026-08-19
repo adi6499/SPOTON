@@ -579,6 +579,7 @@ const UI = (() => {
   }
 
   function updateProgress(data) {
+    if (window.isSeeking) return;
     const mFill = document.getElementById('mini-progress-fill');
     const mEdge = document.getElementById('mini-progress-edge');
     const fFill = document.getElementById('full-progress-fill');
@@ -761,10 +762,10 @@ const UI = (() => {
       const triG = g3 ?? Math.min(255, Math.round(g * 0.5 + 40));
       const triB = b3 ?? Math.min(255, Math.round(b * 1.3));
 
-      document.documentElement.style.setProperty('--dynamic-color', `rgba(${r}, ${g}, ${b}, 0.45)`);
-      document.documentElement.style.setProperty('--dynamic-color-sec', `rgba(${secR}, ${secG}, ${secB}, 0.32)`);
-      document.documentElement.style.setProperty('--dynamic-color-tri', `rgba(${triR}, ${triG}, ${triB}, 0.22)`);
-      document.documentElement.style.setProperty('--dynamic-color-dim', `rgba(${r}, ${g}, ${b}, 0.12)`);
+      document.documentElement.style.setProperty('--dynamic-color', `rgba(${r}, ${g}, ${b}, 0.65)`);
+      document.documentElement.style.setProperty('--dynamic-color-sec', `rgba(${secR}, ${secG}, ${secB}, 0.5)`);
+      document.documentElement.style.setProperty('--dynamic-color-tri', `rgba(${triR}, ${triG}, ${triB}, 0.4)`);
+      document.documentElement.style.setProperty('--dynamic-color-dim', `rgba(${r}, ${g}, ${b}, 0.2)`);
       document.documentElement.style.setProperty('--dynamic-rgb', `${r}, ${g}, ${b}`);
       document.documentElement.style.setProperty('--dynamic-rgb-sec', `${secR}, ${secG}, ${secB}`);
       document.documentElement.style.setProperty('--dynamic-rgb-tri', `${triR}, ${triG}, ${triB}`);

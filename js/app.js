@@ -910,14 +910,14 @@ const App = (() => {
   function setupPlayerBarEvents() {
     const fullProgress = document.getElementById('full-progress');
     const miniProgress = document.getElementById('mini-progress');
-    let isSeeking = false;
+    window.isSeeking = false;
     let activeBar = null;
 
     function attachSeekEvents(bar) {
       if (!bar) return;
       
       bar.addEventListener('mousedown', (e) => {
-        isSeeking = true;
+        window.isSeeking = true;
         activeBar = bar;
         seekFromEvent(e, bar);
       });
@@ -927,7 +927,7 @@ const App = (() => {
       });
       
       bar.addEventListener('touchstart', (e) => {
-        isSeeking = true;
+        window.isSeeking = true;
         activeBar = bar;
         seekFromTouch(e, bar);
       }, { passive: true });
@@ -937,20 +937,20 @@ const App = (() => {
     attachSeekEvents(miniProgress);
 
     document.addEventListener('mousemove', (e) => {
-      if (isSeeking && activeBar) seekFromEvent(e, activeBar);
+      if (window.isSeeking && activeBar) seekFromEvent(e, activeBar);
     });
 
     document.addEventListener('mouseup', () => {
-      isSeeking = false;
+      window.isSeeking = false;
       activeBar = null;
     });
 
     document.addEventListener('touchmove', (e) => {
-      if (isSeeking && activeBar) seekFromTouch(e, activeBar);
+      if (window.isSeeking && activeBar) seekFromTouch(e, activeBar);
     }, { passive: true });
 
     document.addEventListener('touchend', () => {
-      isSeeking = false;
+      window.isSeeking = false;
       activeBar = null;
     });
 
