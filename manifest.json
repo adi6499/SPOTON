@@ -3,9 +3,9 @@
   "short_name": "MusicFlow",
   "start_url": "./",
   "display": "standalone",
-  "background_color": "#121212",
-  "theme_color": "#1DB954",
-  "description": "A Spotify-inspired streaming music experience.",
+  "background_color": "#0b132b",
+  "theme_color": "#0284c7",
+  "description": "High-fidelity lossless streaming music, podcasts & video discovery platform.",
   "icons": [
     {
       "src": "assets/logo.jpg",

@@ -221,6 +221,14 @@ const Player = (() => {
         progress: a.duration ? (a.currentTime / a.duration) * 100 : 0,
       });
 
+      // Periodically persist podcast progress
+      const currentTrack = getCurrentTrack();
+      if (currentTrack && currentTrack.isPodcast && typeof Storage !== 'undefined' && Storage.savePodcastProgress) {
+        if (Math.floor(a.currentTime) % 4 === 0) {
+          Storage.savePodcastProgress(currentTrack.id, a.currentTime);
+        }
+      }
+
       // Update lock screen progress
       if ('mediaSession' in navigator && a.duration && isFinite(a.duration)) {
         try {
@@ -244,8 +252,22 @@ const Player = (() => {
 
     a.addEventListener('error', (e) => {
       if (a !== activeAudio) return;
-      console.error('[Player] Audio error:', e);
+      console.warn('[Player] Audio error on active element:', e);
       onError?.(e);
+
+      const currentTrack = (currentIndex >= 0 && queue[currentIndex]) ? queue[currentIndex] : getCurrentTrack();
+      const trackTitle = currentTrack?.name || 'Current track';
+      if (typeof UI !== 'undefined' && UI.showToast) {
+        UI.showToast(`Track "${trackTitle}" unavailable. Auto-skipping...`, 'warning');
+      }
+
+      if (queue.length > 1) {
+        setTimeout(() => {
+          if (activeAudio === a) {
+            next(false);
+          }
+        }, 400);
+      }
     });
 
     a.addEventListener('loadstart', () => {
@@ -278,14 +300,24 @@ const Player = (() => {
   }
 
   function setQueue(songs, startIndex = 0) {
-    queue = songs.map(s => ({ ...s }));
-    currentIndex = startIndex;
+    if (!Array.isArray(songs)) {
+      queue = [];
+      currentIndex = -1;
+      return;
+    }
+    queue = songs
+      .filter(s => s && (s.id || s.name))
+      .map(s => (window.API && API.normalizeSong) ? API.normalizeSong(s) : { ...s });
+
+    currentIndex = Math.max(0, Math.min(startIndex, queue.length - 1));
     if (shuffleMode) generateShuffledIndices();
     onQueueUpdate?.(queue, currentIndex);
   }
 
   function addToQueue(song) {
-    queue.push({ ...song });
+    if (!song) return;
+    const norm = (window.API && API.normalizeSong) ? API.normalizeSong(song) : { ...song };
+    queue.push(norm);
     if (shuffleMode) generateShuffledIndices();
     onQueueUpdate?.(queue, currentIndex);
   }
@@ -309,10 +341,12 @@ const Player = (() => {
   }
 
   function playNext(song) {
+    if (!song) return;
+    const norm = (window.API && API.normalizeSong) ? API.normalizeSong(song) : { ...song };
     if (currentIndex === -1) {
-      playSong(song);
+      playSong(norm);
     } else {
-      queue.splice(currentIndex + 1, 0, { ...song });
+      queue.splice(currentIndex + 1, 0, norm);
       if (shuffleMode) generateShuffledIndices();
       onQueueUpdate?.(queue, currentIndex);
     }
@@ -321,16 +355,19 @@ const Player = (() => {
   // ---- Playback Controls ----
 
   async function playSong(song) {
+    if (!song) return;
+    const normalized = (window.API && API.normalizeSong) ? API.normalizeSong(song) : { ...song };
+
     // If song is not in queue, add and play
-    const existingIndex = queue.findIndex(q => q.id === song.id);
+    const existingIndex = queue.findIndex(q => q.id === normalized.id);
     if (existingIndex === -1) {
-      queue.push({ ...song });
+      queue.push(normalized);
       currentIndex = queue.length - 1;
     } else {
       currentIndex = existingIndex;
     }
 
-    await loadAndPlay(song);
+    await loadAndPlay(normalized);
     onQueueUpdate?.(queue, currentIndex);
   }
 
@@ -354,8 +391,11 @@ const Player = (() => {
   let _loadId = 0; // Guard against concurrent/double play calls
 
   async function loadAndPlay(song, isCrossfade = false) {
+    if (!song) return;
     const thisLoadId = ++_loadId; // Increment to cancel any previous pending load
     const isFading = (isCrossfade === true);
+    const trackToPlay = (window.API && API.normalizeSong) ? API.normalizeSong(song) : { ...song };
+    let updatedSong = trackToPlay;
 
     try {
       if (!isFading) {
@@ -363,46 +403,90 @@ const Player = (() => {
       }
 
       // Fire track change immediately so UI shows something right away
-      onTrackChange?.(song, currentIndex);
+      onTrackChange?.(trackToPlay, currentIndex);
 
       let qual = getAdaptiveQuality(Storage.getSettings().audioQuality || 'auto');
       let streamUrl = null;
-      let updatedSong = song;
 
-      if (song.raw && window.API && API.getDownloadUrl) {
-        streamUrl = API.getDownloadUrl(song.raw, qual);
-      } else if (song.downloadUrls && song.downloadUrls.length > 0) {
-        const match = song.downloadUrls.find(u => u.quality === qual);
-        streamUrl = match?.url || match?.link || song.streamUrl;
-      } else {
-        streamUrl = song.streamUrl;
-      }
-
-      // If no stream URL, fetch full song details
-      if (!streamUrl) {
-        const details = await API.getSongDetails(song.id);
-
-        // Check if a newer load was triggered while we were fetching
-        if (thisLoadId !== _loadId) {
-          stopInactiveAudio();
-          return;
-        }
-
-        if (details && details.length > 0) {
-          streamUrl = API.getDownloadUrl(details[0], qual);
-          
-          // Update song in queue with full details (correct image, metadata)
-          if (currentIndex >= 0 && queue[currentIndex]) {
-            const normalized = API.normalizeSong(details[0]);
-            queue[currentIndex] = { ...queue[currentIndex], ...normalized };
-            updatedSong = queue[currentIndex];
+      // 0. Check offline IndexedDB cache first
+      if (typeof SmartDownloads !== 'undefined' && SmartDownloads.getOfflineAudioUrl) {
+        try {
+          const offlineUrl = await SmartDownloads.getOfflineAudioUrl(trackToPlay.id);
+          if (offlineUrl) {
+            streamUrl = offlineUrl;
+            console.log(`[Player] Playing "${trackToPlay.name}" directly from offline IndexedDB cache`);
           }
-        }
+        } catch (_) {}
       }
 
-      if (!streamUrl) {
-        console.error('[Player] No stream URL available for:', song.name);
+      // Check basic direct stream first
+      streamUrl = song.audioUrl || song.streamUrl || trackToPlay.audioUrl || trackToPlay.streamUrl || null;
+
+      // Extract available stream URLs in order of preference
+      function extractCandidateStreams(songObj) {
+        const urls = [];
+        if (songObj.downloadUrls && Array.isArray(songObj.downloadUrls)) {
+          const match = songObj.downloadUrls.find(u => u.quality === qual);
+          if (match?.url || match?.link) urls.push(match.url || match.link);
+          songObj.downloadUrls.forEach(u => {
+            const url = u.url || u.link;
+            if (url && !urls.includes(url)) urls.push(url);
+          });
+        }
+        if (songObj.raw && window.API && API.getDownloadUrl) {
+          const u = API.getDownloadUrl(songObj.raw, qual);
+          if (u && !urls.includes(u)) urls.push(u);
+        }
+        if (songObj.streamUrl && !urls.includes(songObj.streamUrl)) urls.push(songObj.streamUrl);
+        if (songObj.audioUrl && !urls.includes(songObj.audioUrl)) urls.push(songObj.audioUrl);
+        return urls.filter(u => typeof u === 'string' && u.startsWith('http'));
+      }
+
+      let candidateUrls = extractCandidateStreams(song);
+
+      // If no candidate stream URLs, fetch full song details
+      if (candidateUrls.length === 0) {
+        try {
+          const details = await API.getSongDetails(song.id);
+          if (details && details.length > 0) {
+            const normalized = API.normalizeSong(details[0]);
+            updatedSong = { ...trackToPlay, ...normalized };
+            candidateUrls = extractCandidateStreams(normalized);
+            if (currentIndex >= 0 && currentIndex < queue.length) {
+              queue[currentIndex] = { ...queue[currentIndex], ...normalized };
+            }
+          }
+        } catch (_) {}
+      }
+
+      // Live mirror fallback search if still no candidate stream
+      if (candidateUrls.length === 0 && song.name) {
+        try {
+          const searchKey = `${song.name} ${song.artists || song.artist || ''}`.trim();
+          const searchHits = await API.searchSongs(searchKey, 3);
+          if (searchHits && searchHits.length > 0) {
+            for (const hit of searchHits) {
+              const normHit = API.normalizeSong(hit);
+              const hitStreams = extractCandidateStreams(normHit);
+              if (hitStreams.length > 0) {
+                candidateUrls = hitStreams;
+                updatedSong = { ...trackToPlay, ...normHit };
+                break;
+              }
+            }
+          }
+        } catch (_) {}
+      }
+
+      if (candidateUrls.length === 0) {
+        console.warn('[Player] No stream URL available for:', song.name);
+        if (typeof UI !== 'undefined' && UI.showToast) {
+          UI.showToast(`Track "${song.name}" unavailable. Auto-skipping...`, 'warning');
+        }
         onError?.({ message: 'No stream URL available' });
+        if (queue.length > 1) {
+          setTimeout(() => next(false), 400);
+        }
         return;
       }
 
@@ -412,77 +496,138 @@ const Player = (() => {
         return;
       }
 
-      if (isFading) {
-        stopInactiveAudio(); // Clear any previous fade interval
-        // Swap active audio
-        const oldAudio = activeAudio;
-        activeAudio = inactiveAudio;
-        inactiveAudio = oldAudio;
-        
-        activeAudio.src = streamUrl;
-        activeAudio.volume = 0;
-        await activeAudio.play();
-        
-        // Dynamic crossfade duration
-        const durationSecs = Storage.getSettings().crossfade?.duration || 3;
-        const intervalMs = 150;
-        const steps = (durationSecs * 1000) / intervalMs;
-        const volStep = 1 / steps;
-        
-        let vol = 0;
-        const currentTargetVol = getVolume();
-        activeCrossfadeTimer = setInterval(() => {
-          vol += volStep;
-          if (vol >= 1) {
-            activeAudio.volume = currentTargetVol;
-            oldAudio.pause();
-            oldAudio.currentTime = 0;
-            oldAudio.volume = currentTargetVol;
-            oldAudio._isFading = false;
-            activeAudio._isFading = false;
-            if (activeCrossfadeTimer) {
-              clearInterval(activeCrossfadeTimer);
-              activeCrossfadeTimer = null;
-            }
+      streamUrl = candidateUrls[0];
+
+      // Attempt playback with candidate streams
+      let playedSuccessfully = false;
+      for (let i = 0; i < candidateUrls.length; i++) {
+        const testUrl = candidateUrls[i];
+        try {
+          if (isFading) {
+            stopInactiveAudio();
+            const oldAudio = activeAudio;
+            activeAudio = inactiveAudio;
+            inactiveAudio = oldAudio;
+            
+            activeAudio.src = testUrl;
+            activeAudio.volume = 0;
+            await activeAudio.play();
+            
+            const durationSecs = Storage.getSettings().crossfade?.duration || 3;
+            const intervalMs = 150;
+            const steps = (durationSecs * 1000) / intervalMs;
+            const volStep = 1 / steps;
+            
+            let vol = 0;
+            const currentTargetVol = getVolume();
+            activeCrossfadeTimer = setInterval(() => {
+              vol += volStep;
+              if (vol >= 1) {
+                activeAudio.volume = currentTargetVol;
+                oldAudio.pause();
+                oldAudio.currentTime = 0;
+                oldAudio.volume = currentTargetVol;
+                oldAudio._isFading = false;
+                activeAudio._isFading = false;
+                if (activeCrossfadeTimer) {
+                  clearInterval(activeCrossfadeTimer);
+                  activeCrossfadeTimer = null;
+                }
+              } else {
+                activeAudio.volume = vol * currentTargetVol;
+                oldAudio.volume = Math.max(0, (1 - vol) * currentTargetVol);
+              }
+            }, intervalMs);
           } else {
-            activeAudio.volume = vol * currentTargetVol;
-            oldAudio.volume = Math.max(0, (1 - vol) * currentTargetVol);
+            stopInactiveAudio();
+            if (gaplessPrefetchedUrl === testUrl && inactiveAudio.src === testUrl) {
+              const oldAudio = activeAudio;
+              activeAudio = inactiveAudio;
+              inactiveAudio = oldAudio;
+              oldAudio.pause();
+              oldAudio.currentTime = 0;
+            } else {
+              activeAudio.src = testUrl;
+            }
+            activeAudio.muted = false;
+            activeAudio.volume = Math.max(0.1, getVolume());
+            await activeAudio.play();
+            gaplessPrefetchedUrl = null;
           }
-        }, intervalMs);
-      } else {
-        stopInactiveAudio();
-        // If we already gapless prefetched this song, we can just swap or set src
-        if (gaplessPrefetchedUrl === streamUrl && inactiveAudio.src === streamUrl) {
-           const oldAudio = activeAudio;
-           activeAudio = inactiveAudio;
-           inactiveAudio = oldAudio;
-           oldAudio.pause();
-           oldAudio.currentTime = 0;
-        } else {
-           activeAudio.src = streamUrl;
+          playedSuccessfully = true;
+          break;
+        } catch (streamErr) {
+          if (streamErr.name === 'AbortError') return;
+          if (streamErr.name === 'NotAllowedError') {
+            console.warn('[Player] Autoplay blocked by browser. User must tap play.');
+            isPlaying = false;
+            onPause?.();
+            return;
+          }
+          console.warn(`[Player] Stream quality ${i} failed for ${song.name}, trying next fallback...`, streamErr);
         }
-        activeAudio.muted = false;
-        activeAudio.volume = Math.max(0.1, getVolume());
-        await activeAudio.play();
-        gaplessPrefetchedUrl = null;
+      }
+
+      if (!playedSuccessfully) {
+        // Automatic live mirror fallback search
+        try {
+          const cleanName = (song.name || song.title || '').replace(/\(.*?\)|\[.*?\]|-.*$/g, '').trim();
+          const cleanArtist = (song.artists || song.artist || '').split(',')[0].split('&')[0].trim();
+          const mirrorQuery = `${cleanName} ${cleanArtist}`.trim();
+          if (mirrorQuery && window.API && API.searchSongs) {
+            console.log(`[Player] Searching live mirror stream for "${mirrorQuery}"...`);
+            const mirrorHits = await API.searchSongs(mirrorQuery, 5);
+            if (mirrorHits && mirrorHits.length > 0) {
+              for (const hit of mirrorHits) {
+                const normHit = API.normalizeSong(hit);
+                const hitStreams = extractCandidateStreams(normHit);
+                for (const mirrorStream of hitStreams) {
+                  try {
+                    activeAudio.src = mirrorStream;
+                    activeAudio.muted = false;
+                    activeAudio.volume = Math.max(0.1, getVolume());
+                    await activeAudio.play();
+                    playedSuccessfully = true;
+                    updatedSong = { ...trackToPlay, ...normHit };
+                    if (currentIndex >= 0 && currentIndex < queue.length) {
+                      queue[currentIndex] = { ...queue[currentIndex], ...normHit };
+                    }
+                    break;
+                  } catch (_) {}
+                }
+                if (playedSuccessfully) break;
+              }
+            }
+          }
+        } catch (_) {}
+      }
+
+      if (!playedSuccessfully) {
+        throw new Error(`Failed to load any audio stream for "${song.name}"`);
       }
 
       // Track in recently played
-      Storage.addRecent(getCurrentTrack());
+      Storage.addRecent(updatedSong);
 
       // Fire track change again with updated song data (correct image/metadata)
       onTrackChange?.(updatedSong, currentIndex);
-      updateMediaSession();
+      updateMediaSession(updatedSong);
     } catch (error) {
       if (error.name === 'AbortError') return;
       if (error.name === 'NotAllowedError') {
         console.warn('[Player] Autoplay blocked by browser. User must click play.');
         isPlaying = false;
         onPause?.();
-        return; // Do NOT trigger onError, which skips to the next track
+        return;
       }
       console.error('[Player] Play error:', error);
+      if (typeof UI !== 'undefined' && UI.showToast) {
+        UI.showToast(`⚠️ Cannot play "${trackToPlay?.name || 'track'}". Skipping...`, 'warning');
+      }
       onError?.(error);
+      if (queue.length > 1) {
+        setTimeout(() => next(false), 400);
+      }
     }
     
     // Background prefetch for autoplay to prevent async NotAllowedError on track end
@@ -497,8 +642,15 @@ const Player = (() => {
     if (currentIndex === queue.length - 1 && repeatMode !== 'all') {
       try {
         const currentTrack = queue[currentIndex];
-        const artists = currentTrack.artists?.split(',') || [currentTrack.artist];
-        const seedArtist = artists[Math.floor(Math.random() * artists.length)]?.trim();
+        let artists = [];
+        if (typeof currentTrack.artists === 'string') {
+          artists = currentTrack.artists.split(',');
+        } else if (Array.isArray(currentTrack.artists)) {
+          artists = currentTrack.artists.map(a => typeof a === 'object' ? (a?.name || a?.artist || '') : String(a));
+        } else if (currentTrack.artist) {
+          artists = [currentTrack.artist];
+        }
+        const seedArtist = (artists[Math.floor(Math.random() * artists.length)] || '').trim();
         if (!seedArtist) return;
         
         let query = seedArtist;
@@ -539,13 +691,24 @@ const Player = (() => {
   async function play() {
     if (!activeAudio) return;
     
+    const currentTrack = getCurrentTrack();
+
     // If no source is loaded yet, but we have a track in queue, load and play it
     if ((!activeAudio.src || activeAudio.src === '' || activeAudio.src === window.location.href) && currentIndex >= 0 && queue[currentIndex]) {
-      loadAndPlay(queue[currentIndex]);
+      await loadAndPlay(queue[currentIndex]);
       return;
     }
 
-    if (!activeAudio.src) return;
+    if (!activeAudio.src) {
+      if (queue.length > 0 && currentIndex >= 0) {
+        await loadAndPlay(queue[currentIndex]);
+      } else {
+        if (typeof UI !== 'undefined' && UI.showToast) {
+          UI.showToast('No track selected to play', 'info');
+        }
+      }
+      return;
+    }
 
     if (audioCtx && audioCtx.state === 'suspended') {
       try {
@@ -568,7 +731,7 @@ const Player = (() => {
             } catch (_) {}
           }
         }).catch(err => {
-          console.warn(`[Player] Resume error (NotAllowedError or similar). Attempting stream reload. Error: ${err.name} - ${err.message}`);
+          console.warn(`[Player] Resume error. Error: ${err.name} - ${err.message}`);
           const track = getCurrentTrack();
           if (track) {
             const savedTime = activeAudio.currentTime || 0;
@@ -582,8 +745,15 @@ const Player = (() => {
                   try { navigator.mediaSession.playbackState = 'playing'; } catch(_) {}
                 }
               }).catch(retryErr => {
-                console.warn(`[Player] Direct reload failed, re-fetching track details: ${retryErr.name} - ${retryErr.message}`);
-                loadAndPlay(track);
+                console.warn(`[Player] Direct reload failed: ${retryErr.message}. Auto-recovering...`);
+                if (typeof UI !== 'undefined' && UI.showToast) {
+                  UI.showToast(`Track "${track.name}" unavailable. Auto-skipping...`, 'warning');
+                }
+                if (queue.length > 1) {
+                  next();
+                } else {
+                  loadAndPlay(track);
+                }
               });
             } catch (_) {
               loadAndPlay(track);
@@ -641,8 +811,15 @@ const Player = (() => {
         if (settings.autoplay && queue[currentIndex]) {
           try {
             const currentTrack = queue[currentIndex];
-            const artists = currentTrack.artists?.split(',') || [currentTrack.artist];
-            const seedArtist = artists[Math.floor(Math.random() * artists.length)]?.trim();
+            let artists = [];
+            if (typeof currentTrack.artists === 'string') {
+              artists = currentTrack.artists.split(',');
+            } else if (Array.isArray(currentTrack.artists)) {
+              artists = currentTrack.artists.map(a => typeof a === 'object' ? (a?.name || a?.artist || '') : String(a));
+            } else if (currentTrack.artist) {
+              artists = [currentTrack.artist];
+            }
+            const seedArtist = (artists[Math.floor(Math.random() * artists.length)] || '').trim();
             if (!seedArtist) return;
             
             let query = seedArtist;
@@ -654,7 +831,7 @@ const Player = (() => {
             const queueIds = queue.map(q => q.id);
             const prefs = Storage.getSettings().languages || [];
             
-            const newSongs = res.filter(s => {
+            const newSongs = (res || []).filter(s => {
               if (queueIds.includes(s.id) || recentIds.includes(s.id)) return false;
               const lang = (s.language || '').toLowerCase();
               if (prefs.length > 0 && lang !== '' && lang !== 'unknown' && !prefs.includes(lang)) return false;
@@ -662,8 +839,9 @@ const Player = (() => {
             });
             
             if (newSongs.length > 0) {
-              queue.push(window.API ? window.API.normalizeSong(newSongs[0]) : newSongs[0]); 
-              nextIndex = currentIndex + 1;
+              const norm = window.API ? window.API.normalizeSong(newSongs[0]) : newSongs[0];
+              queue.push(norm); 
+              nextIndex = queue.length - 1;
               if (shuffleMode) generateShuffledIndices();
             } else {
               return; 
@@ -679,8 +857,11 @@ const Player = (() => {
     }
 
     currentIndex = nextIndex;
-    await loadAndPlay(queue[currentIndex], isCrossfade === true);
-    onQueueUpdate?.(queue, currentIndex);
+    const trackToPlay = queue[currentIndex];
+    if (trackToPlay) {
+      await loadAndPlay(trackToPlay, isCrossfade === true);
+      onQueueUpdate?.(queue, currentIndex);
+    }
   }
 
   async function checkAndPrefetchGapless() {
@@ -714,7 +895,6 @@ const Player = (() => {
     }
   }
 
-
   async function previous() {
     stopInactiveAudio();
     if (queue.length === 0) return;
@@ -741,8 +921,11 @@ const Player = (() => {
     }
 
     currentIndex = prevIndex;
-    await loadAndPlay(queue[currentIndex], false);
-    onQueueUpdate?.(queue, currentIndex);
+    const trackToPlay = queue[currentIndex];
+    if (trackToPlay) {
+      await loadAndPlay(trackToPlay, false);
+      onQueueUpdate?.(queue, currentIndex);
+    }
   }
 
   function seek(seconds) {
@@ -750,6 +933,26 @@ const Player = (() => {
     if (activeAudio.duration) {
       activeAudio.currentTime = Math.max(0, Math.min(seconds, activeAudio.duration));
     }
+  }
+
+  function skipForward(seconds = 15) {
+    if (activeAudio && activeAudio.duration) {
+      seek(activeAudio.currentTime + seconds);
+    }
+  }
+
+  function skipBackward(seconds = 15) {
+    if (activeAudio && activeAudio.duration) {
+      seek(Math.max(0, activeAudio.currentTime - seconds));
+    }
+  }
+
+  function pauseAudio() {
+    pause();
+  }
+
+  async function resumeAudio() {
+    await play();
   }
 
   function seekPercent(percent) {
@@ -852,7 +1055,7 @@ const Player = (() => {
 
     const codecEl = document.getElementById('full-player-codec');
     if (codecEl) {
-      codecEl.textContent = newQuality || '320kbps';
+      codecEl.textContent = getStreamCodecDisplay();
     }
   }
 
@@ -919,9 +1122,9 @@ const Player = (() => {
     }
   }
 
-  function updateMediaSession() {
+  function updateMediaSession(trackToUse) {
     if (!('mediaSession' in navigator)) return;
-    const track = getCurrentTrack();
+    const track = trackToUse || getCurrentTrack();
     if (!track) return;
 
     const artworkList = track.image ? [
@@ -1222,6 +1425,11 @@ const Player = (() => {
     next,
     previous,
     seek,
+    seekTo: seek,
+    skipForward,
+    skipBackward,
+    pauseAudio,
+    resumeAudio,
     seekPercent,
     setVolume,
     getVolume,
@@ -1243,6 +1451,8 @@ const Player = (() => {
     getDuration,
     getCurrentTime,
     getIsPlaying,
+    isPlaying: () => isPlaying,
+    pauseAudio: pause,
     on,
     setPlaybackSpeed,
     getPlaybackSpeed,

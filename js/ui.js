@@ -15,6 +15,11 @@ const UI = (() => {
       document.body.appendChild(container);
     }
 
+    if (typeof Haptics !== 'undefined') {
+      if (type === 'error' || type === 'warning') Haptics.error();
+      else if (type === 'success') Haptics.success();
+    }
+
     const toast = document.createElement('div');
     toast.className = `toast toast-${type}`;
     toast.innerHTML = `
@@ -106,13 +111,18 @@ const UI = (() => {
 
   function renderSongCard(song, index) {
     const isFav = Storage.isFavorite(song.id);
+    const currentTrack = (typeof Player !== 'undefined' && Player.getCurrentTrack) ? Player.getCurrentTrack() : null;
+    const isPlaying = currentTrack && currentTrack.id === song.id;
+    const rawImg = (window.API && API.getImageUrl) ? API.getImageUrl(song) : (typeof song.image === 'string' ? song.image : '');
+    const cleanImg = (typeof rawImg === 'string' && rawImg !== '[object Object]') ? rawImg : '';
+
     const div = document.createElement('div');
-    div.className = 'song-card';
+    div.className = `song-card ${isPlaying ? 'playing is-active-track' : ''}`;
     div.dataset.songId = song.id;
     div.dataset.songData = encodeURIComponent(JSON.stringify(song));
     div.innerHTML = `
-      <div class="song-card__img-wrap" data-action="play" data-index="${index}">
-        <img class="song-card__img" src="${song.image || ''}" alt="${song.name}" loading="lazy" onerror="this.src='data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><rect fill=%22%231a1a2e%22 width=%22100%22 height=%22100%22/><text x=%2250%22 y=%2255%22 text-anchor=%22middle%22 fill=%22%236c5ce7%22 font-size=%2240%22>♪</text></svg>'">
+      <div class="song-card__img-wrap skeleton" data-action="play" data-index="${index}">
+        <img class="song-card__img" src="${cleanImg}" alt="${song.name || 'Song'}" loading="lazy" onload="this.classList.add('loaded'); this.parentElement.classList.remove('skeleton');" onerror="this.onerror=null; this.src='data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><rect fill=%22%231a1a2e%22 width=%22100%22 height=%22100%22/><text x=%2250%22 y=%2255%22 text-anchor=%22middle%22 fill=%22%236c5ce7%22 font-size=%2240%22>♪</text></svg>';">
         <div class="song-card__play-overlay">
           <svg class="play-icon" viewBox="0 0 24 24" fill="currentColor"><polygon points="5,3 19,12 5,21"/></svg>
         </div>
@@ -122,14 +132,14 @@ const UI = (() => {
         <div class="song-card__artist" title="${song.artists}">${truncate(song.artists, 32)}</div>
       </div>
       <div class="song-card__actions">
-        <button class="btn-icon btn-fav ${isFav ? 'active' : ''}" data-action="fav" title="Favorite" aria-label="Toggle favorite">
-          <svg viewBox="0 0 24 24" fill="${isFav ? 'currentColor' : 'none'}" stroke="currentColor" stroke-width="2"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>
+        <button class="btn-icon btn-fav ${isFav ? 'active' : ''}" data-action="fav" title="${isFav ? 'Remove Favorite' : 'Add Favorite'}" aria-label="Toggle favorite">
+          <span class="material-symbols-outlined" style="font-size: 19px; font-variation-settings: 'FILL' ${isFav ? 1 : 0}; color: ${isFav ? '#ff2d55' : 'inherit'};">${isFav ? 'favorite' : 'favorite_border'}</span>
         </button>
         <button class="btn-icon btn-queue" data-action="add-queue" title="Add to queue" aria-label="Add to queue">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+          <span class="material-symbols-outlined" style="font-size: 19px;">playlist_add</span>
         </button>
         <button class="btn-icon btn-context" data-action="context-menu" title="More options" aria-label="More options">
-          <svg viewBox="0 0 24 24" fill="currentColor"><circle cx="12" cy="5" r="2"/><circle cx="12" cy="12" r="2"/><circle cx="12" cy="19" r="2"/></svg>
+          <span class="material-symbols-outlined" style="font-size: 19px;">more_vert</span>
         </button>
       </div>
     `;
@@ -142,11 +152,12 @@ const UI = (() => {
     const div = document.createElement('div');
     div.className = 'song-card album-card';
     div.dataset.albumId = album.id;
-    const imageUrl = API.getImageUrl(album) || '';
+    const rawImg = (window.API && API.getImageUrl) ? API.getImageUrl(album) : (typeof album.image === 'string' ? album.image : '');
+    const cleanImg = (typeof rawImg === 'string' && rawImg !== '[object Object]') ? rawImg : '';
     
     div.innerHTML = `
-      <div class="song-card__img-wrap" data-action="open-album">
-        <img class="song-card__img" src="${imageUrl}" alt="${album.title}" loading="lazy" onerror="this.src='data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><rect fill=%22%231a1a2e%22 width=%22100%22 height=%22100%22/><text x=%2250%22 y=%2255%22 text-anchor=%22middle%22 fill=%22%236c5ce7%22 font-size=%2240%22>🎵</text></svg>'">
+      <div class="song-card__img-wrap skeleton" data-action="open-album">
+        <img class="song-card__img" src="${cleanImg}" alt="${album.title || 'Album'}" loading="lazy" onload="this.classList.add('loaded'); this.parentElement.classList.remove('skeleton');" onerror="this.onerror=null; this.src='data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><rect fill=%22%231a1a2e%22 width=%22100%22 height=%22100%22/><text x=%2250%22 y=%2255%22 text-anchor=%22middle%22 fill=%22%236c5ce7%22 font-size=%2240%22>🎵</text></svg>';">
         <div class="song-card__play-overlay">
           <svg class="play-icon" viewBox="0 0 24 24" fill="currentColor"><polygon points="5,3 19,12 5,21"/></svg>
         </div>
@@ -163,11 +174,12 @@ const UI = (() => {
     const div = document.createElement('div');
     div.className = 'song-card playlist-card';
     div.dataset.playlistId = playlist.id;
-    const imageUrl = API.getImageUrl(playlist) || '';
+    const rawImg = (window.API && API.getImageUrl) ? API.getImageUrl(playlist) : (typeof playlist.image === 'string' ? playlist.image : '');
+    const cleanImg = (typeof rawImg === 'string' && rawImg !== '[object Object]') ? rawImg : '';
     
     div.innerHTML = `
-      <div class="song-card__img-wrap" data-action="open-playlist">
-        <img class="song-card__img" src="${imageUrl}" alt="${playlist.title}" loading="lazy" onerror="this.src='data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><rect fill=%22%231a1a2e%22 width=%22100%22 height=%22100%22/><text x=%2250%22 y=%2255%22 text-anchor=%22middle%22 fill=%22%236c5ce7%22 font-size=%2240%22>🎵</text></svg>'">
+      <div class="song-card__img-wrap skeleton" data-action="open-playlist">
+        <img class="song-card__img" src="${cleanImg}" alt="${playlist.title || 'Playlist'}" loading="lazy" onload="this.classList.add('loaded'); this.parentElement.classList.remove('skeleton');" onerror="this.onerror=null; this.src='data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><rect fill=%22%231a1a2e%22 width=%22100%22 height=%22100%22/><text x=%2250%22 y=%2255%22 text-anchor=%22middle%22 fill=%22%236c5ce7%22 font-size=%2240%22>🎵</text></svg>';">
         <div class="song-card__play-overlay">
           <svg class="play-icon" viewBox="0 0 24 24" fill="currentColor"><polygon points="5,3 19,12 5,21"/></svg>
         </div>
@@ -187,13 +199,14 @@ const UI = (() => {
     div.className = 'song-card artist-card';
     div.dataset.artistId = artist.id;
     const name = artist.name || artist.title || artist.artist || 'Unknown';
-    const imageUrl = API.getImageUrl(artist) || '';
+    const rawImg = (window.API && API.getImageUrl) ? API.getImageUrl(artist) : (typeof artist.image === 'string' ? artist.image : '');
+    const cleanImg = (typeof rawImg === 'string' && rawImg !== '[object Object]') ? rawImg : '';
     
     div.innerHTML = `
-      <div class="song-card__img-wrap artist-card__img-wrap" data-action="open-artist" data-name="${name.replace(/"/g, '&quot;')}" data-image="${imageUrl}">
-        <img class="song-card__img" src="${imageUrl}" alt="${name}" loading="lazy" onerror="this.src='data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><rect fill=%22%231a1a2e%22 width=%22100%22 height=%22100%22/><text x=%2250%22 y=%2255%22 text-anchor=%22middle%22 fill=%22%236c5ce7%22 font-size=%2240%22>👤</text></svg>'">
+      <div class="song-card__img-wrap artist-card__img-wrap skeleton" data-action="open-artist" data-name="${name.replace(/"/g, '&quot;')}" data-image="${cleanImg}">
+        <img class="song-card__img" src="${cleanImg}" alt="${name}" loading="lazy" onload="this.classList.add('loaded'); this.parentElement.classList.remove('skeleton');" onerror="this.onerror=null; this.src='data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><rect fill=%22%231a1a2e%22 width=%22100%22 height=%22100%22/><text x=%2250%22 y=%2255%22 text-anchor=%22middle%22 fill=%22%236c5ce7%22 font-size=%2240%22>👤</text></svg>';">
       </div>
-      <div class="song-card__info artist-card__info" data-action="open-artist" data-name="${name.replace(/"/g, '&quot;')}" data-image="${imageUrl}">
+      <div class="song-card__info artist-card__info" data-action="open-artist" data-name="${name.replace(/"/g, '&quot;')}" data-image="${cleanImg}">
         <div class="song-card__name" title="${name}">${truncate(name, 28)}</div>
         <div class="song-card__artist">Artist</div>
       </div>
@@ -205,17 +218,23 @@ const UI = (() => {
 
   function renderSongListItem(song, index, options = {}) {
     const isFav = Storage.isFavorite(song.id);
-    const isActive = options.isActive || false;
+    const currentTrack = (typeof Player !== 'undefined' && Player.getCurrentTrack) ? Player.getCurrentTrack() : null;
+    const isCurrent = currentTrack && currentTrack.id === song.id;
+    const isActive = options.isActive || isCurrent || false;
     const showRemove = options.showRemove || false;
+    const rawImg = (window.API && API.getImageUrl) ? API.getImageUrl(song) : (typeof song.image === 'string' ? song.image : '');
+    const cleanImg = (typeof rawImg === 'string' && rawImg !== '[object Object]') ? rawImg : '';
 
     const div = document.createElement('div');
-    div.className = `song-list-item ${isActive ? 'active' : ''}`;
+    div.className = `song-list-item ${isActive ? 'active is-active-track playing' : ''}`;
     div.dataset.songId = song.id;
     div.dataset.songData = encodeURIComponent(JSON.stringify(song));
     div.dataset.index = index;
     div.innerHTML = `
       <div class="song-list-item__num">${isActive ? '<span class="now-playing-indicator"><span></span><span></span><span></span></span>' : index + 1}</div>
-      <img class="song-list-item__img" src="${song.image || ''}" alt="" loading="lazy" onerror="this.src='data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><rect fill=%22%231a1a2e%22 width=%22100%22 height=%22100%22/><text x=%2250%22 y=%2255%22 text-anchor=%22middle%22 fill=%22%236c5ce7%22 font-size=%2240%22>♪</text></svg>'">
+      <div class="song-list-item__img-wrap skeleton">
+        <img class="song-list-item__img" src="${cleanImg}" alt="" loading="lazy" onload="this.classList.add('loaded'); this.parentElement.classList.remove('skeleton');" onerror="this.onerror=null; this.src='data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><rect fill=%22%231a1a2e%22 width=%22100%22 height=%22100%22/><text x=%2250%22 y=%2255%22 text-anchor=%22middle%22 fill=%22%236c5ce7%22 font-size=%2240%22>♪</text></svg>';">
+      </div>
       <div class="song-list-item__info" data-action="play" data-index="${index}">
         <div class="song-list-item__name">${truncate(song.name, 36)}</div>
         <div class="song-list-item__artist">${truncate(song.artists, 40)}</div>
@@ -238,7 +257,7 @@ const UI = (() => {
 
   // ---- Rendering: Search Results ----
 
-  function renderSearchResults(songs, container) {
+  function renderSearchResults(songs, container, query = '') {
     container.innerHTML = '';
     if (!songs || songs.length === 0) {
       container.innerHTML = `
@@ -256,6 +275,12 @@ const UI = (() => {
     songs.forEach((song, i) => {
       const normalized = API.normalizeSong(song);
       const card = renderSongCard(normalized, i);
+      if (query && typeof SearchEngine !== 'undefined' && SearchEngine.highlightMatch) {
+        const nameEl = card.querySelector('.song-card__name');
+        const artistEl = card.querySelector('.song-card__artist');
+        if (nameEl) nameEl.innerHTML = SearchEngine.highlightMatch(normalized.name, query);
+        if (artistEl) artistEl.innerHTML = SearchEngine.highlightMatch(normalized.artists, query);
+      }
       grid.appendChild(card);
     });
 
@@ -290,79 +315,244 @@ const UI = (() => {
 
   // ---- Rendering: Favorites List ----
 
-  function renderFavorites(container) {
+  async function renderFavorites(container, activeFilter = 'all') {
+    if (!container) return;
     const favs = Storage.getFavorites();
     container.innerHTML = '';
 
     if (favs.length === 0) {
       container.innerHTML = `
-        <div class="empty-state">
-          <div class="empty-state__icon">❤️</div>
-          <div class="empty-state__title">No favorites yet</div>
-          <div class="empty-state__subtitle">Search for songs and tap the heart to save them</div>
+        <div class="empty-state" style="padding: 48px 16px; text-align: center;">
+          <div class="empty-state__icon" style="font-size: 44px; margin-bottom: 12px;">❤️</div>
+          <div class="empty-state__title" style="font-size: 22px; font-weight: 700; color: #fff;">Your Library is Empty</div>
+          <div class="empty-state__subtitle" style="color: #9ca3af; font-size: 14px; margin-top: 6px;">Search for songs, albums, and artists and tap the heart icon to build your library.</div>
         </div>`;
       return;
     }
 
+    // 0. Library Header
+    const libHeader = document.createElement('div');
+    libHeader.className = 'library-header';
+    libHeader.innerHTML = `
+      <h1 class="library-header-title">Your Library</h1>
+      <span class="library-header-badge">${favs.length} ${favs.length === 1 ? 'Song' : 'Songs'}</span>
+    `;
+    container.appendChild(libHeader);
+
+    // 1. Library Filter Chips Bar
+    const filterChips = document.createElement('div');
+    filterChips.className = 'library-filter-carousel';
+    filterChips.style.cssText = 'display: flex; gap: 8px; overflow-x: auto; padding: 4px 0 16px 0; margin-bottom: 12px; scrollbar-width: none;';
+    filterChips.innerHTML = `
+      <button class="filter-chip ${activeFilter === 'all' ? 'active' : ''}" data-filter="all" style="padding: 6px 16px; border-radius: 999px; font-size: 13px; font-weight: 600; cursor: pointer; white-space: nowrap;">All (${favs.length})</button>
+      <button class="filter-chip ${activeFilter === 'downloaded' ? 'active' : ''}" data-filter="downloaded" style="padding: 6px 16px; border-radius: 999px; font-size: 13px; font-weight: 600; cursor: pointer; white-space: nowrap;">Downloaded</button>
+      <button class="filter-chip ${activeFilter === 'artists' ? 'active' : ''}" data-filter="artists" style="padding: 6px 16px; border-radius: 999px; font-size: 13px; font-weight: 600; cursor: pointer; white-space: nowrap;">Artists</button>
+      <button class="filter-chip" id="btn-lib-recap-chip" style="padding: 6px 16px; border-radius: 999px; font-size: 13px; font-weight: 600; background: linear-gradient(135deg, #00f1fe 0%, #3b82f6 100%); color: #000; border: none; cursor: pointer; white-space: nowrap;">✨ Weekly Recap</button>
+    `;
+
+    filterChips.querySelectorAll('.filter-chip[data-filter]').forEach(chip => {
+      chip.addEventListener('click', () => {
+        const filter = chip.dataset.filter;
+        renderFavorites(container, filter);
+        if (typeof Haptics !== 'undefined' && Haptics.selection) Haptics.selection();
+      });
+    });
+
+    filterChips.querySelector('#btn-lib-recap-chip')?.addEventListener('click', () => {
+      document.querySelectorAll('.nav-item').forEach(nav => nav.classList.remove('active'));
+      UI.showPage('page-recap');
+      if (typeof Recap !== 'undefined') Recap.renderRecap(document.getElementById('recap-container'));
+      history.pushState({ type: 'page', pageId: 'page-recap' }, '', '#recap');
+      if (typeof Haptics !== 'undefined' && Haptics.medium) Haptics.medium();
+    });
+    container.appendChild(filterChips);
+
+    // ================= VIEW: ARTISTS =================
+    if (activeFilter === 'artists') {
+      const artistMap = {};
+      favs.forEach(song => {
+        const artistName = (song.artists || song.artist || 'Unknown').split(',')[0].trim();
+        if (!artistMap[artistName]) {
+          artistMap[artistName] = { name: artistName, count: 0, image: song.image, songs: [] };
+        }
+        artistMap[artistName].count++;
+        artistMap[artistName].songs.push(song);
+      });
+
+      const artistList = Object.values(artistMap).sort((a, b) => b.count - a.count);
+
+      const artistsSection = document.createElement('section');
+      artistsSection.style.cssText = 'margin-bottom: 28px;';
+      artistsSection.innerHTML = `
+        <h2 style="font-family: var(--font-heading); font-size: 22px; font-weight: 800; color: var(--text-primary); margin: 0 0 14px 0;">Artists in Library (${artistList.length})</h2>
+        <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 14px;">
+          ${artistList.map((art, idx) => `
+            <div class="lib-artist-card" data-index="${idx}" style="border-radius: 16px; padding: 16px 12px; display: flex; flex-direction: column; align-items: center; text-align: center; cursor: pointer; transition: transform 0.2s, background 0.2s;">
+              <div style="width: 80px; height: 80px; border-radius: 50%; overflow: hidden; margin-bottom: 10px; box-shadow: 0 4px 16px rgba(0,0,0,0.15); border: 2px solid rgba(255,255,255,0.1);">
+                <img src="${art.image || 'assets/logo.jpg'}" alt="${art.name}" style="width: 100%; height: 100%; object-fit: cover;" onerror="this.src='assets/logo.jpg'">
+              </div>
+              <h4 style="font-family: var(--font-heading); font-size: 14px; font-weight: 700; color: var(--text-primary); margin: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; width: 100%;">${art.name}</h4>
+              <span style="font-size: 12px; color: #ff5167; font-weight: 600; margin-top: 2px;">${art.count} ${art.count === 1 ? 'song' : 'songs'}</span>
+            </div>
+          `).join('')}
+        </div>
+      `;
+
+      artistsSection.querySelectorAll('.lib-artist-card').forEach(card => {
+        card.addEventListener('click', () => {
+          const idx = parseInt(card.dataset.index, 10);
+          const art = artistList[idx];
+          if (art && art.songs.length > 0) {
+            Player.setQueue(art.songs, 0);
+            Player.playSong(art.songs[0]);
+            UI.showToast(`Playing ${art.name}`, 'info');
+          }
+        });
+      });
+
+      container.appendChild(artistsSection);
+      return;
+    }
+
+    // ================= VIEW: DOWNLOADED =================
+    if (activeFilter === 'downloaded') {
+      const dlSection = document.createElement('section');
+      dlSection.id = 'library-smart-downloads';
+      dlSection.style.cssText = 'margin-top: 12px;';
+      container.appendChild(dlSection);
+      renderSmartDownloadsList(dlSection);
+      return;
+    }
+
+    // ================= VIEW: ALL (DEFAULT) =================
+
+    // 2. Music Recap Gradient Banner
     const recapBanner = document.createElement('div');
-    recapBanner.style.background = 'linear-gradient(135deg, var(--accent-color), var(--accent-dark))';
-    recapBanner.style.padding = '16px 20px';
-    recapBanner.style.borderRadius = 'var(--radius-lg)';
-    recapBanner.style.marginBottom = '24px';
-    recapBanner.style.display = 'flex';
-    recapBanner.style.justifyContent = 'space-between';
-    recapBanner.style.alignItems = 'center';
-    recapBanner.style.cursor = 'pointer';
-    recapBanner.style.boxShadow = 'var(--shadow-md)';
+    recapBanner.className = 'recap-summary-banner';
+    recapBanner.style.cssText = 'background: linear-gradient(135deg, #ff2d55 0%, #ec4899 100%); border-radius: 16px; padding: 18px 20px; display: flex; align-items: center; justify-content: space-between; margin-bottom: 24px; cursor: pointer; box-shadow: 0 8px 24px rgba(236, 72, 153, 0.25);';
     recapBanner.innerHTML = `
       <div>
-        <div style="font-weight: 800; font-size: 18px; color: #fff;">Your Music Recap</div>
-        <div style="font-size: 13px; color: rgba(255,255,255,0.8); margin-top: 4px;">See your listening stats</div>
+        <div style="font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 1px; color: rgba(255,255,255,0.85); margin-bottom: 2px;">Your Music Story</div>
+        <h2 style="font-family: var(--font-heading); font-size: 20px; font-weight: 800; color: #fff; margin: 0;">Weekly Listening Recap</h2>
+        <p style="font-size: 13px; color: rgba(255,255,255,0.9); margin: 3px 0 0 0;">View stats, 7-day chart & top artists</p>
       </div>
-      <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="#fff" stroke-width="2"><polyline points="9 18 15 12 9 6"/></svg>
+      <div style="width: 40px; height: 40px; border-radius: 50%; background: rgba(255, 255, 255, 0.2); backdrop-filter: blur(10px); display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
+        <span class="material-symbols-outlined" style="font-size: 22px; color: #fff;">arrow_forward</span>
+      </div>
     `;
     recapBanner.onclick = () => {
       document.querySelectorAll('.nav-item').forEach(nav => nav.classList.remove('active'));
       UI.showPage('page-recap');
-      Recap.renderRecap(document.getElementById('recap-container'));
+      if (typeof Recap !== 'undefined') Recap.renderRecap(document.getElementById('recap-container'));
       history.pushState({ type: 'page', pageId: 'page-recap' }, '', '#recap');
     };
     container.appendChild(recapBanner);
 
-    const recentlyAdded = [...favs].reverse().slice(0, 8); // top 8 recently added
+    const recentlyAdded = [...favs].reverse().slice(0, 4);
 
-    // Recently Added Shelf
+    // 3. Recently Added (Stitch 2-Column Responsive Grid)
     if (recentlyAdded.length > 0) {
-      const recentHeader = document.createElement('div');
-      recentHeader.className = 'section-header';
-      recentHeader.innerHTML = `<h2 class="section-title">Recently Added</h2>`;
-      container.appendChild(recentHeader);
-
-      const recentGrid = document.createElement('div');
-      recentGrid.className = 'shelf-grid horizontal-scroll';
+      const recentSection = document.createElement('section');
+      recentSection.style.cssText = 'margin-bottom: 28px;';
+      recentSection.innerHTML = `
+        <h2 style="font-family: var(--font-heading); font-size: 22px; font-weight: 800; color: var(--text-primary); margin: 0 0 14px 0;">Recently Added</h2>
+        <div class="recently-added-grid"></div>
+      `;
+      const gridEl = recentSection.querySelector('.recently-added-grid');
       recentlyAdded.forEach((song) => {
         const originalIndex = favs.findIndex(s => s.id === song.id);
-        recentGrid.appendChild(renderSongCard(song, originalIndex));
+        const card = document.createElement('div');
+        card.className = 'library-card';
+        card.dataset.songId = song.id;
+        card.innerHTML = `
+          <div class="library-card__art-wrap">
+            <img alt="${song.name}" class="library-card__img" src="${song.image || 'assets/logo.jpg'}" onerror="this.src='assets/logo.jpg'">
+            <div class="library-card__play-btn" title="Play">
+              <span class="material-symbols-outlined" style="font-size: 20px; font-variation-settings: 'FILL' 1; margin-left: 2px;">play_arrow</span>
+            </div>
+          </div>
+          <div class="library-card__info">
+            <h3 class="library-card__title">${song.name}</h3>
+            <p class="library-card__artist">${song.artists || song.artist}</p>
+          </div>
+        `;
+
+        card.addEventListener('click', () => {
+          Player.setQueue(favs, originalIndex);
+          Player.playSong(favs[originalIndex]);
+        });
+
+        gridEl.appendChild(card);
       });
-      container.appendChild(recentGrid);
+      container.appendChild(recentSection);
     }
 
-    // All Favorites List
-    const allHeader = document.createElement('div');
-    allHeader.className = 'section-header';
-    allHeader.style.marginTop = '24px';
-    allHeader.innerHTML = `
-      <h2 class="section-title">All Favorites</h2>
-      <span class="section-count">${favs.length} songs</span>
+    // 4. All Saved Songs List
+    const songsSection = document.createElement('section');
+    songsSection.style.cssText = 'margin-bottom: 28px;';
+    songsSection.innerHTML = `
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
+        <h2 style="font-family: var(--font-heading); font-size: 22px; font-weight: 800; color: var(--text-primary); margin: 0;">All Songs</h2>
+        <span style="font-family: var(--font-mono, monospace); font-size: 12px; color: var(--text-secondary);">${favs.length} tracks</span>
+      </div>
+      <div id="favs-full-list" style="display: flex; flex-direction: column; gap: 6px;"></div>
     `;
-    container.appendChild(allHeader);
+    const fullListEl = songsSection.querySelector('#favs-full-list');
+    favs.forEach((song, idx) => {
+      const row = document.createElement('div');
+      row.className = 'library-song-row';
+      row.dataset.songId = song.id;
+      row.dataset.index = idx;
+      row.innerHTML = `
+        <span class="library-song-index">${idx + 1}</span>
+        <img alt="${song.name}" class="library-song-img" src="${song.image || 'assets/logo.jpg'}" onerror="this.src='assets/logo.jpg'">
+        <div class="library-song-info">
+          <h3 class="library-song-title">${song.name}</h3>
+          <p class="library-song-artist">${song.artists || song.artist}</p>
+        </div>
+        <div class="library-song-actions">
+          <button class="btn-icon" data-action="fav" title="Favorite" style="color: #ff2d55; background: none; border: none; cursor: pointer; padding: 6px; display: flex; align-items: center;">
+            <span class="material-symbols-outlined" style="font-size: 20px; font-variation-settings: 'FILL' 1;">favorite</span>
+          </button>
+          <button class="btn-icon" data-action="download" title="Smart Download" style="color: #9ca3af; background: none; border: none; cursor: pointer; padding: 6px; display: flex; align-items: center;">
+            <span class="material-symbols-outlined" style="font-size: 20px;">download</span>
+          </button>
+        </div>
+      `;
 
-    const list = document.createElement('div');
-    list.className = 'song-list';
-    favs.forEach((song, i) => {
-      list.appendChild(renderSongListItem(song, i, { showRemove: false }));
+      row.addEventListener('click', (e) => {
+        if (e.target.closest('button')) return;
+        Player.setQueue(favs, idx);
+        Player.playSong(favs[idx]);
+      });
+
+      row.querySelector('[data-action="fav"]')?.addEventListener('click', (e) => {
+        e.stopPropagation();
+        Storage.removeFavorite(song.id);
+        renderFavorites(container, activeFilter);
+        UI.showToast(`Removed from favorites`, 'info');
+      });
+
+      row.querySelector('[data-action="download"]')?.addEventListener('click', async (e) => {
+        e.stopPropagation();
+        if (typeof SmartDownloads !== 'undefined') {
+          await SmartDownloads.downloadSong(song);
+          UI.showToast(`Downloaded "${song.name}" for offline play`, 'success');
+          const dlContainer = document.getElementById('library-smart-downloads');
+          if (dlContainer) renderSmartDownloadsList(dlContainer);
+        }
+      });
+
+      fullListEl.appendChild(row);
     });
-    container.appendChild(list);
+    container.appendChild(songsSection);
+
+    // 5. Smart Downloads Section
+    const dlSection = document.createElement('section');
+    dlSection.id = 'library-smart-downloads';
+    dlSection.style.cssText = 'margin-top: 12px;';
+    container.appendChild(dlSection);
+    renderSmartDownloadsList(dlSection);
   }
 
   // ---- Rendering: Queue ----
@@ -519,6 +709,59 @@ const UI = (() => {
         Player.setQueue(q, newCurrentIndex);
       }
     });
+
+    // ---- Load More Endless Songs Button ----
+    const loadMoreWrap = document.createElement('div');
+    loadMoreWrap.style.padding = '0 8px';
+    const loadMoreBtn = document.createElement('button');
+    loadMoreBtn.className = 'btn-queue-load-more';
+    loadMoreBtn.innerHTML = `
+      <span class="material-symbols-outlined" style="font-size: 20px;">auto_awesome</span>
+      <span>Load More Songs (+20 Recommendations)</span>
+    `;
+    loadMoreBtn.onclick = async () => {
+      loadMoreBtn.disabled = true;
+      loadMoreBtn.innerHTML = `
+        <span class="spinner" style="width: 16px; height: 16px; border: 2px solid rgba(255,255,255,0.3); border-top-color: #fff; border-radius: 50%; display: inline-block; animation: spin 0.8s linear infinite;"></span>
+        <span>Finding Best Tracks...</span>
+      `;
+      try {
+        const curQueue = Player.getQueue();
+        const curTrack = Player.getCurrentTrack() || curQueue[curQueue.length - 1];
+        let query = 'trending hits';
+        if (curTrack) {
+          query = curTrack.artists ? curTrack.artists.split(',')[0].trim() : (curTrack.name || 'trending');
+        }
+        const newTracks = await API.searchSongs(query, 20);
+        if (newTracks && newTracks.length > 0) {
+          const existingIds = new Set(curQueue.map(s => s.id));
+          const normalizedNew = newTracks
+            .map(t => API.normalizeSong(t))
+            .filter(t => t && t.id && !existingIds.has(t.id));
+          
+          if (normalizedNew.length > 0) {
+            const expandedQueue = [...curQueue, ...normalizedNew];
+            Player.setQueue(expandedQueue, Player.getCurrentIndex());
+            renderQueue(container);
+            UI.showToast(`Added ${normalizedNew.length} more songs to queue! 🎵`, 'success');
+            if (typeof Haptics !== 'undefined') Haptics.success();
+            return;
+          }
+        }
+        UI.showToast('No more unique songs found for this station', 'info');
+      } catch (e) {
+        console.error(e);
+        UI.showToast('Failed to load more songs', 'warning');
+      } finally {
+        loadMoreBtn.disabled = false;
+        loadMoreBtn.innerHTML = `
+          <span class="material-symbols-outlined" style="font-size: 20px;">auto_awesome</span>
+          <span>Load More Songs (+20 Recommendations)</span>
+        `;
+      }
+    };
+    loadMoreWrap.appendChild(loadMoreBtn);
+    container.appendChild(loadMoreWrap);
   }
 
   // ---- Rendering: Recently Played ----
@@ -565,22 +808,47 @@ const UI = (() => {
     const fName = document.getElementById('full-player-name');
     const fArtist = document.getElementById('full-player-artist');
 
-    const highResImg = API.getHighResImage ? API.getHighResImage(track.image) : track.image;
+    const cleanImg = (window.API && API.getImageUrl) ? API.getImageUrl(track) : (typeof track.image === 'string' ? track.image : '');
+    const highResImg = (window.API && API.getHighResImage) ? API.getHighResImage(cleanImg) : (cleanImg || 'assets/logo.jpg');
 
-    if (mImg) mImg.src = track.image || '';
+    if (mImg) mImg.src = cleanImg || 'assets/logo.jpg';
     if (mName) mName.textContent = track.name || 'Unknown';
-    if (fImg) fImg.src = highResImg || '';
+    if (fImg) fImg.src = highResImg || 'assets/logo.jpg';
     if (fName) fName.textContent = track.name || 'Unknown';
 
-    const renderArtistChips = (container, artistsText, trackImg) => {
+    const renderArtistChips = (container, artistsInput, trackImg) => {
       if (!container) return;
-      if (!artistsText || artistsText === 'Unknown' || artistsText === '-') {
-        container.textContent = artistsText || 'Unknown';
+      
+      let artistsText = '';
+      if (typeof artistsInput === 'string') {
+        artistsText = artistsInput;
+      } else if (Array.isArray(artistsInput)) {
+        artistsText = artistsInput.map(a => {
+          if (typeof a === 'string') return a;
+          if (typeof a === 'object' && a !== null) return a.name || a.title || a.artist || '';
+          return '';
+        }).filter(Boolean).join(', ');
+      } else if (typeof artistsInput === 'object' && artistsInput !== null) {
+        artistsText = artistsInput.name || artistsInput.title || artistsInput.artist || '';
+      }
+
+      let imgUrl = trackImg;
+      if (typeof imgUrl === 'object' && imgUrl !== null) {
+        imgUrl = (window.API && API.getImageUrl) ? API.getImageUrl(imgUrl) : (imgUrl.url || imgUrl.link || imgUrl.image || '');
+      }
+      if (typeof imgUrl !== 'string' || imgUrl === '[object Object]') {
+        imgUrl = '';
+      }
+
+      if (!artistsText || artistsText === 'Unknown' || artistsText === '-' || artistsText === '[object Object]') {
+        container.textContent = (artistsText && artistsText !== '[object Object]') ? artistsText : 'Unknown';
         return;
       }
+
       container.innerHTML = '';
       const list = artistsText.split(/[,/&]+/).map(a => a.trim()).filter(Boolean);
       list.forEach((artName, idx) => {
+        if (!artName || artName === '[object Object]') return;
         const span = document.createElement('span');
         span.className = 'clickable-artist-link';
         span.textContent = artName;
@@ -588,7 +856,7 @@ const UI = (() => {
         span.onclick = (e) => {
           e.stopPropagation();
           if (window.openArtistPage) {
-            window.openArtistPage(artName, trackImg);
+            window.openArtistPage(artName, imgUrl);
           }
         };
         container.appendChild(span);
@@ -600,6 +868,15 @@ const UI = (() => {
 
     renderArtistChips(mArtist, track.artists, track.image);
     renderArtistChips(fArtist, track.artists, highResImg || track.image);
+
+    // Highlight currently active track across all cards and list items in DOM
+    document.querySelectorAll('.song-card, .song-list-item, .quick-pick-item, .video-search-card, .search-top-result-card').forEach(el => {
+      if (el.dataset.songId === track.id) {
+        el.classList.add('playing', 'is-active-track');
+      } else {
+        el.classList.remove('playing', 'is-active-track');
+      }
+    });
 
     const isFav = Storage.isFavorite(track.id);
     document.querySelectorAll('.full-player .btn-fav, .mini-player .btn-fav').forEach(btn => {
@@ -618,8 +895,8 @@ const UI = (() => {
 
     document.querySelectorAll('.btn-play').forEach(btn => {
       btn.innerHTML = isPlaying 
-        ? '<svg viewBox="0 0 24 24" fill="currentColor"><rect x="6" y="4" width="4" height="16"/><rect x="14" y="4" width="4" height="16"/></svg>'
-        : '<svg viewBox="0 0 24 24" fill="currentColor"><polygon points="5,3 19,12 5,21"/></svg>';
+        ? '<span class="material-symbols-outlined" style="font-size: 32px; font-variation-settings: \'FILL\' 1;">pause</span>'
+        : '<span class="material-symbols-outlined" style="font-size: 32px; font-variation-settings: \'FILL\' 1;">play_arrow</span>';
     });
   }
 
@@ -640,7 +917,6 @@ const UI = (() => {
       if (mFill) mFill.style.width = `${data.progress}%`;
       if (mEdge) mEdge.style.width = `${data.progress}%`;
       if (fFill) fFill.style.width = `${data.progress}%`;
-      if (fThumb) fThumb.style.left = `${data.progress}%`;
     }
 
     if (data.currentTime !== undefined) {
@@ -692,8 +968,17 @@ const UI = (() => {
 
   // ---- Dynamic Background (Spotify Ambient Color Glow) ----
 
-  function extractDominantColor(imageUrl, callback) {
-    if (!imageUrl) return;
+  function extractDominantColor(imageInput, callback) {
+    if (!imageInput) return fallbackColor('', callback);
+    
+    let imageUrl = imageInput;
+    if (typeof imageUrl === 'object' && imageUrl !== null) {
+      imageUrl = (window.API && API.getImageUrl) ? API.getImageUrl(imageUrl) : (imageUrl.url || imageUrl.link || imageUrl.image || '');
+    }
+    if (!imageUrl || typeof imageUrl !== 'string' || imageUrl.includes('[object Object]')) {
+      return fallbackColor(imageUrl, callback);
+    }
+
     const img = new Image();
     img.crossOrigin = 'Anonymous';
     img.onload = () => {
@@ -771,8 +1056,9 @@ const UI = (() => {
   }
 
   function fallbackColor(str, callback) {
+    const text = (typeof str === 'string' && str && !str.includes('[object Object]')) ? str : 'musicflow_color_seed';
     let hash = 0;
-    for (let i = 0; i < str.length; i++) hash = str.charCodeAt(i) + ((hash << 5) - hash);
+    for (let i = 0; i < text.length; i++) hash = text.charCodeAt(i) + ((hash << 5) - hash);
     const hue = Math.abs(hash % 360);
     const hue2 = (hue + 45) % 360;
     const hue3 = (hue + 90) % 360;
@@ -797,8 +1083,15 @@ const UI = (() => {
     callback(r, g, b, r2, g2, b2, r3, g3, b3);
   }
 
-  function updateDynamicBackground(imageUrl) {
-    if (!imageUrl) return;
+  function updateDynamicBackground(input) {
+    if (!input) return;
+    let imageUrl = input;
+    if (typeof imageUrl === 'object' && imageUrl !== null) {
+      imageUrl = (window.API && API.getImageUrl) ? API.getImageUrl(imageUrl) : (imageUrl.url || imageUrl.link || imageUrl.image || '');
+    }
+    if (!imageUrl || typeof imageUrl !== 'string' || imageUrl.includes('[object Object]')) {
+      imageUrl = 'assets/logo.jpg';
+    }
     extractDominantColor(imageUrl, (r, g, b, r2, g2, b2, r3, g3, b3) => {
       const secR = r2 ?? r;
       const secG = g2 ?? g;
@@ -897,6 +1190,575 @@ const UI = (() => {
     `).join('');
   }
 
+  // ---- Phase 1: Mood & Activity Chips Carousel ----
+
+  function renderMoodChips(container, activeMood = 'all') {
+    if (!container || typeof Moods === 'undefined') return;
+    const moods = Moods.getMoodList();
+    container.innerHTML = moods.map(m => `
+      <button class="filter-chip mood-chip ${m.id === activeMood ? 'active' : ''}" data-mood="${m.id}" aria-label="${m.label} mood">
+        <span class="filter-chip__icon">${m.icon}</span>
+        <span class="filter-chip__label">${m.label}</span>
+      </button>
+    `).join('');
+
+    container.querySelectorAll('.mood-chip').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const moodId = btn.dataset.mood;
+        if (typeof Moods !== 'undefined' && Moods.setMood) {
+          Moods.setMood(moodId);
+        }
+      });
+    });
+  }
+
+  function updateMoodChipsActive(activeMood) {
+    const chips = document.querySelectorAll('.mood-chip');
+    chips.forEach(chip => {
+      chip.classList.toggle('active', chip.dataset.mood === activeMood);
+    });
+  }
+
+  // ---- Phase 1: Quick Picks 4x4 Multi-Row Grid ----
+
+  function renderQuickPicks(songs, container) {
+    if (!container) return;
+    container.innerHTML = '';
+    if (!songs || songs.length === 0) {
+      container.parentElement.style.display = 'none';
+      return;
+    }
+    container.parentElement.style.display = 'block';
+
+    const normSongs = songs.map(API.normalizeSong);
+
+    // Group into columns of 4 songs (up to 4 columns = 16 songs)
+    const columns = [];
+    for (let i = 0; i < Math.min(normSongs.length, 16); i += 4) {
+      columns.push(normSongs.slice(i, i + 4));
+    }
+
+    const scrollWrap = document.createElement('div');
+    scrollWrap.className = 'quick-picks-carousel';
+
+    columns.forEach(col => {
+      const colDiv = document.createElement('div');
+      colDiv.className = 'quick-picks-column';
+
+      col.forEach(song => {
+        const currentTrack = (typeof Player !== 'undefined' && Player.getCurrentTrack) ? Player.getCurrentTrack() : null;
+        const isPlaying = currentTrack && currentTrack.id === song.id;
+
+        const item = document.createElement('div');
+        item.className = `quick-pick-item ${isPlaying ? 'playing is-active-track' : ''}`;
+        item.dataset.songId = song.id;
+        item.dataset.songData = encodeURIComponent(JSON.stringify(song));
+        item.innerHTML = `
+          <div class="quick-pick-item__thumb-wrap skeleton">
+            <img class="quick-pick-item__img" src="${song.image || ''}" alt="${song.name}" loading="lazy" onload="this.classList.add('loaded'); this.parentElement.classList.remove('skeleton');" onerror="this.onerror=null; this.src='data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><rect fill=%22%231a1a2e%22 width=%22100%22 height=%22100%22/><text x=%2250%22 y=%2255%22 text-anchor=%22middle%22 fill=%22%236c5ce7%22 font-size=%2240%22>♪</text></svg>';">
+            <div class="quick-pick-item__play-overlay">
+              ${isPlaying ? `
+                <div class="quick-pick-item__eq-bars">
+                  <span class="eq-bar eq-bar-1"></span>
+                  <span class="eq-bar eq-bar-2"></span>
+                  <span class="eq-bar eq-bar-3"></span>
+                </div>
+              ` : `<svg viewBox="0 0 24 24" fill="currentColor"><polygon points="6,4 18,12 6,20"/></svg>`}
+            </div>
+          </div>
+          <div class="quick-pick-item__info">
+            <div class="quick-pick-item__name">${truncate(song.name, 30)}</div>
+            <div class="quick-pick-item__artist">${truncate(song.artists || song.artist, 32)}</div>
+          </div>
+          <button class="quick-pick-item__radio-btn btn-icon" title="Start Radio" aria-label="Start Radio from track">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16"><circle cx="12" cy="12" r="2"/><path d="M16.24 7.76a6 6 0 0 1 0 8.49m-8.48-.01a6 6 0 0 1 0-8.49m11.31-2.82a10 10 0 0 1 0 14.14m-14.14 0a10 10 0 0 1 0-14.14"/></svg>
+          </button>
+        `;
+
+        // Direct click on entire card starts playback immediately
+        item.addEventListener('click', async (e) => {
+          if (e.target.closest('.quick-pick-item__radio-btn')) {
+            e.stopPropagation();
+            if (window.App && window.App.startRadioForSong) {
+              window.App.startRadioForSong(song);
+            } else {
+              Player.playSong(song);
+            }
+            return;
+          }
+
+          const norm = (window.API && API.normalizeSong) ? API.normalizeSong(song) : { ...song };
+          const songIndex = normSongs.findIndex(s => s.id === norm.id);
+          if (songIndex !== -1) {
+            Player.setQueue(normSongs, songIndex);
+          } else {
+            Player.setQueue([norm], 0);
+          }
+          await Player.playSong(norm);
+
+          // Background radio expansion if supported
+          if (window.App && window.App.startRadioForSong) {
+            window.App.startRadioForSong(norm);
+          }
+        });
+
+        colDiv.appendChild(item);
+      });
+
+      scrollWrap.appendChild(colDiv);
+    });
+
+    container.appendChild(scrollWrap);
+  }
+
+  // ---- Phase 1: Personalized Mix Suite Shelf ----
+
+  function renderMixSuiteShelf(mixes, container) {
+    if (!container) return;
+    container.innerHTML = '';
+    if (!mixes || mixes.length === 0) {
+      container.parentElement.style.display = 'none';
+      return;
+    }
+    container.parentElement.style.display = 'block';
+
+    mixes.forEach(mix => {
+      const card = document.createElement('div');
+      card.className = 'mix-card';
+      card.dataset.mixId = mix.id;
+      card.innerHTML = `
+        <div class="mix-card__cover" style="background: ${mix.gradient};">
+          <div class="mix-card__vinyl-ring"></div>
+          <div class="mix-card__badge">${mix.badge || 'Mix'}</div>
+          <div class="mix-card__icon">${mix.icon || '🎵'}</div>
+          <div class="mix-card__play-btn" title="Play ${mix.title}">
+            <svg viewBox="0 0 24 24" fill="currentColor"><polygon points="6,4 18,12 6,20"/></svg>
+          </div>
+        </div>
+        <div class="mix-card__info">
+          <div class="mix-card__title">${mix.title}</div>
+          <div class="mix-card__subtitle">${mix.subtitle}</div>
+        </div>
+      `;
+
+      card.addEventListener('click', () => {
+        if (typeof MixSuite !== 'undefined' && MixSuite.openMixPage) {
+          MixSuite.openMixPage(mix.id);
+        }
+      });
+
+      const playBtn = card.querySelector('.mix-card__play-btn');
+      if (playBtn) {
+        playBtn.addEventListener('click', (e) => {
+          e.stopPropagation();
+          if (typeof MixSuite !== 'undefined' && MixSuite.playMix) {
+            MixSuite.playMix(mix.id);
+          }
+        });
+      }
+
+      container.appendChild(card);
+    });
+  }
+
+  // ---- Phase 1: Regional Language Category Chips ----
+
+  function renderLanguageChips(container) {
+    if (!container || typeof LanguageHubs === 'undefined') return;
+    const languages = LanguageHubs.getLanguages();
+    container.innerHTML = languages.map(lang => `
+      <button class="filter-chip language-chip" data-lang="${lang.id}" style="--chip-gradient: ${lang.gradient};">
+        <span class="language-chip__icon">${lang.icon}</span>
+        <span class="language-chip__name">${lang.name}</span>
+        <span class="language-chip__script">${lang.script}</span>
+      </button>
+    `).join('');
+
+    container.querySelectorAll('.language-chip').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const langId = btn.dataset.lang;
+        if (typeof LanguageHubs !== 'undefined' && LanguageHubs.openLanguageHub) {
+          LanguageHubs.openLanguageHub(langId);
+        }
+      });
+    });
+  }
+
+  // ---- Phase 2: Public Playlists Shelf ----
+
+  function renderPublicPlaylistsShelf(playlists, container) {
+    if (!container) return;
+    container.innerHTML = '';
+    if (!playlists || playlists.length === 0) {
+      container.parentElement.style.display = 'none';
+      return;
+    }
+    container.parentElement.style.display = 'block';
+
+    playlists.forEach(pl => {
+      const card = document.createElement('div');
+      card.className = 'mix-card public-playlist-card';
+      card.dataset.id = pl.id;
+      card.innerHTML = `
+        <div class="mix-card__cover" style="background: ${pl.coverGradient};">
+          <div class="mix-card__vinyl-ring"></div>
+          <div class="mix-card__badge">Public</div>
+          <div class="mix-card__icon">${pl.icon || '🌍'}</div>
+          <div class="mix-card__play-btn" title="Play ${pl.title}">
+            <svg viewBox="0 0 24 24" fill="currentColor"><polygon points="6,4 18,12 6,20"/></svg>
+          </div>
+        </div>
+        <div class="mix-card__info">
+          <div class="mix-card__title">${pl.title}</div>
+          <div class="mix-card__subtitle">${pl.description}</div>
+        </div>
+      `;
+
+      card.addEventListener('click', () => {
+        if (typeof PlaylistSharing !== 'undefined' && PlaylistSharing.openPublicPlaylist) {
+          PlaylistSharing.openPublicPlaylist(pl.id);
+        }
+      });
+
+      const playBtn = card.querySelector('.mix-card__play-btn');
+      if (playBtn) {
+        playBtn.addEventListener('click', (e) => {
+          e.stopPropagation();
+          if (typeof PlaylistSharing !== 'undefined' && PlaylistSharing.openPublicPlaylist) {
+            PlaylistSharing.openPublicPlaylist(pl.id);
+          }
+        });
+      }
+
+      container.appendChild(card);
+    });
+  }
+
+  // ---- Contextual & Situational Lifestyle Hubs (Office, Home, Workout, Drive, Sleep, Party) ----
+
+  const LIFESTYLE_HUBS = [
+    {
+      id: 'office',
+      title: 'Office & Deep Focus',
+      tagline: 'Lo-Fi coding, study & work flow',
+      icon: '💼',
+      badge: 'FOCUS & CODING',
+      gradient: 'linear-gradient(135deg, #0f2027 0%, #203a43 50%, #2c5364 100%)',
+      queries: ['Lofi Beats', 'Study Beats', 'Deep Focus']
+    },
+    {
+      id: 'home',
+      title: 'Home & Cozy Lounge',
+      tagline: 'Warm acoustic, dinner & evening chill',
+      icon: '🏡',
+      badge: 'CHILLOUT & RELAX',
+      gradient: 'linear-gradient(135deg, #833ab4 0%, #fd1d1d 50%, #fcb045 100%)',
+      queries: ['Acoustic Chill', 'Chill Hits', 'Cozy Acoustic']
+    },
+    {
+      id: 'workout',
+      title: 'Workout & Gym Beast',
+      tagline: 'Phonk, high BPM cardio & EDM bangers',
+      icon: '⚡',
+      badge: 'HIGH ENERGY PUMP',
+      gradient: 'linear-gradient(135deg, #f12711 0%, #f5af19 100%)',
+      queries: ['Workout Hits', 'Gym Workout', 'Phonk']
+    },
+    {
+      id: 'drive',
+      title: 'Drive & Highway Sunset',
+      tagline: 'Road trip anthems & night synthwave',
+      icon: '🚗',
+      badge: 'ROAD TRIP HITS',
+      gradient: 'linear-gradient(135deg, #2b5876 0%, #4e4376 100%)',
+      queries: ['Road Trip', 'Highway Drive', 'Synthwave']
+    },
+    {
+      id: 'sleep',
+      title: 'Sleep & Night Wind-Down',
+      tagline: 'Binaural delta waves, rain & soft piano',
+      icon: '🌙',
+      badge: 'MEDITATE & REST',
+      gradient: 'linear-gradient(135deg, #141e30 0%, #243b55 100%)',
+      queries: ['Peaceful Piano', 'Sleep Relax', 'Meditation']
+    },
+    {
+      id: 'party',
+      title: 'Party & Weekend Dance',
+      tagline: 'Dancefloor chartbusters & club grooves',
+      icon: '🎉',
+      badge: 'WEEKEND PARTY',
+      gradient: 'linear-gradient(135deg, #ff0844 0%, #ffb199 100%)',
+      queries: ['Party Hits', 'Bollywood Dance', 'Club Hits']
+    }
+  ];
+
+  function renderLifestyleHubs(container) {
+    if (!container) return;
+    container.innerHTML = '';
+
+    LIFESTYLE_HUBS.forEach(hub => {
+      const card = document.createElement('div');
+      card.className = 'lifestyle-hub-card';
+      card.dataset.hubId = hub.id;
+      card.innerHTML = `
+        <div class="lifestyle-hub-card__bg" style="background: ${hub.gradient};"></div>
+        <div class="lifestyle-hub-card__content">
+          <div class="lifestyle-hub-card__top">
+            <span class="lifestyle-hub-card__badge">${hub.badge}</span>
+            <span class="lifestyle-hub-card__icon">${hub.icon}</span>
+          </div>
+          <div class="lifestyle-hub-card__bottom">
+            <h3 class="lifestyle-hub-card__title">${hub.title}</h3>
+            <p class="lifestyle-hub-card__tagline">${hub.tagline}</p>
+          </div>
+          <button class="lifestyle-hub-card__play-btn" title="Start ${hub.title} Station" aria-label="Play ${hub.title}">
+            <span class="material-symbols-outlined" style="font-size: 24px; font-variation-settings: 'FILL' 1;">play_arrow</span>
+          </button>
+        </div>
+      `;
+
+      const launchStation = async (e) => {
+        if (e) {
+          e.preventDefault();
+          e.stopPropagation();
+        }
+        if (typeof Haptics !== 'undefined' && Haptics.medium) Haptics.medium();
+        UI.showToast(`Launching ${hub.title} Station... 🎵`, 'info');
+
+        try {
+          let foundTracks = [];
+          for (const q of hub.queries) {
+            try {
+              const res = await API.searchSongs(q, 20);
+              if (res && Array.isArray(res) && res.length > 0) {
+                foundTracks = foundTracks.concat(res);
+                if (foundTracks.length >= 20) break;
+              }
+            } catch (_) {}
+          }
+
+          if (foundTracks.length > 0) {
+            const normalized = foundTracks.map(t => API.normalizeSong(t)).filter(t => t && t.id);
+            if (normalized.length > 0) {
+              const seen = new Set();
+              const uniqueTracks = normalized.filter(t => {
+                if (seen.has(t.id)) return false;
+                seen.add(t.id);
+                return true;
+              });
+
+              Player.setQueue(uniqueTracks, 0);
+              await Player.playSong(uniqueTracks[0]);
+              if (window.App && window.App.startRadioForSong) {
+                window.App.startRadioForSong(uniqueTracks[0]);
+              }
+              return;
+            }
+          }
+          UI.showToast(`Unable to load ${hub.title} tracks`, 'warning');
+        } catch (err) {
+          console.error(err);
+          UI.showToast(`Failed to launch ${hub.title}`, 'error');
+        }
+      };
+
+      card.addEventListener('click', launchStation);
+      const playBtn = card.querySelector('.lifestyle-hub-card__play-btn');
+      if (playBtn) playBtn.addEventListener('click', launchStation);
+
+      container.appendChild(card);
+    });
+  }
+
+  // ---- Phase 2: Smart Downloads List & Storage Manager ----
+
+  async function renderSmartDownloadsList(container) {
+    if (!container || typeof SmartDownloads === 'undefined') return;
+    container.innerHTML = '<div class="loading-shelf shimmer-card" style="height: 120px; border-radius: 16px;"></div>';
+
+    const songs = await SmartDownloads.getAllDownloadedSongs();
+    const stats = await SmartDownloads.getStorageUsage();
+
+    container.innerHTML = `
+      <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 16px;">
+        <div style="width: 32px; height: 32px; border-radius: 8px; background: linear-gradient(135deg, #ff2d55 0%, #9333ea 100%); display: flex; align-items: center; justify-content: center; color: #fff; flex-shrink: 0;">
+          <span class="material-symbols-outlined" style="font-size: 18px;">download</span>
+        </div>
+        <h2 style="font-family: var(--font-heading); font-size: 20px; font-weight: 800; color: var(--text-primary); margin: 0;">Smart Downloads (Offline)</h2>
+      </div>
+
+      <div style="background: var(--bg-card); border: 1px solid var(--border); border-radius: 16px; padding: 18px 20px; margin-bottom: 20px; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 14px; box-shadow: var(--shadow-sm);">
+        <div style="display: flex; gap: 20px; align-items: center;">
+          <div style="display: flex; flex-direction: column;">
+            <span style="font-family: var(--font-heading); color: var(--text-primary); font-weight: 800; font-size: 20px; line-height: 1;">${stats.count}</span>
+            <span style="font-size: 12px; color: var(--text-secondary); margin-top: 2px;">Songs Cached</span>
+          </div>
+          <div style="width: 1px; height: 28px; background: var(--border);"></div>
+          <div style="display: flex; flex-direction: column;">
+            <span style="font-family: var(--font-mono, monospace); color: #ff5167; font-weight: 800; font-size: 20px; line-height: 1;">${stats.totalMB} MB</span>
+            <span style="font-size: 12px; color: var(--text-secondary); margin-top: 2px;">Offline Storage</span>
+          </div>
+        </div>
+        <button id="btn-clear-all-downloads" style="background: var(--bg-input); border: 1px solid var(--border); color: var(--text-primary); font-size: 12px; font-weight: 600; padding: 8px 16px; border-radius: 999px; display: flex; align-items: center; gap: 6px; cursor: pointer; transition: background 0.2s;">
+          <span class="material-symbols-outlined" style="font-size: 16px; color: #ff5167;">delete</span>
+          <span>Clear Storage</span>
+        </button>
+      </div>
+
+      <div id="smart-downloads-list-items" style="display: flex; flex-direction: column; gap: 6px;"></div>
+    `;
+
+    document.getElementById('btn-clear-all-downloads')?.addEventListener('click', async () => {
+      if (confirm('Clear all downloaded offline music?')) {
+        await SmartDownloads.clearAllDownloads();
+        renderSmartDownloadsList(container);
+        showToast('Offline cache cleared', 'info');
+      }
+    });
+
+    const listEl = container.querySelector('#smart-downloads-list-items');
+    if (songs.length === 0) {
+      listEl.innerHTML = `
+        <div class="p-6 text-center text-gray-400 text-sm border border-white/5 rounded-2xl">
+          No downloaded songs yet. Songs you favorite are automatically cached for offline listening!
+        </div>
+      `;
+      return;
+    }
+
+    songs.forEach((song, i) => {
+      const row = document.createElement('div');
+      row.className = 'library-song-row';
+      row.dataset.songId = song.id;
+      row.dataset.index = i;
+      row.innerHTML = `
+        <span class="library-song-index">${i + 1}</span>
+        <img alt="${song.name}" class="library-song-img" src="${song.image || 'assets/logo.jpg'}" onerror="this.src='assets/logo.jpg'">
+        <div class="library-song-info">
+          <h3 class="library-song-title">${song.name}</h3>
+          <p class="library-song-artist">${song.artists || song.artist}</p>
+        </div>
+        <div class="library-song-actions">
+          <button class="btn-icon p-1" style="color: #ff2d55; background: none; border: none; cursor: pointer;" title="Favorite">
+            <span class="material-symbols-outlined text-xl" style="font-variation-settings: 'FILL' 1;">favorite</span>
+          </button>
+          <button class="btn-icon p-1" style="color: #ff2d55; background: none; border: none; cursor: pointer;" title="Offline Ready">
+            <span class="material-symbols-outlined text-xl" style="font-variation-settings: 'FILL' 1;">check_circle</span>
+          </button>
+        </div>
+      `;
+
+      row.addEventListener('click', (e) => {
+        if (e.target.closest('button')) return;
+        Player.setQueue(songs, i);
+        Player.playSong(songs[i]);
+      });
+
+      listEl.appendChild(row);
+    });
+  }
+
+  // ---- Audio Quality Quick Picker Modal ----
+
+  function updateCodecBadgeStyle(codecEl, quality) {
+    if (!codecEl) return;
+    const qual = quality || (typeof Storage !== 'undefined' ? Storage.getSettings().audioQuality : '320kbps') || '320kbps';
+    codecEl.classList.remove('badge-hi-res', 'badge-lossless', 'badge-hq', 'badge-standard');
+
+    if (['hi-res-192', 'hi-res-96', 'hi-res-48'].includes(qual)) {
+      codecEl.classList.add('badge-hi-res');
+    } else if (qual === 'lossless') {
+      codecEl.classList.add('badge-lossless');
+    } else if (qual === '320kbps' || qual === '256kbps' || qual === 'auto') {
+      codecEl.classList.add('badge-hq');
+    } else {
+      codecEl.classList.add('badge-standard');
+    }
+  }
+
+  function openAudioQualityModal() {
+    const modal = document.getElementById('audio-quality-modal');
+    if (!modal) return;
+
+    const currentQuality = (typeof Storage !== 'undefined' ? Storage.getSettings().audioQuality : '320kbps') || '320kbps';
+    const container = document.getElementById('quality-options-container');
+
+    const QUALITIES = [
+      { id: 'hi-res-192', name: 'Hi-Res Lossless — 24-bit / 192 kHz', desc: 'Studio master quality up to 9216 kbps (DAC recommended)', icon: '🌟', badge: 'HI-RES 24/192', color: '#00cec9' },
+      { id: 'hi-res-96', name: 'Hi-Res Lossless — 24-bit / 96 kHz', desc: 'Ultra-high definition audio up to 4608 kbps', icon: '💎', badge: 'HI-RES 24/96', color: '#00cec9' },
+      { id: 'hi-res-48', name: 'Hi-Res Lossless — 24-bit / 48 kHz', desc: 'Studio quality audio up to 2304 kbps', icon: '🎵', badge: 'HI-RES 24/48', color: '#00cec9' },
+      { id: 'lossless', name: 'Lossless CD Quality — 16-bit / 44.1 kHz', desc: 'Bit-perfect 1411 kbps uncompressed audio', icon: '💿', badge: 'LOSSLESS', color: '#a29bfe' },
+      { id: '320kbps', name: 'Extreme Quality — 320 kbps AAC', desc: 'Crystal clear high-fidelity AAC (Recommended)', icon: '🚀', badge: '320 KBPS', color: '#6c5ce7' },
+      { id: '192kbps', name: 'High Quality — 192 kbps', desc: 'Great sound quality with lower data usage', icon: '⚡', badge: '192 KBPS', color: '#74b9ff' },
+      { id: '128kbps', name: 'Standard Quality — 128 kbps', desc: 'Fast loading for low data and mobile networks', icon: '🍃', badge: '128 KBPS', color: '#55efc4' },
+      { id: 'auto', name: 'Auto / Adaptive Bitrate', desc: 'Automatically adjusts to current network bandwidth', icon: '📶', badge: 'ADAPTIVE', color: '#fdcb6e' },
+    ];
+
+    if (container) {
+      container.innerHTML = QUALITIES.map(q => {
+        const isSelected = q.id === currentQuality;
+        return `
+          <div class="quality-option-item ${isSelected ? 'selected' : ''}" data-quality-id="${q.id}">
+            <div class="quality-option-item__icon">${q.icon}</div>
+            <div class="quality-option-item__info">
+              <div class="quality-option-item__title-row">
+                <span class="quality-option-item__title">${q.name}</span>
+                <span class="quality-option-item__badge" style="background: ${q.color}22; color: ${q.color}; border: 1px solid ${q.color}44;">${q.badge}</span>
+              </div>
+              <p class="quality-option-item__desc">${q.desc}</p>
+            </div>
+            <div class="quality-option-item__check">
+              ${isSelected ? '<svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/></svg>' : ''}
+            </div>
+          </div>
+        `;
+      }).join('');
+
+      container.querySelectorAll('.quality-option-item').forEach(item => {
+        item.addEventListener('click', async () => {
+          const qualId = item.dataset.qualityId;
+          Storage.updateSettings({ audioQuality: qualId });
+
+          // Sync Settings select dropdown if exists
+          const selectQual = document.getElementById('select-quality');
+          if (selectQual) selectQual.value = qualId;
+
+          // Hot-swap stream quality in Player without resetting playback position
+          if (typeof Player !== 'undefined' && Player.changeQuality) {
+            await Player.changeQuality(qualId);
+          }
+
+          // Update Codec Badge on Full Player
+          const codecEl = document.getElementById('full-player-codec');
+          if (codecEl && typeof Player !== 'undefined' && Player.getStreamCodecDisplay) {
+            codecEl.textContent = Player.getStreamCodecDisplay();
+            updateCodecBadgeStyle(codecEl, qualId);
+          }
+
+          const chosen = QUALITIES.find(q => q.id === qualId);
+          showToast(`Audio quality set to ${chosen ? chosen.name : qualId}`, 'success');
+
+          closeAudioQualityModal();
+        });
+      });
+    }
+
+    modal.style.display = 'flex';
+    document.body.classList.add('modal-open');
+
+    // Close on clicking backdrop
+    modal.onclick = (e) => {
+      if (e.target === modal) closeAudioQualityModal();
+    };
+  }
+
+  function closeAudioQualityModal() {
+    const modal = document.getElementById('audio-quality-modal');
+    if (modal) modal.style.display = 'none';
+    document.body.classList.remove('modal-open');
+  }
+
   return {
     showToast,
     formatDuration,
@@ -926,5 +1788,94 @@ const UI = (() => {
     showContextMenu,
     closeContextMenu,
     renderSidebarPlaylists,
+    renderMoodChips,
+    updateMoodChipsActive,
+    renderQuickPicks,
+    renderMixSuiteShelf,
+    renderLanguageChips,
+    renderPublicPlaylistsShelf,
+    renderLifestyleHubs,
+    renderSmartDownloadsList,
+    openAudioQualityModal,
+    closeAudioQualityModal,
+    updateCodecBadgeStyle,
+    startQuickPick: async (song) => {
+      if (!song) return;
+      const normalized = (window.API && API.normalizeSong) ? API.normalizeSong(song) : { ...song };
+      Player.setQueue([normalized], 0);
+      await Player.playSong(normalized);
+      if (window.App && window.App.startRadioForSong) {
+        window.App.startRadioForSong(normalized);
+      }
+    },
+    showRadioStartedAnimation: (song) => {
+      try {
+        if (typeof Haptics !== 'undefined' && Haptics.success) Haptics.success();
+      } catch (_) {}
+
+      // Dismiss any open context menus or sheets
+      const existingMenu = document.querySelector('.context-menu');
+      if (existingMenu) existingMenu.remove();
+
+      const existing = document.getElementById('radio-started-overlay');
+      if (existing) existing.remove();
+
+      const rawName = song?.name || song?.title || (typeof song === 'string' ? song : 'Radio Station');
+      const songName = typeof truncate === 'function' ? truncate(rawName, 32) : rawName.slice(0, 32);
+      const songImg = (window.API && API.getImageUrl && API.getImageUrl(song)) || (typeof song?.image === 'string' && song.image) || 'assets/logo.jpg';
+
+      const overlay = document.createElement('div');
+      overlay.id = 'radio-started-overlay';
+      overlay.className = 'radio-started-overlay visible';
+      overlay.style.cssText = 'position: fixed !important; inset: 0 !important; z-index: 9999999 !important; display: flex !important; align-items: center !important; justify-content: center !important; opacity: 1 !important; pointer-events: auto !important;';
+      overlay.innerHTML = `
+        <div class="radio-started-backdrop"></div>
+        <div class="radio-started-card" style="transform: scale(1) translateY(0) !important; opacity: 1 !important;">
+          <div class="radio-radar-pulse-ring ring-1"></div>
+          <div class="radio-radar-pulse-ring ring-2"></div>
+          <div class="radio-radar-pulse-ring ring-3"></div>
+
+          <div class="radio-station-disc">
+            <img src="${songImg}" onerror="this.src='assets/logo.jpg'" alt="${songName}">
+            <div class="radio-station-disc-center">
+              <span class="material-symbols-outlined" style="font-size: 32px; color: #fff;">radio</span>
+            </div>
+          </div>
+
+          <div class="radio-started-badge">
+            <span class="live-dot"></span>
+            <span>LIVE RADIO ACTIVATED</span>
+          </div>
+
+          <h2 class="radio-started-title">Tuning Into Radio...</h2>
+          <p class="radio-started-subtitle">Streaming curated infinite flow based on <strong style="color: #fff;">"${songName}"</strong></p>
+
+          <div class="radio-started-equalizer">
+            <span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span>
+          </div>
+
+          <div class="radio-started-tagline">Enjoy the Endless Flow ✨</div>
+        </div>
+      `;
+
+      document.body.appendChild(overlay);
+
+      const timer = setTimeout(() => {
+        overlay.style.opacity = '0';
+        overlay.style.transition = 'opacity 0.4s ease';
+        setTimeout(() => overlay.remove(), 450);
+      }, 3200);
+
+      overlay.onclick = () => {
+        clearTimeout(timer);
+        overlay.style.opacity = '0';
+        overlay.style.transition = 'opacity 0.25s ease';
+        setTimeout(() => overlay.remove(), 260);
+      };
+    }
   };
 })();
+
+window.startQuickPick = (song) => UI.startQuickPick(song);
+window.showRadioStartedAnimation = (song) => UI.showRadioStartedAnimation(song);
+window.testRadioAnimation = (name) => UI.showRadioStartedAnimation({ name: name || 'Endless Radio Flow', artists: 'MusicFlow AI', image: 'assets/logo.jpg' });

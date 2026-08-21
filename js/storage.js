@@ -15,6 +15,9 @@ const Storage = (() => {
     HOME_CACHE: 'mf_home_cache',
     FOLLOWED_ARTISTS: 'mf_followed_artists',
     DAILY_MIX_CACHE: 'mf_daily_mix_cache',
+    USER_PROFILE: 'mf_user_profile',
+    PODCAST_PROGRESS: 'mf_podcast_progress',
+    LIBRARY_PREFS: 'mf_library_prefs'
   };
 
   const MAX_RECENT = 50;
@@ -406,7 +409,58 @@ const Storage = (() => {
     });
   }
 
+  // ---- Phase 3: User Profile ----
+
+  function getUserProfile() {
+    return get(KEYS.USER_PROFILE, {
+      username: 'Adesh',
+      avatar: '🎧',
+      bio: 'Music enthusiast & audiophile',
+      joinedDate: new Date().toLocaleDateString('en-US', { month: 'short', year: 'numeric' })
+    });
+  }
+
+  function saveUserProfile(profile) {
+    const current = getUserProfile();
+    const updated = { ...current, ...profile };
+    set(KEYS.USER_PROFILE, updated);
+    return updated;
+  }
+
+  // ---- Phase 3: Podcast Progress & Bookmarks ----
+
+  function getPodcastProgress(episodeId) {
+    const all = get(KEYS.PODCAST_PROGRESS, {});
+    return episodeId ? (all[episodeId] || 0) : all;
+  }
+
+  function savePodcastProgress(episodeId, seconds) {
+    if (!episodeId) return;
+    const all = get(KEYS.PODCAST_PROGRESS, {});
+    all[episodeId] = Math.floor(seconds);
+    set(KEYS.PODCAST_PROGRESS, all);
+  }
+
+  // ---- Phase 3: Library Preferences ----
+
+  function getLibraryPreferences() {
+    return get(KEYS.LIBRARY_PREFS, {
+      sortBy: 'recent', // 'recent' | 'alphabetical' | 'most_played'
+      showPodcasts: true,
+      layoutDensity: 'comfortable'
+    });
+  }
+
+  function saveLibraryPreferences(prefs) {
+    const current = getLibraryPreferences();
+    const updated = { ...current, ...prefs };
+    set(KEYS.LIBRARY_PREFS, updated);
+    return updated;
+  }
+
   return {
+    get,
+    set,
     getFavorites,
     addFavorite,
     removeFavorite,
@@ -441,6 +495,12 @@ const Storage = (() => {
     followArtist,
     unfollowArtist,
     isArtistFollowed,
-    toggleFollowArtist
+    toggleFollowArtist,
+    getUserProfile,
+    saveUserProfile,
+    getPodcastProgress,
+    savePodcastProgress,
+    getLibraryPreferences,
+    saveLibraryPreferences
   };
 })();

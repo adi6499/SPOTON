@@ -88,10 +88,11 @@ const API = (() => {
    * Search for albums
    * @param {string} query - Search term
    * @param {number} limit - Max results
+   * @param {number} page - Page number
    * @returns {Promise<Array>} Array of album objects
    */
-  async function searchAlbums(query, limit = 50) {
-    const data = await request(`/api/search/albums?query=${encodeURIComponent(query)}&limit=${limit}`);
+  async function searchAlbums(query, limit = 50, page = 1) {
+    const data = await request(`/api/search/albums?query=${encodeURIComponent(query)}&limit=${limit}&page=${page}`);
     return data?.data?.results || [];
   }
 
@@ -99,15 +100,28 @@ const API = (() => {
    * Search for artists
    * @param {string} query - Search term
    * @param {number} limit - Max results
+   * @param {number} page - Page number
    * @returns {Promise<Array>} Array of artist objects
    */
-  async function searchArtists(query, limit = 50) {
-    const data = await request(`/api/search/artists?query=${encodeURIComponent(query)}&limit=${limit}`);
+  async function searchArtists(query, limit = 50, page = 1) {
+    const data = await request(`/api/search/artists?query=${encodeURIComponent(query)}&limit=${limit}&page=${page}`);
     return data?.data?.results || [];
   }
 
   /**
-   * Global search (songs + albums + artists)
+   * Search for playlists
+   * @param {string} query - Search term
+   * @param {number} limit - Max results
+   * @param {number} page - Page number
+   * @returns {Promise<Array>} Array of playlist objects
+   */
+  async function searchPlaylists(query, limit = 50, page = 1) {
+    const data = await request(`/api/search/playlists?query=${encodeURIComponent(query)}&limit=${limit}&page=${page}`);
+    return data?.data?.results || [];
+  }
+
+  /**
+   * Global search (songs + albums + artists + playlists)
    * @param {string} query - Search term
    * @returns {Promise<Object>} Combined search results
    */
@@ -342,24 +356,44 @@ const API = (() => {
     const settings = (typeof Storage !== 'undefined' && Storage.getSettings) ? Storage.getSettings() : {};
     const musixmatchKey = settings.musixmatchApiKey || '';
 
-    // 1. Try LRCLIB exact match (supports full synced & plain lyrics)
+    // 1. Try LRCLIB exact match if artist is provided
+    if (cleanArtist) {
+      try {
+        let url = `https://lrclib.net/api/get?track_name=${encodeURIComponent(cleanTitle)}&artist_name=${encodeURIComponent(cleanArtist)}`;
+        if (duration) url += `&duration=${Math.round(duration)}`;
+        const res = await fetch(url);
+        if (res.ok) {
+          const data = await res.json();
+          if (data.syncedLyrics || data.plainLyrics) {
+            return {
+              synced: data.syncedLyrics || null,
+              plain: data.plainLyrics || data.syncedLyrics
+            };
+          }
+        }
+      } catch (_) {}
+    }
+
+    // 2. Try LRCLIB search query
     try {
-      let url = `https://lrclib.net/api/get?track_name=${encodeURIComponent(cleanTitle)}&artist_name=${encodeURIComponent(cleanArtist)}`;
-      if (duration) url += `&duration=${Math.round(duration)}`;
-      const res = await fetch(url);
-      if (res.ok) {
-        const data = await res.json();
-        if (data.syncedLyrics || data.plainLyrics) {
-          return {
-            synced: data.syncedLyrics || null,
-            plain: data.plainLyrics || data.syncedLyrics
-          };
+      const q = cleanArtist ? `${cleanTitle} ${cleanArtist}` : cleanTitle;
+      const searchRes = await fetch(`https://lrclib.net/api/search?q=${encodeURIComponent(q)}`);
+      if (searchRes.ok) {
+        const results = await searchRes.json();
+        if (Array.isArray(results) && results.length > 0) {
+          const match = results[0];
+          if (match.syncedLyrics || match.plainLyrics) {
+            return {
+              synced: match.syncedLyrics || null,
+              plain: match.plainLyrics || match.syncedLyrics
+            };
+          }
         }
       }
-    } catch (e) {}
+    } catch (_) {}
 
-    // 2. Try Musixmatch API (if API key is configured)
-    if (musixmatchKey) {
+    // 3. Try Musixmatch API (if API key is configured)
+    if (musixmatchKey && cleanArtist) {
       try {
         const mxTarget = `https://api.musixmatch.com/ws/1.1/matcher.lyrics.get?q_track=${encodeURIComponent(cleanTitle)}&q_artist=${encodeURIComponent(cleanArtist)}&apikey=${musixmatchKey}`;
         const mxRes = await fetch(`https://api.allorigins.win/raw?url=${encodeURIComponent(mxTarget)}`);
@@ -373,34 +407,21 @@ const API = (() => {
             };
           }
         }
-      } catch (e) {}
+      } catch (_) {}
     }
 
-    // 3. Try LRCLIB search query
-    try {
-      const searchRes = await fetch(`https://lrclib.net/api/search?q=${encodeURIComponent(cleanTitle + ' ' + cleanArtist)}`);
-      if (searchRes.ok) {
-        const results = await searchRes.json();
-        if (results && results.length > 0) {
-          const match = results[0];
-          return {
-            synced: match.syncedLyrics || null,
-            plain: match.plainLyrics || match.syncedLyrics
-          };
+    // 4. Fallback to Lyrics.ovh only if both artist and title are present
+    if (cleanArtist && cleanTitle) {
+      try {
+        const ovhRes = await fetch(`https://api.lyrics.ovh/v1/${encodeURIComponent(cleanArtist)}/${encodeURIComponent(cleanTitle)}`);
+        if (ovhRes.ok) {
+          const ovhData = await ovhRes.json();
+          if (ovhData.lyrics) {
+            return { synced: null, plain: ovhData.lyrics };
+          }
         }
-      }
-    } catch (e) {}
-
-    // 4. Fallback to Lyrics.ovh
-    try {
-      const ovhRes = await fetch(`https://api.lyrics.ovh/v1/${encodeURIComponent(cleanArtist)}/${encodeURIComponent(cleanTitle)}`);
-      if (ovhRes.ok) {
-        const ovhData = await ovhRes.json();
-        if (ovhData.lyrics) {
-          return { synced: null, plain: ovhData.lyrics };
-        }
-      }
-    } catch (e) {}
+      } catch (_) {}
+    }
 
     return null;
   }
@@ -478,6 +499,30 @@ const API = (() => {
   }
 
   /**
+   * Get the best quality image URL from song/album data
+   * @param {Object|string} item - Song/album object or image string
+   * @returns {string} Image URL
+   */
+  function getImageUrl(item) {
+    if (!item) return '';
+    if (typeof item === 'string') return item;
+    
+    let images = item.image || item.imageUrl || item.images;
+    if (!images) return '';
+
+    if (typeof images === 'string') return images;
+    if (Array.isArray(images)) {
+      const best = images[images.length - 1];
+      if (typeof best === 'string') return best;
+      return best?.url || best?.link || '';
+    }
+    if (typeof images === 'object') {
+      return images.url || images.link || '';
+    }
+    return '';
+  }
+
+  /**
    * Safely extract artists from various API response formats
    * @param {Object} raw - Raw song from API
    * @returns {string} Comma-separated artists
@@ -485,23 +530,38 @@ const API = (() => {
   function getArtistsString(raw) {
     if (!raw) return 'Unknown Artist';
     
-    let result = 'Unknown Artist';
+    function extractArtistName(a) {
+      if (!a) return '';
+      if (typeof a === 'string') return a;
+      if (typeof a === 'object') return a.name || a.title || a.artist || '';
+      return String(a);
+    }
+
+    let result = '';
     if (typeof raw.artists === 'string') {
       result = raw.artists;
     } else if (Array.isArray(raw.artists)) {
-      result = raw.artists.map(a => a.name || a).join(', ');
+      result = raw.artists.map(extractArtistName).filter(Boolean).join(', ');
     } else if (raw.artists && typeof raw.artists === 'object') {
       if (Array.isArray(raw.artists.primary) && raw.artists.primary.length > 0) {
-        result = raw.artists.primary.map(a => a.name || a).join(', ');
+        result = raw.artists.primary.map(extractArtistName).filter(Boolean).join(', ');
       } else if (Array.isArray(raw.artists.all) && raw.artists.all.length > 0) {
-        result = raw.artists.all.map(a => a.name || a).join(', ');
+        result = raw.artists.all.map(extractArtistName).filter(Boolean).join(', ');
       }
     } else if (typeof raw.primaryArtists === 'string') {
       result = raw.primaryArtists;
     } else if (Array.isArray(raw.primaryArtists)) {
-      result = raw.primaryArtists.map(a => a.name || a).join(', ');
+      result = raw.primaryArtists.map(extractArtistName).filter(Boolean).join(', ');
     } else if (typeof raw.artist === 'string') {
       result = raw.artist;
+    } else if (Array.isArray(raw.artist)) {
+      result = raw.artist.map(extractArtistName).filter(Boolean).join(', ');
+    } else if (raw.artist && typeof raw.artist === 'object') {
+      result = extractArtistName(raw.artist);
+    }
+
+    if (!result || result.trim() === '' || result === '[object Object]') {
+      result = 'Unknown Artist';
     }
     
     return decodeHtml(result);
@@ -513,14 +573,42 @@ const API = (() => {
    * @returns {Object} Normalized song
    */
   function normalizeSong(raw) {
+    if (!raw) return null;
+    const name = decodeHtml(raw.name || raw.title || 'Unknown');
+    const artists = getArtistsString(raw);
+    const album = decodeHtml(raw.album?.name || raw.album || '');
+    let img = getImageUrl(raw) || '';
+    if (typeof img === 'object' && img !== null) {
+      img = (Array.isArray(img) ? (img[img.length - 1]?.url || img[img.length - 1]?.link) : (img.url || img.link)) || '';
+    }
+    if (typeof img !== 'string' || img.includes('[object Object]')) {
+      img = '';
+    }
+    img = getHighResImage(img) || img || '';
+    if (typeof img !== 'string' || img.includes('[object Object]')) {
+      img = '';
+    }
+
+    let audioUrl = getBestDownloadUrl(raw) || raw.streamUrl || raw.audioUrl || raw.url || '';
+    if (typeof audioUrl === 'object' && audioUrl !== null) {
+      audioUrl = audioUrl.url || audioUrl.link || '';
+    }
+    if (typeof audioUrl !== 'string' || audioUrl === '[object Object]') {
+      audioUrl = '';
+    }
+
     return {
-      id: raw.id,
-      name: decodeHtml(raw.name || raw.title || 'Unknown'),
-      artists: getArtistsString(raw),
-      album: decodeHtml(raw.album?.name || raw.album || ''),
+      id: String(raw.id || `track_${Date.now()}_${Math.random().toString(36).substr(2, 4)}`),
+      name: name,
+      title: name,
+      artists: artists,
+      artist: artists,
+      album: album,
       duration: raw.duration || 0,
-      image: getImageUrl(raw),
-      streamUrl: getBestDownloadUrl(raw),
+      image: img,
+      imageUrl: img,
+      streamUrl: audioUrl,
+      audioUrl: audioUrl,
       downloadUrls: raw.downloadUrl || [],
       year: raw.year || '',
       language: raw.language || '',
@@ -551,12 +639,114 @@ const API = (() => {
       .replace('175x175', '500x500');
   }
 
+  /**
+   * Normalize an album object for consistent usage
+   */
+  function normalizeAlbum(raw) {
+    if (!raw) return null;
+    const title = decodeHtml(raw.name || raw.title || 'Unknown Album');
+    const artist = decodeHtml(raw.artist || raw.music || (Array.isArray(raw.artists) ? raw.artists.map(a => a.name || a).join(', ') : (raw.primaryArtists || 'Various Artists')));
+    const img = getHighResImage(getImageUrl(raw)) || 'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><rect fill="%231a1a2e" width="100" height="100"/><text x="50" y="55" text-anchor="middle" fill="%236c5ce7" font-size="40">🎵</text></svg>';
+    return {
+      id: raw.id || `alb_${Date.now()}_${Math.random().toString(36).substr(2, 4)}`,
+      title: title,
+      name: title,
+      artist: artist,
+      artists: artist,
+      year: raw.year || raw.releaseDate || '',
+      songCount: raw.songCount || (raw.songs ? raw.songs.length : 0),
+      image: img,
+      imageUrl: img,
+      type: 'album',
+      raw: raw
+    };
+  }
+
+  /**
+   * Normalize an artist object for consistent usage
+   */
+  function normalizeArtist(raw) {
+    if (!raw) return null;
+    const name = decodeHtml(raw.name || raw.title || raw.artist || 'Unknown Artist');
+    const img = getHighResImage(getImageUrl(raw)) || 'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><rect fill="%231a1a2e" width="100" height="100"/><text x="50" y="55" text-anchor="middle" fill="%236c5ce7" font-size="40">👤</text></svg>';
+    return {
+      id: raw.id || `art_${Date.now()}_${Math.random().toString(36).substr(2, 4)}`,
+      name: name,
+      title: name,
+      role: raw.role || 'Artist',
+      image: img,
+      imageUrl: img,
+      type: 'artist',
+      raw: raw
+    };
+  }
+
+  /**
+   * Normalize a playlist object for consistent usage
+   */
+  function normalizePlaylist(raw) {
+    if (!raw) return null;
+    const title = decodeHtml(raw.title || raw.name || 'Untitled Playlist');
+    const img = getHighResImage(getImageUrl(raw)) || 'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><rect fill="%231a1a2e" width="100" height="100"/><text x="50" y="55" text-anchor="middle" fill="%236c5ce7" font-size="40">🎵</text></svg>';
+    const songCount = raw.songCount || (raw.songs ? raw.songs.length : 0);
+    return {
+      id: raw.id || `pl_${Date.now()}_${Math.random().toString(36).substr(2, 4)}`,
+      title: title,
+      name: title,
+      subtitle: decodeHtml(raw.subtitle || (songCount ? `${songCount} Songs` : '') || 'Playlist'),
+      songCount: songCount,
+      image: img,
+      imageUrl: img,
+      type: 'playlist',
+      songs: raw.songs ? raw.songs.map(normalizeSong) : [],
+      raw: raw
+    };
+  }
+
+  /**
+   * Federated multi-collection search across all collections
+   */
+  async function searchFederated(query, page = 1) {
+    const cleanQuery = query.trim();
+    if (!cleanQuery) return null;
+
+    const [songsRes, albumsRes, artistsRes, playlistsRes] = await Promise.allSettled([
+      searchSongs(cleanQuery, 40, page),
+      searchAlbums(cleanQuery, 20, page),
+      searchArtists(cleanQuery, 20, page),
+      searchPlaylists(cleanQuery, 20, page)
+    ]);
+
+    const songs = (songsRes.status === 'fulfilled' && Array.isArray(songsRes.value)) 
+      ? songsRes.value.map(normalizeSong) 
+      : [];
+    const albums = (albumsRes.status === 'fulfilled' && Array.isArray(albumsRes.value)) 
+      ? albumsRes.value.map(normalizeAlbum).filter(Boolean) 
+      : [];
+    const artists = (artistsRes.status === 'fulfilled' && Array.isArray(artistsRes.value)) 
+      ? artistsRes.value.map(normalizeArtist).filter(Boolean) 
+      : [];
+    const playlists = (playlistsRes.status === 'fulfilled' && Array.isArray(playlistsRes.value)) 
+      ? playlistsRes.value.map(normalizePlaylist).filter(Boolean) 
+      : [];
+
+    return {
+      query: cleanQuery,
+      songs,
+      albums,
+      artists,
+      playlists
+    };
+  }
+
   return {
     setBaseUrl,
     getBaseUrl,
     searchSongs,
     searchAlbums,
     searchArtists,
+    searchPlaylists,
+    searchFederated,
     searchAll,
     getHomeRecommendations,
     getSongDetails,
@@ -571,6 +761,9 @@ const API = (() => {
     getImageUrl,
     getHighResImage,
     normalizeSong,
+    normalizeAlbum,
+    normalizeArtist,
+    normalizePlaylist,
     decodeHtml,
   };
 })();

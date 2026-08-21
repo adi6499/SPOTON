@@ -45,9 +45,20 @@
   
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Hanken+Grotesk:wght@400;500;600;700;800&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500;700&family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet">
 
-  <link rel="stylesheet" href="css/style.css?v=1.1.5">
+  <link rel="stylesheet" href="css/style.css?v=69">
+  <script>
+    (function() {
+      var isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+      if (isIOS) {
+        document.documentElement.classList.add('is-ios');
+        window.addEventListener('DOMContentLoaded', function() {
+          document.body.classList.add('is-ios');
+        });
+      }
+    })();
+  </script>
 </head>
 <body>
   <div id="offline-banner" class="system-banner">
@@ -74,35 +85,47 @@
   <div class="aurora-bg"></div>
 
   <div id="app" class="app-layout">
-    <!-- ======== DESKTOP SIDEBAR (Spotify Layout) ======== -->
-    <nav class="sidebar" style="background: var(--bg-base); padding: 8px; gap: 8px;">
+    <!-- ======== DESKTOP SIDEBAR (Vivid Sonic Layout) ======== -->
+    <nav class="sidebar" style="background: var(--surface-container-low, #1c1b1b); padding: 12px; gap: 8px; border-right: 1px solid var(--border);">
       <!-- Top Section -->
-      <div style="background: var(--bg-elevated); border-radius: 8px; padding: 8px 12px;">
-        <div class="sidebar__logo" style="margin-bottom: 16px; align-items: center; gap: 8px;">
-          <img src="assets/logo.jpg" alt="Logo" style="width: 32px; height: 32px; border-radius: 50%; object-fit: cover;">
-          <span class="header__logo-text" style="font-size: 20px; font-weight: 700; letter-spacing: -0.5px;">MusicFlow</span>
+      <div style="background: var(--surface-container, #201f1f); border-radius: 12px; padding: 12px 14px; border: 1px solid var(--border);">
+        <div class="sidebar__logo" style="margin-bottom: 20px; display: flex; align-items: center; gap: 10px;">
+          <span class="material-symbols-outlined text-primary" style="font-size: 32px; color: var(--primary); font-variation-settings: 'FILL' 1;">graphic_eq</span>
+          <span class="header__logo-text" style="font-size: 22px; font-weight: 800; letter-spacing: -0.5px; font-family: var(--font-heading);">MusicFlow</span>
         </div>
-        <div class="sidebar__menu" style="gap: 4px;">
-          <button class="nav-item active" data-page="page-home" aria-label="Home">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
+        <div class="sidebar__menu" style="display: flex; flex-direction: column; gap: 4px;">
+          <button class="nav-item active" data-route="home" data-page="page-home" aria-label="Home">
+            <span class="material-symbols-outlined" style="font-size: 22px; font-variation-settings: 'FILL' 1;">home</span>
             <span>Home</span>
           </button>
-          <button class="nav-item" data-page="page-search" aria-label="Search">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+          <button class="nav-item" data-route="podcasts" data-page="page-podcasts" aria-label="Podcasts">
+            <span class="material-symbols-outlined" style="font-size: 22px;">podcasts</span>
+            <span>Podcasts</span>
+          </button>
+          <button class="nav-item" data-route="samples" data-page="page-samples" aria-label="Samples">
+            <span class="material-symbols-outlined" style="font-size: 22px;">subscriptions</span>
+            <span>Samples</span>
+          </button>
+          <button class="nav-item" data-route="search" data-page="page-search" aria-label="Search">
+            <span class="material-symbols-outlined" style="font-size: 22px;">search</span>
             <span>Search</span>
+          </button>
+          <button class="nav-item" id="btn-open-radio-tuner-sidebar" data-route="tuner" aria-label="Tune Radio" style="color: var(--secondary-container, #00f1fe);">
+            <span class="material-symbols-outlined" style="font-size: 22px;">radio</span>
+            <span>Tune Radio</span>
           </button>
         </div>
       </div>
 
       <!-- Library Section -->
-      <div style="background: var(--bg-elevated); border-radius: 8px; flex: 1; display: flex; flex-direction: column; overflow: hidden; padding: 8px 12px;">
-        <div style="display: flex; justify-content: space-between; align-items: center; padding: 8px 0; margin-bottom: 8px;">
-          <button class="nav-item" data-page="page-favorites" aria-label="Your Library" style="margin: 0; flex: 1; opacity: 0.7; transition: opacity 0.2s;">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg>
-            <span style="font-weight: 600;">Your Library</span>
+      <div style="background: var(--surface-container, #201f1f); border-radius: 12px; flex: 1; display: flex; flex-direction: column; overflow: hidden; padding: 12px 14px; border: 1px solid var(--border);">
+        <div style="display: flex; justify-content: space-between; align-items: center; padding: 4px 0 10px; margin-bottom: 6px; border-bottom: 1px solid var(--border);">
+          <button class="nav-item" data-route="library" data-page="page-favorites" aria-label="Your Library" style="margin: 0; flex: 1; opacity: 0.85; transition: opacity 0.2s; display: flex; align-items: center; gap: 8px;">
+            <span class="material-symbols-outlined" style="font-size: 22px;">library_music</span>
+            <span style="font-weight: 700;">Your Library</span>
           </button>
-          <button class="btn-icon" id="btn-create-playlist" aria-label="Create Playlist" style="opacity: 0.7; transition: opacity 0.2s;">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+          <button class="btn-icon" id="btn-create-playlist" aria-label="Create Playlist" style="opacity: 0.85; width: 32px; height: 32px; padding: 4px;">
+            <span class="material-symbols-outlined" style="font-size: 20px;">add</span>
           </button>
         </div>
 
@@ -110,8 +133,14 @@
         <div id="sidebar-playlists" style="overflow-y: auto; flex: 1; display: flex; flex-direction: column; gap: 4px;">
           <!-- Playlists injected here -->
         </div>
-        <div class="sidebar__version" style="font-size: 11px; opacity: 0.5; padding-top: 16px; text-align: center;">
-          MusicFlow v1.1.0
+        
+        <!-- User Profile Card in Sidebar -->
+        <div class="sidebar-user-card" onclick="Settings.openProfileModal()" style="display: flex; align-items: center; gap: 10px; padding: 10px 4px 4px; margin-top: auto; border-top: 1px solid var(--border); cursor: pointer;">
+          <img class="sidebar-user-avatar" id="sidebar-user-avatar" src="https://lh3.googleusercontent.com/aida-public/AB6AXuC2JyZe69wMpqNRAzJ3aPI6GS-tBrOa1HwWsR4ctKLq6KDsdEGmPEOlED4LtHYSPGfnI0kk6aeVS91vPK9KeAoBuw6I4q18kOzZPXS600YBG0gRrtdkeXLA5TvsolALQmjaBO1optfgRlHdGDIryCxAjN9QEerzuzDMehbzfLX8XRHpLfFhcwhkP_S6F4TfiHoyp7nnY6VZjS3t_w_gukICA2j0hbkJGGGhdca2C9MJigr35rY7BMZDVg" alt="Avatar" style="width: 34px; height: 34px; border-radius: 50%; object-fit: cover; border: 1.5px solid var(--primary);">
+          <div style="min-width: 0; flex: 1;">
+            <div class="sidebar-user-name" id="sidebar-user-name" style="font-size: 13px; font-weight: 700; color: var(--on-surface); white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">Adesh</div>
+            <div style="font-size: 10px; color: var(--primary); font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px;">Premium Member</div>
+          </div>
         </div>
       </div>
     </nav>
@@ -120,28 +149,29 @@
     <div class="main-view">
       <header class="header">
         <div class="header__logo" style="align-items: center; gap: 8px;">
-          <img src="assets/logo.jpg" alt="Logo" style="width: 28px; height: 28px; border-radius: 50%; object-fit: cover;">
-          <span class="header__logo-text" style="font-size: 20px; font-weight: 700; letter-spacing: -0.5px;">MusicFlow</span>
+          <span class="material-symbols-outlined text-primary" style="font-size: 28px; color: var(--primary); font-variation-settings: 'FILL' 1;">waves</span>
+          <span class="header__logo-text" style="font-size: 20px; font-weight: 800; letter-spacing: -0.5px; font-family: var(--font-heading);">MusicFlow</span>
         </div>
 
         <div class="search-container">
-          <svg class="search-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/>
-          </svg>
+          <span class="material-symbols-outlined search-icon" style="font-size: 20px;">search</span>
           <input type="search" id="search-input" class="search-bar" placeholder="Search songs, artists, albums..." autocomplete="off" aria-label="Search music">
           <button class="search-clear" id="search-clear" aria-label="Clear search">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-              <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
-            </svg>
+            <span class="material-symbols-outlined" style="font-size: 18px;">close</span>
           </button>
           <div id="search-dropdown" class="search-dropdown" style="display: none;"></div>
         </div>
 
-        <button class="settings-btn" data-action="open-settings" aria-label="Settings">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="20" height="20">
-            <circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/>
-          </svg>
-        </button>
+        <div style="display: flex; align-items: center; gap: 10px;">
+          <button class="user-profile-header-btn" id="btn-user-profile-header" aria-label="User Profile">
+            <img id="header-user-avatar-img" class="user-avatar-img" src="https://lh3.googleusercontent.com/aida-public/AB6AXuC1v2zNHkgyiTAAhV1ONbXjOOsDmhqPIAatGgHpiwv4pfh6aXJTJ8jnnvRYzZBx1L21mmuVJFpazgyAZqKMuPw4tZZKbI_2cQa5itfC2h-e5TCjsjDmrxxQhF6nMqe4HDkQCA-63aqrV5kW5PmBMJJxwFfliSyoBDaMT-O59o3NkCHeey8UXZJuy_RYgSizUE1ytEYyMThaJFDGUJLPBO4NPcyoejmIuHHH664s0KfX0HNuW58JDV2x8g" alt="Profile" style="width: 24px; height: 24px; border-radius: 50%; object-fit: cover;">
+            <span class="user-name-badge" id="header-user-name">Adesh</span>
+          </button>
+
+          <button class="settings-btn" data-action="open-settings" aria-label="Settings">
+            <span class="material-symbols-outlined" style="font-size: 22px;">settings</span>
+          </button>
+        </div>
       </header>
 
       <main class="main-scroll-area">
@@ -155,56 +185,164 @@
               </svg>
             </button>
           </div>
-          
+
+          <!-- YTM-STYLE STICKY MOOD & ACTIVITY FILTER CHIPS -->
+          <div class="filter-chips-bar" id="mood-chips-container">
+            <!-- Injected via UI.renderMoodChips -->
+          </div>
+
           <!-- HERO SECTION -->
-          <div class="hero-section" id="hero-section" style="display: none;">
+          <div class="hero-section hero-gradient" id="hero-section" style="display: none;">
             <div class="hero-bg" id="hero-bg"></div>
             <div class="hero-content">
-              <img class="hero-img" id="hero-img" src="" alt="Hero">
+              <div class="hero-img-wrap" style="position: relative; width: 160px; height: 160px; border-radius: 14px; overflow: hidden; flex-shrink: 0; box-shadow: 0 16px 36px rgba(0,0,0,0.5);">
+                <img class="hero-img" id="hero-img" src="" alt="Hero" style="width: 100%; height: 100%; object-fit: cover;">
+                <div class="hero-img-overlay" style="position: absolute; inset: 0; background: rgba(0,0,0,0.4); display: flex; align-items: center; justify-content: center; opacity: 0; transition: opacity 0.3s ease;">
+                  <span class="material-symbols-outlined play-hero-icon" style="font-size: 48px; color: white; font-variation-settings: 'FILL' 1;">play_circle</span>
+                </div>
+              </div>
               <div class="hero-info">
-                <div class="hero-badge">Featured</div>
+                <span class="hero-badge">FEATURED</span>
                 <h2 class="hero-title" id="hero-title">Title</h2>
                 <p class="hero-subtitle" id="hero-subtitle">Subtitle</p>
                 <div class="hero-actions">
-                  <button class="btn-primary hero-play-btn" id="hero-play-btn">Play Now</button>
+                  <button class="btn-primary hero-play-btn" id="hero-play-btn">
+                    <span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1; font-size: 20px;">play_arrow</span>
+                    Play Now
+                  </button>
                 </div>
               </div>
             </div>
           </div>
 
-          <div class="home-content">
-            
-            <div class="mood-grid" id="mood-grid">
-              <div class="mood-tile" data-query="chill hits" style="background: linear-gradient(135deg, #1fa2ff, #12d8fa);">Chill</div>
-              <div class="mood-tile" data-query="workout hits" style="background: linear-gradient(135deg, #ff416c, #ff4b2b);">Workout</div>
-              <div class="mood-tile" data-query="focus music" style="background: linear-gradient(135deg, #38ef7d, #11998e);">Focus</div>
-              <div class="mood-tile" data-query="party hits" style="background: linear-gradient(135deg, #8E2DE2, #4A00E0);">Party</div>
-              <div class="mood-tile" data-query="sad songs" style="background: linear-gradient(135deg, #141E30, #243B55);">Sad</div>
-              <div class="mood-tile" data-query="romance hits" style="background: linear-gradient(135deg, #b224ef, #7579ff);">Romance</div>
+          <div class="home-content" id="home-feed-sections">
+            <!-- QUICK PICKS 4x4 GRID -->
+            <section class="shelf-section" id="quick-picks-section">
+              <div class="shelf-header">
+                <div>
+                  <span class="shelf-tag">START RADIO FROM A SONG</span>
+                  <h2 class="shelf-title">Quick Picks</h2>
+                </div>
+              </div>
+              <div id="quick-picks-container">
+                <div class="loading-shelf shimmer-card"></div>
+              </div>
+            </section>
+
+            <!-- PERSONALIZED MIX SUITE -->
+            <section class="shelf-section" id="mix-suite-section">
+              <div class="shelf-header">
+                <div>
+                  <span class="shelf-tag">MIXED FOR YOU</span>
+                  <h2 class="shelf-title">Personalized Mix Suite</h2>
+                </div>
+              </div>
+              <div class="shelf-container" id="mix-suite-container">
+                <div class="loading-shelf shimmer-card"></div>
+              </div>
+            </section>
+
+            <!-- CONTEXTUAL & LIFESTYLE HUBS (Office, Home, Workout, Drive, Sleep, Party) -->
+            <section class="shelf-section" id="lifestyle-hubs-section">
+              <div class="shelf-header">
+                <div>
+                  <span class="shelf-tag">SITUATIONAL & CONTEXTUAL FLOW</span>
+                  <h2 class="shelf-title">Office, Home & Lifestyle Hubs</h2>
+                </div>
+              </div>
+              <div class="shelf-container lifestyle-hubs-container" id="lifestyle-hubs-container">
+                <!-- Injected via UI.renderLifestyleHubs -->
+              </div>
+            </section>
+
+            <!-- REGIONAL LANGUAGE CATEGORIES -->
+            <section class="shelf-section" id="language-hubs-section">
+              <div class="shelf-header">
+                <div>
+                  <span class="shelf-tag">REGIONAL & GLOBAL HUBS</span>
+                  <h2 class="shelf-title">Explore by Language</h2>
+                </div>
+              </div>
+              <div class="language-chips-scroll" id="language-chips-container">
+                <!-- Injected via UI.renderLanguageChips -->
+              </div>
+            </section>
+
+            <!-- DEFAULT HOME SHELVES (Toggled on/off during active mood) -->
+            <div id="default-home-shelves">
+              <section class="shelf-section" id="shelf-made-for-you" style="display: none;"><h2 class="shelf-title">Made For You</h2><div class="shelf-container" id="container-made-for-you"></div></section>
+              
+              <div id="personalized-shelves"></div>
+              <div id="daily-mixes-container"></div>
+
+              <section class="shelf-section" id="recent-section" style="display: none;"><h2 class="shelf-title">Recently Played</h2><div class="shelf-container" id="recent-container"></div></section>
+              
+              <section class="shelf-section"><h2 class="shelf-title">Trending Now</h2><div class="shelf-container" id="shelf-trending"><div class="loading-shelf shimmer-card"></div><div class="loading-shelf shimmer-card"></div><div class="loading-shelf shimmer-card"></div><div class="loading-shelf shimmer-card"></div><div class="loading-shelf shimmer-card"></div></div></section>
+              
+              <section class="shelf-section"><h2 class="shelf-title">Global Top Hits</h2><div class="shelf-container" id="shelf-global"><div class="loading-shelf"></div></div></section>
+              
+              <section class="shelf-section"><h2 class="shelf-title">New Releases</h2><div class="shelf-container" id="shelf-newReleases"><div class="loading-shelf"></div></div></section>
+              
+              <section class="shelf-section"><h2 class="shelf-title">Chill & Lo-Fi</h2><div class="shelf-container" id="shelf-chill"><div class="loading-shelf"></div></div></section>
+              
+              <section class="shelf-section"><h2 class="shelf-title">Deep Focus</h2><div class="shelf-container" id="shelf-focus"><div class="loading-shelf"></div></div></section>
+              
+              <section class="shelf-section"><h2 class="shelf-title">Workout</h2><div class="shelf-container" id="shelf-workout"><div class="loading-shelf"></div></div></section>
+              
+              <section class="shelf-section"><h2 class="shelf-title">Popular Albums</h2><div class="shelf-container" id="shelf-popularAlbums"><div class="loading-shelf"></div></div></section>
+
+              <section class="shelf-section"><h2 class="shelf-title">Popular Artists</h2><div class="shelf-container" id="shelf-popularArtists"><div class="loading-shelf"></div></div></section>
+
+              <!-- PUBLIC & COMMUNITY PLAYLISTS -->
+              <section class="shelf-section" id="public-playlists-section">
+                <div class="shelf-header">
+                  <div>
+                    <span class="shelf-tag">COMMUNITY CURATIONS</span>
+                    <h2 class="shelf-title">Public Playlists & Mixes</h2>
+                  </div>
+                </div>
+                <div class="shelf-container" id="public-playlists-container">
+                  <div class="loading-shelf shimmer-card"></div>
+                </div>
+              </section>
             </div>
+          </div>
+        </div>
 
-            <section class="shelf-section" id="shelf-made-for-you" style="display: none;"><h2 class="shelf-title">Made For You</h2><div class="shelf-container" id="container-made-for-you"></div></section>
-            
-            <div id="personalized-shelves"></div>
-            <div id="daily-mixes-container"></div>
+        <!-- SAMPLES SHORT-FORM DISCOVERY PAGE -->
+        <div id="page-samples" class="page">
+          <div id="samples-container" class="samples-main-wrap"></div>
+        </div>
 
-            <section class="shelf-section" id="recent-section" style="display: none;"><h2 class="shelf-title">Recently Played</h2><div class="shelf-container" id="recent-container"></div></section>
-            
-            <section class="shelf-section"><h2 class="shelf-title">Trending Now</h2><div class="shelf-container" id="shelf-trending"><div class="loading-shelf shimmer-card"></div><div class="loading-shelf shimmer-card"></div><div class="loading-shelf shimmer-card"></div><div class="loading-shelf shimmer-card"></div><div class="loading-shelf shimmer-card"></div></div></section>
-            
-            <section class="shelf-section"><h2 class="shelf-title">Global Top Hits</h2><div class="shelf-container" id="shelf-global"><div class="loading-shelf"></div></div></section>
-            
-            <section class="shelf-section"><h2 class="shelf-title">New Releases</h2><div class="shelf-container" id="shelf-newReleases"><div class="loading-shelf"></div></div></section>
-            
-            <section class="shelf-section"><h2 class="shelf-title">Chill & Lo-Fi</h2><div class="shelf-container" id="shelf-chill"><div class="loading-shelf"></div></div></section>
-            
-            <section class="shelf-section"><h2 class="shelf-title">Deep Focus</h2><div class="shelf-container" id="shelf-focus"><div class="loading-shelf"></div></div></section>
-            
-            <section class="shelf-section"><h2 class="shelf-title">Workout</h2><div class="shelf-container" id="shelf-workout"><div class="loading-shelf"></div></div></section>
-            
-            <section class="shelf-section"><h2 class="shelf-title">Popular Albums</h2><div class="shelf-container" id="shelf-popularAlbums"><div class="loading-shelf"></div></div></section>
+        <!-- PODCASTS HUB PAGE -->
+        <div id="page-podcasts" class="page">
+          <div id="podcasts-hub-container" class="podcasts-main-wrap"></div>
+        </div>
 
-            <section class="shelf-section"><h2 class="shelf-title">Popular Artists</h2><div class="shelf-container" id="shelf-popularArtists"><div class="loading-shelf"></div></div></section>
+        <!-- PODCAST SHOW PAGE -->
+        <div id="page-podcast-show" class="page">
+          <div id="podcast-show-banner" class="podcast-show-hero"></div>
+          <div class="podcast-episodes-section" style="padding: var(--space-xl);">
+            <h2 class="shelf-title" style="margin-bottom: var(--space-md);">All Episodes</h2>
+            <div id="podcast-episodes-container" class="podcast-episodes-list"></div>
+          </div>
+        </div>
+
+        <!-- REGIONAL LANGUAGE HUB PAGE -->
+        <div id="page-language-hub" class="page">
+          <div class="hub-header" id="hub-header">
+            <button class="btn-icon btn-back" aria-label="Go back" onclick="window.history.back() || document.querySelector('[data-page=\'page-home\']').click()">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="15 18 9 12 15 6"/></svg>
+            </button>
+            <div class="hub-header__watermark" id="hub-script">हिन्दी</div>
+            <div class="hub-header__info">
+              <span class="hub-header__badge">LANGUAGE HUB</span>
+              <h1 id="hub-title" class="hub-header__title">Hindi Music Hub</h1>
+              <p id="hub-tagline" class="hub-header__tagline">Bollywood Superhits, Hindi Pop, & Soulful Melodies</p>
+            </div>
+          </div>
+          <div class="hub-content" id="hub-content">
+            <!-- Injected via LanguageHubs.openLanguageHub -->
           </div>
         </div>
 
@@ -319,7 +457,7 @@
         
         <!-- Track Info -->
         <div class="mini-player__track">
-           <img class="mini-player__img" id="mini-player-img" src="" alt="Artwork">
+           <img class="mini-player__img" id="mini-player-img" src="assets/logo.jpg" alt="Artwork" onerror="this.src='assets/logo.jpg'">
            <div class="mini-player__info">
              <div class="mini-player__name" id="mini-player-name">Not Playing</div>
              <div class="mini-player__artist" id="mini-player-artist">-</div>
@@ -329,19 +467,19 @@
         <!-- Center: Controls & Progress (Desktop & Mobile) -->
         <div class="mini-player__center">
           <div class="mini-player__controls">
-            <button class="btn-icon hide-mobile" data-action="toggle-shuffle" title="Shuffle"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M16 3h5v5M4 20L21 3M21 16v5h-5M15 15l6 6M4 4l5 5"/></svg></button>
-            <button class="btn-icon hide-mobile" data-action="prev" title="Previous"><svg viewBox="0 0 24 24" fill="currentColor"><polygon points="19,4 9,12 19,20"/><line x1="5" y1="4" x2="5" y2="20" stroke="currentColor" stroke-width="2"/></svg></button>
+            <button class="btn-icon hide-mobile" data-action="toggle-shuffle" title="Shuffle"><span class="material-symbols-outlined" style="font-size: 20px;">shuffle</span></button>
+            <button class="btn-icon hide-mobile" data-action="prev" title="Previous"><span class="material-symbols-outlined" style="font-size: 26px; font-variation-settings: 'FILL' 1;">skip_previous</span></button>
             
             <button class="btn-icon btn-fav hide-desktop" data-action="fav-current" title="Favorite">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>
+              <span class="material-symbols-outlined" style="font-size: 22px;">favorite</span>
             </button>
             
             <button class="btn-icon btn-play" data-action="toggle-play" aria-label="Play">
-              <svg viewBox="0 0 24 24" fill="currentColor"><polygon points="5,3 19,12 5,21"/></svg>
+              <span class="material-symbols-outlined" style="font-size: 32px; font-variation-settings: 'FILL' 1;">play_arrow</span>
             </button>
             
-            <button class="btn-icon hide-mobile" data-action="next" title="Next"><svg viewBox="0 0 24 24" fill="currentColor"><polygon points="5,4 15,12 5,20"/><line x1="19" y1="4" x2="19" y2="20" stroke="currentColor" stroke-width="2"/></svg></button>
-            <button class="btn-icon hide-mobile" data-action="toggle-repeat" title="Repeat"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="17 1 21 5 17 9"/><path d="M3 11V9a4 4 0 0 1 4-4h14"/><polyline points="7 23 3 19 7 15"/><path d="M21 13v2a4 4 0 0 1-4 4H3"/></svg></button>
+            <button class="btn-icon hide-mobile" data-action="next" title="Next"><span class="material-symbols-outlined" style="font-size: 26px; font-variation-settings: 'FILL' 1;">skip_next</span></button>
+            <button class="btn-icon hide-mobile" data-action="toggle-repeat" title="Repeat"><span class="material-symbols-outlined" style="font-size: 20px;">repeat</span></button>
           </div>
           <div class="mini-player__progress-container hide-mobile">
             <span id="mini-time-current">0:00</span>
@@ -354,11 +492,11 @@
 
         <!-- Right: Extras (Desktop) -->
         <div class="mini-player__right hide-mobile">
-          <button class="btn-icon btn-fav hide-mobile" data-action="fav-current" title="Favorite"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg></button>
-          <button class="btn-icon" data-action="queue" title="Queue"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg></button>
-          <button class="btn-icon" data-action="volume-toggle" title="Volume"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14"/><path d="M15.54 8.46a5 5 0 0 1 0 7.07"/></svg></button>
+          <button class="btn-icon btn-fav hide-mobile" data-action="fav-current" title="Favorite"><span class="material-symbols-outlined" style="font-size: 22px;">favorite</span></button>
+          <button class="btn-icon" data-action="queue" title="Queue"><span class="material-symbols-outlined" style="font-size: 22px;">queue_music</span></button>
+          <button class="btn-icon" data-action="volume-toggle" title="Volume"><span class="material-symbols-outlined" style="font-size: 22px;">volume_up</span></button>
           <input type="range" class="volume-slider" min="0" max="100" value="80" aria-label="Volume">
-          <button class="btn-icon" id="btn-fullscreen" title="Full Screen"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="15 3 21 3 21 9"/><polyline points="9 21 3 21 3 15"/><line x1="21" y1="3" x2="14" y2="10"/><line x1="3" y1="21" x2="10" y2="14"/></svg></button>
+          <button class="btn-icon" id="btn-fullscreen" title="Full Screen"><span class="material-symbols-outlined" style="font-size: 22px;">open_in_full</span></button>
         </div>
 
         <!-- Mobile progress bar (edge) -->
@@ -378,16 +516,57 @@
         </div>
         <div class="full-player__header">
           <button class="btn-icon" id="btn-minimize-player" aria-label="Minimize player">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg>
+            <span class="material-symbols-outlined" style="font-size: 28px;">keyboard_arrow_down</span>
           </button>
-          <span class="full-player__header-title">Now Playing</span>
+          <div class="full-player__header-center" style="display: flex; flex-direction: column; align-items: center; gap: 2px;">
+            <span class="full-player__header-title" style="font-family: var(--font-heading); font-weight: 700; font-size: 13px; text-transform: uppercase; letter-spacing: 1px; color: var(--on-surface-variant);">Now Playing</span>
+            <div class="full-player-user-chip" id="full-player-user-chip" onclick="Settings.openProfileModal()" style="display: inline-flex; align-items: center; gap: 6px; font-size: 11px; cursor: pointer; background: rgba(255,255,255,0.08); padding: 3px 10px; border-radius: var(--radius-full); backdrop-filter: blur(12px);">
+              <span class="material-symbols-outlined" style="font-size: 14px; color: var(--primary);">headphones</span>
+              <span id="np-user-name" style="font-weight: 600;">Adesh</span>
+            </div>
+          </div>
           <button class="btn-icon" data-action="context-menu" aria-label="More options">
-            <svg viewBox="0 0 24 24" fill="currentColor"><circle cx="12" cy="5" r="2"/><circle cx="12" cy="12" r="2"/><circle cx="12" cy="19" r="2"/></svg>
+            <span class="material-symbols-outlined" style="font-size: 24px;">more_vert</span>
           </button>
         </div>
+
+        <!-- In-Player Live Radio Notification Banner -->
+        <div class="player-radio-banner" id="player-radio-banner">
+          <div class="player-radio-banner-disc">
+            <span class="material-symbols-outlined" style="font-size: 22px;">radio</span>
+          </div>
+          <div class="player-radio-banner-info">
+            <span class="player-radio-banner-title">⚡ LIVE RADIO ACTIVATED</span>
+            <span class="player-radio-banner-subtitle" id="player-radio-banner-subtitle">Tuning into infinite curated flow...</span>
+          </div>
+        </div>
+
+        <!-- Prominent Audio ⇄ Video Switcher Pill -->
+        <div class="player-media-toggle-wrap" style="display: flex; justify-content: center; width: 100%; margin: 6px 0 10px 0; z-index: 10;">
+          <div class="player-media-toggle-pill" id="player-media-toggle">
+            <button class="media-toggle-btn active" data-mode="song">
+              <span class="material-symbols-outlined" style="font-size: 16px;">music_note</span>
+              <span>Song</span>
+            </button>
+            <button class="media-toggle-btn" data-mode="video">
+              <span class="material-symbols-outlined" style="font-size: 16px;">videocam</span>
+              <span>Video</span>
+            </button>
+          </div>
+        </div>
+
         <div class="full-player__artwork">
           <div class="artwork-glow-aura"></div>
-          <img id="full-player-img" src="" alt="Album Art">
+
+          <img id="full-player-img" src="assets/logo.jpg" alt="Album Art" onerror="this.src='assets/logo.jpg'">
+          
+          <!-- In-Player Live Radio Broadcast Badge & Equalizer -->
+          <div class="player-radio-broadcast-badge" id="player-radio-broadcast-badge">
+            <span class="live-dot"></span>
+            <span id="player-radio-badge-text">RADIO ACTIVE</span>
+            <div class="player-radio-mini-eq"><span></span><span></span><span></span><span></span></div>
+          </div>
+
           <div id="lyrics-panel" class="lyrics-panel" style="display:none;">
             <div class="lyrics-content">Lyrics aren't available for this song.</div>
           </div>
@@ -396,9 +575,15 @@
           <div style="flex:1; min-width:0;">
             <h2 id="full-player-name" class="full-player__name">No Song Selected</h2>
             <p id="full-player-artist" class="full-player__artist">-</p>
-            <p id="full-player-codec" class="full-player__codec" title="Tap to change audio quality" style="display: inline-block; font-size: 10px; color: var(--primary); text-transform: uppercase; margin-top: 4px; font-weight: 700; letter-spacing: 1px; cursor: pointer; padding: 2px 8px; border-radius: 6px; background: rgba(255,255,255,0.06);"></p>
+            <div class="player-badges-row" style="display: flex; align-items: center; gap: 8px; margin-top: 6px; flex-wrap: wrap;">
+              <p id="full-player-codec" class="full-player__codec interactive-quality-badge" title="Tap to change audio quality" onclick="UI.openAudioQualityModal()"></p>
+              <button id="btn-player-haptics" class="player-haptic-badge active" title="Toggle Apple Music Haptic Feedback" onclick="if(typeof Haptics!=='undefined') Haptics.toggle();">
+                <span class="material-symbols-outlined" style="font-size: 13px;">vibration</span>
+                <span id="player-haptics-text">HAPTICS ON</span>
+              </button>
+            </div>
           </div>
-          <button class="btn-icon btn-fav" data-action="fav-current" title="Favorite"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg></button>
+          <button class="btn-icon btn-fav" data-action="fav-current" title="Favorite"><span class="material-symbols-outlined" style="font-size: 28px; color: var(--secondary-container, #00f1fe); font-variation-settings: 'FILL' 1;">favorite</span></button>
         </div>
         <div class="full-player__progress-area">
           <div class="player-progress" id="full-progress">
@@ -410,23 +595,23 @@
           </div>
         </div>
         <div class="full-player__controls">
-          <button class="btn-icon" data-action="shuffle" title="Shuffle"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="16 3 21 3 21 8"/><line x1="4" y1="20" x2="21" y2="3"/><polyline points="21 16 21 21 16 21"/><line x1="15" y1="15" x2="21" y2="21"/><line x1="4" y1="4" x2="9" y2="9"/></svg></button>
-          <button class="btn-icon btn-large" data-action="previous" title="Previous"><svg viewBox="0 0 24 24" fill="currentColor"><polygon points="19,20 9,12 19,4"/><line x1="5" y1="4" x2="5" y2="20" stroke="currentColor" stroke-width="2"/></svg></button>
-          <button class="btn-icon btn-play btn-massive" data-action="toggle-play"><svg viewBox="0 0 24 24" fill="currentColor"><polygon points="5,3 19,12 5,21"/></svg></button>
-          <button class="btn-icon btn-large" data-action="next" title="Next"><svg viewBox="0 0 24 24" fill="currentColor"><polygon points="5,4 15,12 5,20"/><line x1="19" y1="4" x2="19" y2="20" stroke="currentColor" stroke-width="2"/></svg></button>
-          <button class="btn-icon" data-action="repeat" title="Repeat"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="17 1 21 5 17 9"/><path d="M3 11V9a4 4 0 0 1 4-4h14"/><polyline points="7 23 3 19 7 15"/><path d="M21 13v2a4 4 0 0 1-4 4H3"/></svg></button>
+          <button class="btn-icon" data-action="shuffle" title="Shuffle"><span class="material-symbols-outlined" style="font-size: 26px;">shuffle</span></button>
+          <button class="btn-icon btn-large" data-action="previous" title="Previous"><span class="material-symbols-outlined" style="font-size: 36px; font-variation-settings: 'FILL' 1;">skip_previous</span></button>
+          <button class="btn-icon btn-play btn-massive" data-action="toggle-play"><span class="material-symbols-outlined" style="font-size: 44px; font-variation-settings: 'FILL' 1;">play_arrow</span></button>
+          <button class="btn-icon btn-large" data-action="next" title="Next"><span class="material-symbols-outlined" style="font-size: 36px; font-variation-settings: 'FILL' 1;">skip_next</span></button>
+          <button class="btn-icon" data-action="repeat" title="Repeat"><span class="material-symbols-outlined" style="font-size: 26px;">repeat</span></button>
         </div>
         <div class="full-player__bottom-actions">
-           <button class="btn-icon" data-action="volume-toggle" title="Volume"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><path d="M15.54 8.46a5 5 0 0 1 0 7.07"/></svg></button>
+           <button class="btn-icon" data-action="volume-toggle" title="Volume"><span class="material-symbols-outlined" style="font-size: 24px;">volume_up</span></button>
            <input type="range" class="volume-slider" min="0" max="100" value="80" aria-label="Volume">
-           <button class="btn-icon" data-action="volume-max" title="Max Volume" onclick="Player.setVolume(1); UI.updateVolumeIcon(1);"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14"/><path d="M15.54 8.46a5 5 0 0 1 0 7.07"/></svg></button>
+           <button class="btn-icon" data-action="volume-max" title="Max Volume" onclick="Player.setVolume(1); UI.updateVolumeIcon(1);"><span class="material-symbols-outlined" style="font-size: 24px;">volume_up</span></button>
         </div>
         <div class="full-player__controls-secondary">
           <button class="btn-icon" id="btn-full-lyrics" aria-label="Toggle Lyrics" title="Live Lyrics">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path></svg>
+            <span class="material-symbols-outlined" style="font-size: 24px;">chat_bubble_outline</span>
           </button>
           <button class="btn-icon" id="btn-full-queue" aria-label="Toggle Queue" title="Queue">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg>
+            <span class="material-symbols-outlined" style="font-size: 24px;">queue_music</span>
           </button>
         </div>
       </div>
@@ -451,220 +636,539 @@
 
     <!-- ======== MOBILE BOTTOM NAV ======== -->
     <nav class="bottom-nav">
-      <button class="nav-item active" data-page="page-home" aria-label="Home">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
+      <button class="nav-item active" data-route="home" data-page="page-home" aria-label="Home">
+        <span class="material-symbols-outlined" style="font-size: 22px; font-variation-settings: 'FILL' 1;">home</span>
         <span>Home</span>
       </button>
-      <button class="nav-item" data-page="page-search" aria-label="Search">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+      <button class="nav-item" data-route="search" data-page="page-search" aria-label="Search">
+        <span class="material-symbols-outlined" style="font-size: 22px;">search</span>
         <span>Search</span>
       </button>
-      <button class="nav-item" data-page="page-favorites" aria-label="Library">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg>
+      <button class="nav-item" data-route="library" data-page="page-favorites" aria-label="Library">
+        <span class="material-symbols-outlined" style="font-size: 22px;">library_music</span>
         <span>Library</span>
+      </button>
+      <button class="nav-item" data-route="podcasts" data-page="page-podcasts" aria-label="Podcasts">
+        <span class="material-symbols-outlined" style="font-size: 22px;">podcasts</span>
+        <span>Podcasts</span>
+      </button>
+      <button class="nav-item" data-route="samples" data-page="page-samples" aria-label="Samples">
+        <span class="material-symbols-outlined" style="font-size: 22px;">subscriptions</span>
+        <span>Samples</span>
       </button>
     </nav>
   </div>
 
+    <!-- ======== WELCOME & USER ONBOARDING MODAL ======== -->
+    <div id="welcome-onboarding-modal" class="modal-overlay" style="display: none; z-index: 100000;">
+      <div class="modal welcome-onboarding-card">
+        <div class="welcome-onboarding-header">
+          <div class="welcome-badge">🎵 Welcome to MusicFlow</div>
+          <h2 class="welcome-title">What should we call you?</h2>
+          <p class="welcome-subtitle">Personalize your high-fidelity listening experience, smart daily mixes, and recaps.</p>
+        </div>
+        <div class="welcome-onboarding-body">
+          <div class="welcome-avatar-preview-wrap">
+            <div class="welcome-avatar-large" id="onboarding-avatar-preview">🎧</div>
+            <div class="welcome-avatar-select-hint">Pick your listening vibe avatar</div>
+          </div>
+          
+          <div class="profile-avatar-grid" id="onboarding-avatar-presets" style="margin-bottom: 20px;"></div>
 
-    <!-- ======== SETTINGS MODAL ======== -->
+          <div class="form-group" style="margin-bottom: 24px; text-align: left;">
+            <label for="onboarding-username-input" class="form-label" style="font-weight: 600; margin-bottom: 8px; display: block;">Your Name</label>
+            <input type="text" id="onboarding-username-input" class="form-input" placeholder="Enter your name (e.g. Adesh)" maxlength="24" autocomplete="name" style="font-size: 16px; padding: 14px 16px; width: 100%; border-radius: var(--radius-md);" />
+          </div>
+
+          <button class="btn-primary welcome-submit-btn" id="btn-submit-onboarding" style="width: 100%; padding: 14px; font-size: 16px; font-weight: 700; border-radius: var(--radius-full); box-shadow: 0 8px 24px var(--accent-glow);">
+            Start Listening 🚀
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- ======== TABBED SETTINGS MODAL ======== -->
     <div id="settings-modal" class="modal-overlay" style="display: none;">
-      <div class="modal">
+      <div class="modal tabbed-settings-modal">
         <div class="modal-header">
-          <h2>Settings</h2>
+          <div style="display: flex; align-items: center; gap: 10px;">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="22" height="22">
+              <circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/>
+            </svg>
+            <h2>Settings</h2>
+          </div>
           <button class="btn-icon" id="btn-close-settings" data-action="close-settings" aria-label="Close settings">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
           </button>
         </div>
-        <div class="modal-body">
 
-          <div class="settings-group">
-            <h3>Appearance</h3>
-            <select id="select-theme" class="settings-select">
-              <option value="system">System Default</option>
-              <option value="dark">Dark Mode</option>
-              <option value="light">Light Mode</option>
-            </select>
-            
-            <h3 style="margin-top: 16px;">Accent Color</h3>
-            <select id="select-color" class="settings-select">
-              <option value="purple">Purple</option>
-              <option value="blue">Blue</option>
-              <option value="green">Green</option>
-              <option value="red">Red</option>
-              <option value="pink">Pink</option>
-              <option value="orange">Orange</option>
-            </select>
-            
-            <h3 style="margin-top: 16px;">Clear Glass Effect</h3>
-            <label class="switch-wrap">
-              <span>Enable Ultra Glassmorphism</span>
-              <input type="checkbox" id="toggle-glass">
-              <span class="switch-slider"></span>
-            </label>
-          </div>
-          
-           <div class="settings-group">
-            <h3>Music Languages</h3>
-            <p class="settings-desc">Select the languages for your recommendations and radio.</p>
-            <div id="settings-languages" style="display: flex; gap: 8px; flex-wrap: wrap; margin-top: 8px;">
-              <label><input type="checkbox" value="hindi"> Hindi</label>
-              <label><input type="checkbox" value="english"> English</label>
-              <label><input type="checkbox" value="punjabi"> Punjabi</label>
-              <label><input type="checkbox" value="tamil"> Tamil</label>
-              <label><input type="checkbox" value="telugu"> Telugu</label>
-              <label><input type="checkbox" value="marathi"> Marathi</label>
-              <label><input type="checkbox" value="gujarati"> Gujarati</label>
-              <label><input type="checkbox" value="bengali"> Bengali</label>
-              <label><input type="checkbox" value="kannada"> Kannada</label>
-              <label><input type="checkbox" value="bhojpuri"> Bhojpuri</label>
-              <label><input type="checkbox" value="malayalam"> Malayalam</label>
-              <label><input type="checkbox" value="urdu"> Urdu</label>
-              <label><input type="checkbox" value="haryanvi"> Haryanvi</label>
-              <label><input type="checkbox" value="rajasthani"> Rajasthani</label>
-              <label><input type="checkbox" value="odia"> Odia</label>
-              <label><input type="checkbox" value="assamese"> Assamese</label>
+        <!-- Modern Tabs Switcher -->
+        <div class="settings-nav-tabs" id="settings-nav-tabs">
+          <button class="settings-tab-btn active" data-tab="tab-appearance">
+            <span>🎨 Appearance</span>
+          </button>
+          <button class="settings-tab-btn" data-tab="tab-playback">
+            <span>🎚️ Playback</span>
+          </button>
+          <button class="settings-tab-btn" data-tab="tab-profile">
+            <span>👤 Profile</span>
+          </button>
+          <button class="settings-tab-btn" data-tab="tab-library">
+            <span>📚 Library</span>
+          </button>
+        </div>
+
+        <div class="modal-body settings-tab-content-wrap">
+
+          <!-- TAB 1: APPEARANCE (Live Preview) -->
+          <div class="settings-tab-panel active" id="tab-appearance">
+            <div class="settings-group">
+              <h3>Theme & Mode</h3>
+              <select id="select-theme" class="settings-select">
+                <option value="system">System Default</option>
+                <option value="dark">Dark Mode</option>
+                <option value="light">Light Mode</option>
+                <option value="oled">AMOLED Pitch Black</option>
+              </select>
+              
+              <h3 style="margin-top: 16px;">Custom Background Atmosphere</h3>
+              <div class="custom-bg-presets-grid" id="custom-bg-presets">
+                <button type="button" class="bg-preset-chip active" data-bg="default" title="Dynamic Vibrant Colors">✨ Dynamic</button>
+                <button type="button" class="bg-preset-chip" data-bg="midnight" title="Midnight Nebula">🌌 Midnight</button>
+                <button type="button" class="bg-preset-chip" data-bg="cosmic" title="Cosmic Purple">💜 Cosmic</button>
+                <button type="button" class="bg-preset-chip" data-bg="ocean" title="Ocean Breeze">🌊 Ocean</button>
+                <button type="button" class="bg-preset-chip" data-bg="emerald" title="Emerald Forest">🍃 Emerald</button>
+                <button type="button" class="bg-preset-chip" data-bg="sunset" title="Sunset Horizon">🌇 Sunset</button>
+                <button type="button" class="bg-preset-chip" data-bg="oled" title="Pitch Black">🖤 OLED</button>
+              </div>
+              <div class="custom-color-picker-row" style="display: flex; align-items: center; justify-content: space-between; margin-top: 10px; padding: 10px 14px; background: rgba(255,255,255,0.05); border-radius: var(--radius-md); border: 1px solid rgba(255,255,255,0.1);">
+                <span style="font-size: 13px; font-weight: 600;">Custom Canvas Color</span>
+                <input type="color" id="input-custom-bg-color" value="#0f172a" style="border: none; width: 34px; height: 34px; border-radius: 50%; cursor: pointer; background: transparent;" title="Choose any custom color">
+              </div>
+
+              <h3 style="margin-top: 16px;">Accent Color Palette</h3>
+              <select id="select-color" class="settings-select">
+                <option value="purple">Electric Purple (Default)</option>
+                <option value="green">Emerald Green (Spotify)</option>
+                <option value="red">Crimson Red (YouTube Music)</option>
+                <option value="blue">Ocean Blue</option>
+                <option value="pink">Neon Pink</option>
+                <option value="orange">Sunset Orange</option>
+                <option value="cyan">Cyberpunk Cyan</option>
+              </select>
+
+              <h3 style="margin-top: 16px;">Font Size</h3>
+              <select id="select-font-size" class="settings-select">
+                <option value="compact">Compact (Small)</option>
+                <option value="medium" selected>Default (Medium)</option>
+                <option value="large">Spacious (Large)</option>
+              </select>
+
+              <h3 style="margin-top: 16px;">Layout Density</h3>
+              <select id="select-layout-density" class="settings-select">
+                <option value="comfortable" selected>Comfortable</option>
+                <option value="compact">Compact Grid</option>
+              </select>
+              
+              <h3 style="margin-top: 16px;">Visual Effects</h3>
+              <label class="switch-wrap" style="margin-bottom: 8px;">
+                <span>Enable Ultra Glassmorphism</span>
+                <input type="checkbox" id="toggle-glass">
+                <span class="switch-slider"></span>
+              </label>
+              <label class="switch-wrap" style="margin-bottom: 16px;">
+                <span>Beat-Reactive Artwork Scaling</span>
+                <input type="checkbox" id="toggle-beat-pulse" checked>
+                <span class="switch-slider"></span>
+              </label>
+
+              <h3>App Installation</h3>
+              <button type="button" id="btn-settings-install-pwa" class="btn-primary" style="width: 100%; padding: 12px; font-weight: 700; border-radius: var(--radius-md); display: flex; align-items: center; justify-content: center; gap: 8px; box-shadow: 0 4px 16px var(--accent-glow);">
+                <span class="material-symbols-outlined" style="font-size: 20px;">install_mobile</span>
+                <span>Install MusicFlow App</span>
+              </button>
             </div>
           </div>
 
-          <div class="settings-group">
-            <h3>Audio Quality</h3>
-            <p class="settings-desc">Select your preferred streaming quality.</p>
-            <select id="select-quality" class="settings-select">
-              <option value="auto">Auto / Best Available</option>
-              <option value="64kbps">Basic — 64 kbps</option>
-              <option value="128kbps">Standard — 128 kbps</option>
-              <option value="192kbps">High — 192 kbps</option>
-              <option value="256kbps">Very High — 256 kbps</option>
-              <option value="320kbps">Extreme — 320 kbps AAC</option>
-              <option value="lossless">Lossless — 16-bit / 44.1 kHz</option>
-              <option value="hi-res-48">Hi-Res Lossless — 24-bit / 48 kHz</option>
-              <option value="hi-res-96">Hi-Res Lossless — 24-bit / 96 kHz</option>
-              <option value="hi-res-192">Hi-Res Lossless — 24-bit / 192 kHz</option>
-            </select>
-          </div>
-
-          <div class="settings-group">
-            <h3>Gapless & Crossfade</h3>
-            <label class="switch-wrap">
-              <span>Enable Crossfade</span>
-              <input type="checkbox" id="toggle-crossfade">
-              <span class="switch-slider"></span>
-            </label>
-            <div style="margin-top:12px; display:flex; align-items:center; gap:12px;">
-              <span style="font-size:12px; opacity:0.7;">0s</span>
-              <input type="range" id="input-crossfade-duration" min="0" max="12" step="1" value="0" style="flex:1;">
-              <span id="label-crossfade-duration" style="font-size:12px; opacity:0.7; min-width:24px;">0s</span>
+          <!-- TAB 2: PLAYBACK -->
+          <div class="settings-tab-panel" id="tab-playback">
+            <div class="settings-group">
+              <h3>Audio Quality</h3>
+              <p class="settings-desc">Select your preferred streaming bitrate.</p>
+              <select id="select-quality" class="settings-select">
+                <option value="auto">Auto / Best Available</option>
+                <option value="64kbps">Basic — 64 kbps</option>
+                <option value="128kbps">Standard — 128 kbps</option>
+                <option value="192kbps">High — 192 kbps</option>
+                <option value="256kbps">Very High — 256 kbps</option>
+                <option value="320kbps">Extreme — 320 kbps AAC</option>
+                <option value="lossless">Lossless — 16-bit / 44.1 kHz</option>
+                <option value="hi-res-48">Hi-Res Lossless — 24-bit / 48 kHz</option>
+                <option value="hi-res-96">Hi-Res Lossless — 24-bit / 96 kHz</option>
+                <option value="hi-res-192">Hi-Res Lossless — 24-bit / 192 kHz</option>
+              </select>
             </div>
-            <p class="settings-desc" style="margin-top: 6px;">Blend the end of one track into the beginning of the next. Gapless playback is used when crossfade is off.</p>
+
+            <div class="settings-group">
+              <h3>Gapless & Crossfade</h3>
+              <label class="switch-wrap">
+                <span>Enable Crossfade</span>
+                <input type="checkbox" id="toggle-crossfade">
+                <span class="switch-slider"></span>
+              </label>
+              <div style="margin-top:12px; display:flex; align-items:center; gap:12px;">
+                <span style="font-size:12px; opacity:0.7;">0s</span>
+                <input type="range" id="input-crossfade-duration" min="0" max="12" step="1" value="3" style="flex:1;">
+                <span id="label-crossfade-duration" style="font-size:12px; opacity:0.7; min-width:24px;">3s</span>
+              </div>
+            </div>
+
+            <div class="settings-group">
+              <h3>Haptic & Tactile Feedback</h3>
+              <p class="settings-desc">Apple Music style Taptic vibrations on playback, scrubbing, and touch controls.</p>
+              <label class="switch-wrap">
+                <span>Enable Apple Music Haptic Feedback</span>
+                <input type="checkbox" id="toggle-haptics" checked>
+                <span class="switch-slider"></span>
+              </label>
+            </div>
+
+            <div class="settings-group">
+              <h3>Autoplay & Queue</h3>
+              <label class="switch-wrap">
+                <span>Autoplay Infinite Recommendations</span>
+                <input type="checkbox" id="toggle-autoplay" checked>
+                <span class="switch-slider"></span>
+              </label>
+            </div>
+
+            <div class="settings-group">
+              <h3>Equalizer Presets</h3>
+              <select id="select-eq-preset" class="settings-select">
+                <option value="flat">Flat (Default)</option>
+                <option value="bass">Bass Boost</option>
+                <option value="vocal">Vocal Enhancer</option>
+                <option value="treble">Treble Boost</option>
+                <option value="party">Party Mode</option>
+                <option value="chill">Chill & Relax</option>
+                <option value="custom">Custom</option>
+              </select>
+            </div>
+
+            <div class="settings-group">
+              <h3>Equalizer Custom Bands</h3>
+              <label class="switch-wrap" style="margin-bottom: 16px;">
+                <span>Enable Equalizer</span>
+                <input type="checkbox" id="toggle-equalizer">
+                <span class="switch-slider"></span>
+              </label>
+              <div class="eq-container" id="eq-container-view" style="display: none;">
+                <div class="eq-sliders">
+                  <!-- Sliders injected by JS -->
+                </div>
+              </div>
+            </div>
+
+            <div class="settings-group">
+              <h3>3D Spatial Audio</h3>
+              <label class="switch-wrap">
+                <span>Enable 3D Surround Audio</span>
+                <input type="checkbox" id="toggle-spatial-audio">
+                <span class="switch-slider"></span>
+              </label>
+            </div>
+
+            <div class="settings-group">
+              <h3>Ambient Sound Overlay</h3>
+              <select id="select-ambient-sound" class="settings-select">
+                <option value="off">Off</option>
+                <option value="rain">Calm Rain</option>
+                <option value="lofi">Warm Lo-Fi Beats</option>
+                <option value="binaural">Focus Binaural Waves</option>
+              </select>
+            </div>
+
+            <div class="settings-group">
+              <h3>Sleep Timer</h3>
+              <select id="select-timer" class="settings-select">
+                <option value="0">Off</option>
+                <option value="5">5 Minutes</option>
+                <option value="10">10 Minutes</option>
+                <option value="15">15 Minutes</option>
+                <option value="30">30 Minutes</option>
+                <option value="45">45 Minutes</option>
+                <option value="60">60 Minutes</option>
+                <option value="song">End of current song</option>
+              </select>
+            </div>
+
+            <div class="settings-group">
+              <h3>Playback Speed</h3>
+              <select id="select-speed" class="settings-select">
+                <option value="0.5">0.5x</option>
+                <option value="0.75">0.75x</option>
+                <option value="1.0">1.0x (Normal)</option>
+                <option value="1.25">1.25x</option>
+                <option value="1.5">1.5x</option>
+                <option value="1.75">1.75x</option>
+                <option value="2.0">2.0x</option>
+              </select>
+            </div>
           </div>
 
-          <div class="settings-group">
-            <h3>Audio Animations & Beat Scaling</h3>
-            <label class="switch-wrap">
-              <span>Beat-Reactive Artwork Scaling</span>
-              <input type="checkbox" id="toggle-beat-pulse" checked>
-              <span class="switch-slider"></span>
-            </label>
-            <p class="settings-desc" style="margin-top: 6px;">Pumps and scales the album artwork and glowing aura in sync with the music rhythm.</p>
+          <!-- TAB 3: USER PROFILE & STATS -->
+          <div class="settings-tab-panel" id="tab-profile">
+            <div class="profile-header-card">
+              <div class="profile-avatar-large" id="settings-profile-avatar">🎧</div>
+              <div class="profile-header-details">
+                <input type="text" id="settings-username-input" class="profile-name-input" placeholder="Your Name" value="Adesh">
+                <input type="text" id="settings-bio-input" class="profile-bio-input" placeholder="Add a short bio..." value="Music enthusiast & audiophile">
+              </div>
+            </div>
+
+            <div class="profile-section-title">Choose Avatar</div>
+            <div class="profile-avatar-grid" id="settings-avatar-presets"></div>
+
+            <div class="profile-section-title" style="margin-top: 20px;">🎧 Real-Time Listening Stats</div>
+            <div class="profile-stats-grid">
+              <div class="profile-stat-box">
+                <span class="profile-stat-num" id="settings-stat-played">0</span>
+                <span class="profile-stat-lbl">Songs Played</span>
+              </div>
+              <div class="profile-stat-box">
+                <span class="profile-stat-num" id="settings-stat-time">0 hrs</span>
+                <span class="profile-stat-lbl">Listening Time</span>
+              </div>
+              <div class="profile-stat-box">
+                <span class="profile-stat-num" id="settings-stat-artist">—</span>
+                <span class="profile-stat-lbl">Top Artist</span>
+              </div>
+              <div class="profile-stat-box">
+                <span class="profile-stat-num" id="settings-stat-genre">—</span>
+                <span class="profile-stat-lbl">Top Genre</span>
+              </div>
+            </div>
+
+            <button class="btn-primary" id="btn-save-settings-profile" style="width: 100%; margin-top: 20px; padding: 12px; border-radius: var(--radius-full);">
+              Save Profile Changes
+            </button>
           </div>
 
-          <div class="settings-group">
-            <h3>Song Lyrics Provider (Musixmatch)</h3>
-            <p class="settings-desc">Enter your Musixmatch API Key for licensed lyrics metadata.</p>
-            <input type="text" id="input-musixmatch-key" class="settings-select" placeholder="Paste Musixmatch API Key..." style="margin-top: 8px; width: 100%; box-sizing: border-box; text-align: left; padding: 10px 14px; font-family: monospace;">
-            <p style="font-size: 11px; opacity: 0.6; margin-top: 6px;">Live synced lyrics and plain lyrics are automatically provided via LRCLIB & Musixmatch.</p>
-          </div>
+          <!-- TAB 4: LIBRARY PREFERENCES & PRIVACY -->
+          <div class="settings-tab-panel" id="tab-library">
+            <div class="settings-group">
+              <h3>Library Preferences</h3>
+              <h4 style="margin-bottom: 6px; font-size: 13px;">Default Sort Order</h4>
+              <select id="select-library-sort" class="settings-select">
+                <option value="recent">Recently Added</option>
+                <option value="alphabetical">Alphabetical (A–Z)</option>
+                <option value="most_played">Most Played</option>
+              </select>
 
-          <div class="settings-group">
-            <h3>Equalizer Presets</h3>
-            <select id="select-eq-preset" class="settings-select">
-              <option value="flat">Flat (Default)</option>
-              <option value="bass">Bass Boost</option>
-              <option value="vocal">Vocal Enhancer</option>
-              <option value="treble">Treble Boost</option>
-              <option value="party">Party Mode</option>
-              <option value="chill">Chill & Relax</option>
-              <option value="custom">Custom</option>
-            </select>
-          </div>
+              <h4 style="margin-top: 14px; margin-bottom: 6px; font-size: 13px;">Show Podcasts in Library</h4>
+              <label class="switch-wrap">
+                <span>Display Podcasts & Shows</span>
+                <input type="checkbox" id="toggle-show-podcasts" checked>
+                <span class="switch-slider"></span>
+              </label>
+            </div>
 
-          <div class="settings-group">
-            <h3>Equalizer Custom Bands</h3>
-            <label class="switch-wrap" style="margin-bottom: 16px;">
-              <span>Enable Equalizer</span>
-              <input type="checkbox" id="toggle-equalizer">
-              <span class="switch-slider"></span>
-            </label>
-            <div class="eq-container" id="eq-container-view" style="display: none;">
-              <div class="eq-sliders">
-                <!-- Sliders injected by JS -->
+            <div class="settings-group">
+              <h3>Music Languages</h3>
+              <p class="settings-desc">Select preferred languages for recommendations and radio.</p>
+              <div id="settings-languages" style="display: flex; gap: 8px; flex-wrap: wrap; margin-top: 8px;">
+                <label><input type="checkbox" value="hindi"> Hindi</label>
+                <label><input type="checkbox" value="english"> English</label>
+                <label><input type="checkbox" value="punjabi"> Punjabi</label>
+                <label><input type="checkbox" value="tamil"> Tamil</label>
+                <label><input type="checkbox" value="telugu"> Telugu</label>
+                <label><input type="checkbox" value="marathi"> Marathi</label>
+                <label><input type="checkbox" value="gujarati"> Gujarati</label>
+                <label><input type="checkbox" value="bengali"> Bengali</label>
+                <label><input type="checkbox" value="kannada"> Kannada</label>
+                <label><input type="checkbox" value="bhojpuri"> Bhojpuri</label>
+                <label><input type="checkbox" value="malayalam"> Malayalam</label>
+                <label><input type="checkbox" value="urdu"> Urdu</label>
+              </div>
+            </div>
+
+            <div class="settings-group">
+              <h3>Song Lyrics Provider (Musixmatch)</h3>
+              <input type="text" id="input-musixmatch-key" class="settings-select" placeholder="Paste Musixmatch API Key..." style="margin-top: 8px; width: 100%; box-sizing: border-box; text-align: left; padding: 10px 14px; font-family: monospace;">
+            </div>
+
+            <div class="settings-group">
+              <h3>Data & Privacy</h3>
+              <div style="display: flex; flex-direction: column; gap: 10px;">
+                <button class="btn-primary" id="btn-clear-history" style="background: rgba(255,255,255,0.1); color: var(--text);">Clear Listening History</button>
+                <button class="btn-primary" id="btn-clear-search" style="background: rgba(255,255,255,0.1); color: var(--text);">Clear Search History</button>
+                <button class="btn-primary" id="btn-reset-app" style="background: var(--error); color: white;">Reset Application</button>
               </div>
             </div>
           </div>
 
-          <div class="settings-group">
-            <h3>3D Spatial Audio & Audio Enhancements</h3>
-            <label class="switch-wrap">
-              <span>Enable 3D Surround Audio</span>
-              <input type="checkbox" id="toggle-spatial-audio">
-              <span class="switch-slider"></span>
-            </label>
+          <div style="text-align: center; opacity: 0.5; font-size: 12px; margin-top: 24px; padding-bottom: 8px;">
+            MusicFlow v1.3.0 · Free Multimedia Platform<br>
+            Powered by JioSaavn API & Open RSS Feeds
           </div>
 
-          <div class="settings-group">
-            <h3>Smart Ambient Focus Sound Overlay</h3>
-            <p class="settings-desc">Mix background focus sounds with your music for studying or relaxing.</p>
-            <select id="select-ambient-sound" class="settings-select">
-              <option value="off">Off</option>
-              <option value="rain">Calm Rain</option>
-              <option value="lofi">Warm Lo-Fi Beats</option>
-              <option value="binaural">Focus Binaural Waves</option>
-            </select>
+        </div>
+      </div>
+    </div>
+
+    <!-- ======== USER PROFILE MODAL ======== -->
+    <div id="user-profile-modal" class="modal-overlay" style="display: none;">
+      <div class="modal user-profile-modal-card">
+        <div class="modal-header">
+          <div style="display: flex; align-items: center; gap: 8px;">
+            <span style="font-size: 24px;">👤</span>
+            <h2>User Profile & Stats</h2>
           </div>
-
-
-          <div class="settings-group">
-            <h3>Sleep Timer</h3>
-            <select id="select-timer" class="settings-select">
-              <option value="0">Off</option>
-              <option value="5">5 Minutes</option>
-              <option value="10">10 Minutes</option>
-              <option value="15">15 Minutes</option>
-              <option value="30">30 Minutes</option>
-              <option value="45">45 Minutes</option>
-              <option value="60">60 Minutes</option>
-              <option value="song">End of current song</option>
-            </select>
-          </div>
-
-          <div class="settings-group">
-            <h3>Playback Speed</h3>
-            <select id="select-speed" class="settings-select">
-              <option value="0.5">0.5x</option>
-              <option value="0.75">0.75x</option>
-              <option value="1.0">1.0x (Normal)</option>
-              <option value="1.25">1.25x</option>
-              <option value="1.5">1.5x</option>
-              <option value="1.75">1.75x</option>
-              <option value="2.0">2.0x</option>
-            </select>
-          </div>
-
-          <div class="settings-group">
-            <h3>Data & Privacy</h3>
-            <div style="display: flex; flex-direction: column; gap: 10px;">
-              <button class="btn-primary" id="btn-clear-history" style="background: rgba(255,255,255,0.1); color: var(--text);">Clear Listening History</button>
-              <button class="btn-primary" id="btn-clear-search" style="background: rgba(255,255,255,0.1); color: var(--text);">Clear Search History</button>
-              <button class="btn-primary" id="btn-reset-app" style="background: var(--error); color: white;">Reset Application</button>
+          <button class="btn-icon" id="btn-close-profile" onclick="Settings.closeProfileModal()" aria-label="Close profile">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+          </button>
+        </div>
+        <div class="modal-body">
+          <div class="profile-header-card">
+            <div class="profile-avatar-large" id="profile-current-avatar">🎧</div>
+            <div class="profile-header-details">
+              <input type="text" id="profile-username-input" class="profile-name-input" placeholder="Your Name" value="Adesh">
+              <input type="text" id="profile-bio-input" class="profile-bio-input" placeholder="Add a short bio..." value="Music enthusiast & audiophile">
             </div>
           </div>
 
-          <div style="text-align: center; opacity: 0.5; font-size: 12px; margin-top: 32px; padding-bottom: 16px;">
-            MusicFlow v1.1.0<br>
-            Powered by JioSaavn API
+          <div class="profile-section-title">Choose Avatar</div>
+          <div class="profile-avatar-grid" id="profile-avatar-presets"></div>
+
+          <div class="profile-section-title" style="margin-top: 20px;">🎧 Real-Time Listening Stats</div>
+          <div class="profile-stats-grid">
+            <div class="profile-stat-box">
+              <span class="profile-stat-num" id="profile-stat-played">0</span>
+              <span class="profile-stat-lbl">Songs Played</span>
+            </div>
+            <div class="profile-stat-box">
+              <span class="profile-stat-num" id="profile-stat-time">0 hrs</span>
+              <span class="profile-stat-lbl">Listening Time</span>
+            </div>
+            <div class="profile-stat-box">
+              <span class="profile-stat-num" id="profile-stat-artist">—</span>
+              <span class="profile-stat-lbl">Top Artist</span>
+            </div>
+            <div class="profile-stat-box">
+              <span class="profile-stat-num" id="profile-stat-genre">—</span>
+              <span class="profile-stat-lbl">Top Genre</span>
+            </div>
           </div>
 
+          <button class="btn-primary" id="btn-save-profile" style="width: 100%; margin-top: 20px; padding: 12px; border-radius: var(--radius-full);">
+            Save Profile
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- ======== CUSTOM RADIO TUNER MODAL ======== -->
+    <div id="radio-tuner-modal" class="modal-overlay" style="display: none;">
+      <div class="modal radio-tuner-modal-card">
+        <div class="modal-header">
+          <div style="display:flex; align-items:center; gap:10px;">
+            <span style="font-size:22px;">📻</span>
+            <h2>Create a Custom Radio Station</h2>
+          </div>
+          <button class="btn-icon" id="btn-close-tuner" onclick="RadioTuner.closeTunerModal()" aria-label="Close tuner">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+          </button>
+        </div>
+        <div class="modal-body tuner-modal-body">
+          <!-- Step 1: Select Artists -->
+          <div class="tuner-step">
+            <label class="tuner-step-label">1. Pick Up to 5 Artists</label>
+            <div class="tuner-artist-search-wrap">
+              <input type="text" id="tuner-artist-input" class="search-bar" placeholder="Search artist name...">
+              <div id="tuner-artist-dropdown" class="search-dropdown" style="display:none;"></div>
+            </div>
+            <div id="tuner-selected-artists" class="tuner-selected-chips"></div>
+          </div>
+
+          <!-- Step 2: Artist Variety -->
+          <div class="tuner-step">
+            <label class="tuner-step-label">2. Artist Variety</label>
+            <div class="tuner-pill-group" id="tuner-variety-group">
+              <button class="tuner-pill" data-val="familiar">Familiar</button>
+              <button class="tuner-pill active" data-val="blend">Blend</button>
+              <button class="tuner-pill" data-val="discover">Discover</button>
+            </div>
+          </div>
+
+          <!-- Step 3: Song Selection -->
+          <div class="tuner-step">
+            <label class="tuner-step-label">3. Song Selection</label>
+            <div class="tuner-pill-group" id="tuner-songtype-group">
+              <button class="tuner-pill active" data-val="popular">Popular Hits</button>
+              <button class="tuner-pill" data-val="deep_cuts">Deep Cuts & B-Sides</button>
+              <button class="tuner-pill" data-val="new_releases">New Releases</button>
+            </div>
+          </div>
+
+          <!-- Step 4: Vibe Filter -->
+          <div class="tuner-step">
+            <label class="tuner-step-label">4. Vibe & Mood</label>
+            <div class="tuner-pill-group" id="tuner-vibe-group">
+              <button class="tuner-pill active" data-val="all">All Vibes</button>
+              <button class="tuner-pill" data-val="chill">Chill</button>
+              <button class="tuner-pill" data-val="upbeat">Upbeat</button>
+              <button class="tuner-pill" data-val="intense">Intense</button>
+              <button class="tuner-pill" data-val="melancholy">Melancholy</button>
+              <button class="tuner-pill" data-val="party">Party</button>
+            </div>
+          </div>
+
+          <button class="btn-primary btn-launch-station" id="btn-launch-station">
+            <svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+            Tune & Launch Endless Station
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- ======== AUDIO QUALITY QUICK PICKER MODAL ======== -->
+    <div id="audio-quality-modal" class="modal-overlay" style="display: none;">
+      <div class="modal audio-quality-modal-card">
+        <div class="modal-header">
+          <div style="display: flex; align-items: center; gap: 10px;">
+            <span style="font-size: 24px;">🎧</span>
+            <div>
+              <h2 class="modal-title" style="margin:0; font-size: var(--font-size-lg);">Audio Streaming Quality</h2>
+              <p style="margin:2px 0 0 0; font-size: var(--font-size-xs); color: var(--text-secondary);">Select fidelity for lossless & studio master streaming</p>
+            </div>
+          </div>
+          <button class="btn-icon" id="btn-close-audio-quality" onclick="UI.closeAudioQualityModal()" aria-label="Close quality selector">
+            <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+          </button>
+        </div>
+        <div class="modal-body quality-options-list" id="quality-options-container">
+          <!-- Dynamically populated by UI.openAudioQualityModal -->
+        </div>
+      </div>
+    </div>
+
+    <!-- ======== PWA APP INSTALLATION GUIDE MODAL ======== -->
+    <div id="pwa-install-modal" class="modal-overlay" style="display: none;">
+      <div class="modal pwa-install-modal-card" style="max-width: 440px;">
+        <div class="modal-header">
+          <div style="display: flex; align-items: center; gap: 10px;">
+            <span style="font-size: 24px;">📱</span>
+            <div>
+              <h2 class="modal-title" style="margin:0; font-size: var(--font-size-lg);">Install MusicFlow App</h2>
+              <p style="margin:2px 0 0 0; font-size: var(--font-size-xs); color: var(--text-secondary);">Enjoy fullscreen playback & lossless audio</p>
+            </div>
+          </div>
+          <button class="btn-icon" id="btn-close-pwa-modal" onclick="Settings.closePwaModal()" aria-label="Close install modal">
+            <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+          </button>
+        </div>
+        <div class="modal-body" id="pwa-install-modal-body" style="padding: 20px;">
+          <!-- Dynamically populated according to OS -->
         </div>
       </div>
     </div>
@@ -683,14 +1187,26 @@
   <div id="toast-container"></div>
 
   <!-- Scripts (order matters: dependencies first) -->
-  <script src="js/api.js?v=25"></script>
-  <script src="js/storage.js?v=25"></script>
-  <script src="js/recommendations.js?v=25"></script>
-  <script src="js/player.js?v=25"></script>
-  <script src="js/ui.js?v=25"></script>
-  <script src="js/download.js"></script>
-  <script src="js/recap.js"></script>
-  <script src="js/app.js"></script>
+  <script src="js/haptics.js?v=69"></script>
+  <script src="js/api.js?v=69"></script>
+  <script src="js/storage.js?v=69"></script>
+  <script src="js/recommendations.js?v=69"></script>
+  <script src="js/smart-downloads.js?v=69"></script>
+  <script src="js/moods.js?v=69"></script>
+  <script src="js/mix-suite.js?v=69"></script>
+  <script src="js/language-hubs.js?v=69"></script>
+  <script src="js/podcasts.js?v=69"></script>
+  <script src="js/radio-tuner.js?v=69"></script>
+  <script src="js/samples.js?v=69"></script>
+  <script src="js/playlist-sharing.js?v=69"></script>
+  <script src="js/video-switcher.js?v=69"></script>
+  <script src="js/player.js?v=69"></script>
+  <script src="js/settings.js?v=69"></script>
+  <script src="js/ui.js?v=69"></script>
+  <script src="js/download.js?v=69"></script>
+  <script src="js/recap.js?v=69"></script>
+  <script src="js/search.js"></script>
+  <script src="js/app.js?v=69"></script>
   <script>
     // The service worker handles cache cleanup during its activate event.
     if ('serviceWorker' in navigator) {

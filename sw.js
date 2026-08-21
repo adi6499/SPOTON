@@ -1,14 +1,27 @@
-const CACHE_NAME = 'musicflow-v33';
+const CACHE_NAME = 'musicflow-v69';
 const ASSETS = [
   './',
   './index.html',
   './css/style.css',
+  './js/haptics.js',
   './js/api.js',
   './js/storage.js',
   './js/player.js',
   './js/ui.js',
   './js/recommendations.js',
+  './js/smart-downloads.js',
+  './js/moods.js',
+  './js/mix-suite.js',
+  './js/language-hubs.js',
+  './js/podcasts.js',
+  './js/radio-tuner.js',
+  './js/samples.js',
+  './js/playlist-sharing.js',
+  './js/video-switcher.js',
+  './js/settings.js',
   './js/download.js',
+  './js/recap.js',
+  './js/search.js',
   './js/app.js',
   './assets/logo.jpg'
 ];
