@@ -217,6 +217,22 @@ const App = (() => {
   let prevBassEnergy = 0;
   let beatDecay = 0;
 
+  // Cached refs: these ids never change; per-frame getElementById/querySelector
+  // was a measurable cost at 60-165fps
+  const pulseEls = {};
+  function getPulseEls() {
+    if (!pulseEls.pc) {
+      pulseEls.pc = document.getElementById('player-container');
+      pulseEls.fullImg = document.getElementById('full-player-img');
+      pulseEls.miniImg = document.getElementById('mini-player-img');
+      pulseEls.aura = document.querySelector('.artwork-glow-aura');
+    }
+    return pulseEls;
+  }
+  let lastShadowWrite = 0;
+  let lastShadowPower = -1;
+  let pulseIdleCleared = false;
+
   function startAudioReactivePulse() {
     if (audioPulseFrame) return;
 
@@ -227,12 +243,28 @@ const App = (() => {
         setTimeout(() => { audioPulseFrame = requestAnimationFrame(renderPulse); }, 900);
         return;
       }
-      const pc = document.getElementById('player-container');
+      const els = getPulseEls();
+      const pc = els.pc;
       const isPlayerExpanded = pc && pc.classList.contains('player-expanded');
       const isPlaying = document.body.classList.contains('is-playing') || (typeof Player !== 'undefined' && Player.getIsPlaying && Player.getIsPlaying());
-      const fullArtworkImg = document.getElementById('full-player-img');
-      const miniArtworkImg = document.getElementById('mini-player-img');
-      const glowAura = document.querySelector('.artwork-glow-aura');
+
+      // Idle gating: nothing playing and player minimized -> poll at 2.5Hz
+      // instead of burning a full RAF cycle 60-165x/sec
+      if (!isPlaying && !isPlayerExpanded) {
+        if (!pulseIdleCleared) {
+          pulseIdleCleared = true;
+          if (els.fullImg) { els.fullImg.style.transform = ''; els.fullImg.style.boxShadow = ''; }
+          if (els.miniImg) els.miniImg.style.transform = '';
+          if (els.aura) { els.aura.style.transform = ''; els.aura.style.opacity = ''; }
+        }
+        setTimeout(() => { audioPulseFrame = requestAnimationFrame(renderPulse); }, 400);
+        return;
+      }
+      pulseIdleCleared = false;
+
+      const fullArtworkImg = els.fullImg;
+      const miniArtworkImg = els.miniImg;
+      const glowAura = els.aura;
       const settings = (typeof Storage !== 'undefined' && Storage.getSettings) ? Storage.getSettings() : {};
       const isBeatPulseEnabled = settings.beatPulse !== false; // Default true (ON)
 
@@ -311,8 +343,15 @@ const App = (() => {
 
         // Apply to full-screen mobile / desktop player artwork
         if (fullArtworkImg && isPlayerExpanded) {
-          fullArtworkImg.style.transform = transformValue;
-          fullArtworkImg.style.boxShadow = `0 ${Math.round(16 + beatPower * 32)}px ${Math.round(35 + beatPower * 45)}px rgba(0,0,0,0.85), 0 0 ${Math.round(25 + beatPower * 70)}px var(--dynamic-color, rgba(29, 185, 84, 0.75))`;
+          fullArtworkImg.style.transform = transformValue; // composited: cheap
+          // box-shadow repaints a large blurred region - the #1 stutter source.
+          // Repaint at most ~8x/sec and only when the beat meaningfully moved.
+          const nowMs = now || performance.now();
+          if (nowMs - lastShadowWrite > 125 && Math.abs(beatPower - lastShadowPower) > 0.1) {
+            lastShadowWrite = nowMs;
+            lastShadowPower = beatPower;
+            fullArtworkImg.style.boxShadow = `0 ${Math.round(16 + beatPower * 32)}px ${Math.round(35 + beatPower * 45)}px rgba(0,0,0,0.85), 0 0 ${Math.round(25 + beatPower * 70)}px var(--dynamic-color, rgba(29, 185, 84, 0.75))`;
+          }
         }
 
         // Also scale mini player artwork slightly for consistency when minimized
@@ -329,27 +368,9 @@ const App = (() => {
           glowAura.style.opacity = auraOpacity.toFixed(2);
         }
 
-        // Pulse and modulate ambient fluid mesh backdrop orbs (soft micro-movement)
-        if (isPlayerExpanded) {
-          const orb1 = document.querySelector('.ambient-mesh-orb.orb-1');
-          const orb2 = document.querySelector('.ambient-mesh-orb.orb-2');
-          const orb3 = document.querySelector('.ambient-mesh-orb.orb-3');
-          if (orb1) {
-            const o1Scale = 1.0 + (beatPower * 0.08);
-            orb1.style.transform = `scale(${o1Scale.toFixed(3)})`;
-            orb1.style.opacity = (0.35 + beatPower * 0.10).toFixed(2);
-          }
-          if (orb2) {
-            const o2Scale = 1.0 + (beatPower * 0.06);
-            orb2.style.transform = `scale(${o2Scale.toFixed(3)})`;
-            orb2.style.opacity = (0.26 + beatPower * 0.08).toFixed(2);
-          }
-          if (orb3) {
-            const o3Scale = 1.0 + (beatPower * 0.05);
-            orb3.style.transform = `scale(${o3Scale.toFixed(3)})`;
-            orb3.style.opacity = (0.18 + beatPower * 0.06).toFixed(2);
-          }
-        }
+        // Ambient orbs float via their own CSS animations; per-frame JS
+        // writes here fought those animations and forced style recalcs.
+
       } else {
         // Paused or pulse disabled: reset transforms
         if (fullArtworkImg) {

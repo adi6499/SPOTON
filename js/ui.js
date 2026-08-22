@@ -1040,7 +1040,7 @@ const UI = (() => {
 
     if (data.progress !== undefined) {
       if (mFill) mFill.style.width = `${data.progress}%`;
-      if (mEdge) mEdge.style.width = `${data.progress}%`;
+      if (mEdge) mEdge.style.transform = `scaleX(${(data.progress / 100).toFixed(4)})`;
       if (fFill) fFill.style.width = `${data.progress}%`;
     }
 

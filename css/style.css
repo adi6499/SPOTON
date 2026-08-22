@@ -9059,3 +9059,18 @@ body.perf-lite #waveform-canvas { display: none !important; }
   .rail-btn { width: 42px; height: 42px; }
   .player-action-rail { gap: 10px; right: 0; }
 }
+
+/* ==========================================================
+   STUTTER FIX PASS — composited progress edge + paint hints
+   ========================================================== */
+.mini-player__progress-edge {
+  width: 100% !important;
+  transform: scaleX(0);
+  transform-origin: left center;
+  transition: none;
+  will-change: transform;
+}
+/* Beat-reactive artwork: promote once, not per frame */
+#full-player-img, #mini-player-img, .artwork-glow-aura {
+  will-change: transform;
+}
