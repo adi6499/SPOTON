@@ -8128,7 +8128,7 @@ button, .nav-item, .song-card, .filter-chip, .quick-pick-item,
     padding-bottom: max(12px, env(safe-area-inset-bottom));
   }
   .bottom-nav {
-    margin-bottom: max(10px, env(safe-area-inset-bottom));
+    /* safe-area handled via `bottom` below so the mini player can match it */
   }
 
   /* --- 10. Modals slide up as bottom sheets --- */
@@ -9413,4 +9413,33 @@ body.perf-lite #waveform-canvas { display: none !important; }
 @media (min-width: 768px) {
   .karaoke-lines .karaoke-line { font-size: 30px; }
   .karaoke-lines { padding: 26vh 10%; }
+}
+
+/* ==========================================================
+   SAFE-AREA STACKING FIX
+   On notched phones the bottom nav was pushed up by the home-indicator
+   inset while the mini player's offset stayed fixed - so the nav climbed
+   ~25px into the mini player and covered it. Both now share one
+   safe-area-aware scale, and the scroll padding matches.
+   ========================================================== */
+@media (max-width: 767.98px) {
+  :root {
+    --safe-bottom-inset: env(safe-area-inset-bottom, 0px);
+  }
+  /* Nav sits above the home indicator */
+  .bottom-nav {
+    bottom: calc(14px + var(--safe-bottom-inset)) !important;
+    margin-bottom: 0 !important;
+  }
+  /* Mini player sits directly above the nav, moving with it */
+  #player-container.player-minimized {
+    bottom: calc(82px + var(--safe-bottom-inset)) !important;
+  }
+  /* Content can still scroll clear of both */
+  .page {
+    padding-bottom: calc(150px + var(--safe-bottom-inset));
+  }
+  body.has-player .page {
+    padding-bottom: calc(170px + var(--safe-bottom-inset));
+  }
 }
