@@ -968,6 +968,12 @@ const App = (() => {
   function navigateToPage(rawTarget, pushHistory = true) {
     if (!rawTarget || typeof rawTarget !== 'string' || rawTarget === '[object Object]') return;
     const target = rawTarget.trim();
+    if (target === 'tuner') {
+      if (typeof RadioTuner !== 'undefined' && RadioTuner.openTunerModal) {
+        RadioTuner.openTunerModal();
+      }
+      return;
+    }
     const pageId = ROUTE_MAP[target] || (target.startsWith('page-') ? target : `page-${target}`);
     const canonicalHash = CANONICAL_HASH[pageId] || target.replace('page-', '');
 
@@ -1184,6 +1190,14 @@ const App = (() => {
             Haptics.light();
           }
 
+          if (targetRoute === 'tuner' || route === 'tuner') {
+            if (typeof RadioTuner !== 'undefined' && RadioTuner.openTunerModal) {
+              RadioTuner.openTunerModal();
+            }
+            setTimeout(syncWithActiveNav, 100);
+            return;
+          }
+
           if (targetRoute) {
             navigateToPage(targetRoute, true);
           }
@@ -1247,14 +1261,20 @@ const App = (() => {
   }
 
   function setupRadioTunerModalEvents() {
-    const openBtn = document.getElementById('btn-open-radio-tuner-sidebar');
-    if (openBtn) {
-      openBtn.addEventListener('click', () => {
-        if (typeof RadioTuner !== 'undefined') {
+    const openBtns = [
+      document.getElementById('btn-open-radio-tuner-sidebar'),
+      document.getElementById('btn-open-radio-tuner-mobile'),
+      document.getElementById('btn-tune-radio-home')
+    ].filter(Boolean);
+
+    openBtns.forEach(btn => {
+      btn.addEventListener('click', (e) => {
+        e.preventDefault();
+        if (typeof RadioTuner !== 'undefined' && RadioTuner.openTunerModal) {
           RadioTuner.openTunerModal();
         }
       });
-    }
+    });
 
     const artistInput = document.getElementById('tuner-artist-input');
     const artistDropdown = document.getElementById('tuner-artist-dropdown');
