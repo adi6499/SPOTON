@@ -135,6 +135,7 @@ const VideoSwitcher = (() => {
   return {
     init,
     setMode,
+    switchToMode: setMode, // alias used by search.js video cards
     getCurrentMode,
     resetToSongMode
   };

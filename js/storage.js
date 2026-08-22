@@ -154,8 +154,13 @@ const Storage = (() => {
 
   // ---- Settings ----
 
+  // Settings are read every animation frame by the beat-pulse/visualizer loops,
+  // so cache the parsed object instead of JSON.parsing localStorage 60-165x/sec.
+  let settingsCache = null;
+
   function getSettings() {
-    return get(KEYS.SETTINGS, {
+    if (settingsCache) return settingsCache;
+    settingsCache = get(KEYS.SETTINGS, {
       volume: 0.8,
       quality: '320kbps',
       repeat: 'off',
@@ -164,12 +169,21 @@ const Storage = (() => {
       autoplay: true,
       languages: ['hindi', 'english', 'punjabi'],
     });
+    return settingsCache;
   }
 
   function updateSettings(partial) {
     const settings = { ...getSettings(), ...partial };
+    settingsCache = settings;
     set(KEYS.SETTINGS, settings);
     return settings;
+  }
+
+  // Invalidate the cache if another tab (or a restore) rewrites settings
+  if (typeof window !== 'undefined') {
+    window.addEventListener('storage', (e) => {
+      if (!e.key || e.key === KEYS.SETTINGS) settingsCache = null;
+    });
   }
 
   // ---- Search History ----

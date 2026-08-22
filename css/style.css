@@ -7902,3 +7902,116 @@ body.has-custom-bg #dynamic-bg {
   transition: filter 0.15s ease, transform 0.15s ease;
 }
 .toast-action:hover { filter: brightness(1.15); transform: scale(1.05); }
+
+/* ========================================
+   Buttery-Smooth Pass (perf + tactility)
+   ======================================== */
+
+/* 1. Skip rendering off-screen shelf sections (big win on the long home page) */
+.shelf-section {
+  content-visibility: auto;
+  contain-intrinsic-size: auto 340px;
+}
+
+/* 2. Pin frequently-animated chrome to the GPU */
+.mini-player,
+.bottom-nav,
+#full-player,
+.toast,
+.context-menu,
+.search-dropdown {
+  transform: translateZ(0);
+  -webkit-backface-visibility: hidden;
+  backface-visibility: hidden;
+}
+
+/* 3. Universal tactile press feedback - everything responds under the finger */
+button, .nav-item, .song-card, .filter-chip, .quick-pick-item,
+.dropdown-item, .song-list-item, .podcast-episode-card, .mix-card,
+.lifestyle-hub-card, .library-card, .podcast-show-card {
+  -webkit-tap-highlight-color: transparent;
+}
+
+.song-card:active, .filter-chip:active, .quick-pick-item:active,
+.podcast-episode-card:active, .dropdown-item:active, .mix-card:active,
+.lifestyle-hub-card:active, .library-card:active, .podcast-show-card:active,
+.song-list-item:active {
+  transform: scale(0.965);
+  transition: transform 0.08s ease-out;
+}
+.btn-icon:active, .nav-item:active, .btn-lib-action:active,
+.toast-action:active, .btn-primary:active, .btn-text:active {
+  transform: scale(0.92);
+  transition: transform 0.08s ease-out;
+}
+.btn-play:active, .btn-massive:active {
+  transform: scale(0.9);
+  transition: transform 0.08s ease-out;
+}
+
+/* 4. Staggered card entrance - shelves cascade in */
+.shelf-container .song-card,
+.song-grid .song-card,
+.quick-picks-grid .quick-pick-item {
+  animation: cardEnter 0.45s cubic-bezier(0.22, 1, 0.36, 1) backwards;
+}
+.shelf-container .song-card:nth-child(1),  .quick-picks-grid .quick-pick-item:nth-child(1)  { animation-delay: 0.00s; }
+.shelf-container .song-card:nth-child(2),  .quick-picks-grid .quick-pick-item:nth-child(2)  { animation-delay: 0.03s; }
+.shelf-container .song-card:nth-child(3),  .quick-picks-grid .quick-pick-item:nth-child(3)  { animation-delay: 0.06s; }
+.shelf-container .song-card:nth-child(4),  .quick-picks-grid .quick-pick-item:nth-child(4)  { animation-delay: 0.09s; }
+.shelf-container .song-card:nth-child(5),  .quick-picks-grid .quick-pick-item:nth-child(5)  { animation-delay: 0.12s; }
+.shelf-container .song-card:nth-child(6),  .quick-picks-grid .quick-pick-item:nth-child(6)  { animation-delay: 0.15s; }
+.shelf-container .song-card:nth-child(7),  .quick-picks-grid .quick-pick-item:nth-child(7)  { animation-delay: 0.18s; }
+.shelf-container .song-card:nth-child(8),  .quick-picks-grid .quick-pick-item:nth-child(8)  { animation-delay: 0.21s; }
+.shelf-container .song-card:nth-child(n+9), .quick-picks-grid .quick-pick-item:nth-child(n+9) { animation-delay: 0.24s; }
+
+@keyframes cardEnter {
+  from { opacity: 0; transform: translateY(14px) scale(0.97); }
+  to   { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+/* 5. Song list rows slide in with a subtle cascade */
+.song-list .song-list-item {
+  animation: rowEnter 0.35s cubic-bezier(0.22, 1, 0.36, 1) backwards;
+}
+.song-list .song-list-item:nth-child(1)  { animation-delay: 0.00s; }
+.song-list .song-list-item:nth-child(2)  { animation-delay: 0.025s; }
+.song-list .song-list-item:nth-child(3)  { animation-delay: 0.05s; }
+.song-list .song-list-item:nth-child(4)  { animation-delay: 0.075s; }
+.song-list .song-list-item:nth-child(5)  { animation-delay: 0.10s; }
+.song-list .song-list-item:nth-child(6)  { animation-delay: 0.125s; }
+.song-list .song-list-item:nth-child(7)  { animation-delay: 0.15s; }
+.song-list .song-list-item:nth-child(n+8) { animation-delay: 0.175s; }
+
+@keyframes rowEnter {
+  from { opacity: 0; transform: translateX(-10px); }
+  to   { opacity: 1; transform: translateX(0); }
+}
+
+/* 6. Horizontal shelves: momentum snap + no scroll-chaining */
+.shelf-container {
+  scroll-snap-type: x proximity;
+  overscroll-behavior-x: contain;
+  scroll-padding-left: 16px;
+}
+.shelf-container > * {
+  scroll-snap-align: start;
+}
+
+/* 7. Vertical scroll: no bounce-chaining into the body */
+.page, .modal-body, .search-dropdown, .lyrics-panel {
+  overscroll-behavior-y: contain;
+}
+
+/* 8. Hover lift for pointer devices (kept off touch to avoid sticky hover) */
+@media (hover: hover) and (pointer: fine) {
+  .song-card, .quick-pick-item, .podcast-show-card, .mix-card, .library-card {
+    transition: transform 0.22s cubic-bezier(0.22, 1, 0.36, 1), box-shadow 0.22s ease;
+  }
+  .song-card:hover, .quick-pick-item:hover, .podcast-show-card:hover, .library-card:hover {
+    transform: translateY(-4px);
+  }
+}
+
+/* Reduced motion: the global media query at the top of this file already
+   flattens every animation/transition above. */
