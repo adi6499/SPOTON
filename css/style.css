@@ -9298,3 +9298,119 @@ body.perf-lite #waveform-canvas { display: none !important; }
   .full-player__header { margin-bottom: 2px; }
   .player-media-toggle-pill { margin: 2px auto !important; }
 }
+
+/* ---- Follow button state ---- */
+#btn-artist-follow.is-following {
+  background: var(--accent-color) !important;
+  border-color: var(--accent-color) !important;
+  color: #fff !important;
+}
+
+/* ---- Play count badge on Most Played cards ---- */
+.play-count-badge {
+  position: absolute;
+  top: 16px;
+  right: 16px;
+  background: rgba(0, 0, 0, 0.72);
+  color: #fff;
+  font-size: 11px;
+  font-weight: 800;
+  padding: 3px 8px;
+  border-radius: var(--radius-full);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  pointer-events: none;
+}
+
+/* ---- Full-screen karaoke mode ---- */
+#karaoke-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 12000;
+  display: flex;
+  flex-direction: column;
+  background: #07060d;
+  opacity: 0;
+  transition: opacity 0.25s ease;
+  padding: max(16px, env(safe-area-inset-top)) 18px max(18px, env(safe-area-inset-bottom));
+}
+#karaoke-overlay.open { opacity: 1; }
+.karaoke-bg {
+  position: absolute;
+  inset: -60px;
+  background-size: cover;
+  background-position: center;
+  filter: blur(60px) saturate(1.5) brightness(0.5);
+  opacity: 0.75;
+  z-index: 0;
+}
+#karaoke-overlay > *:not(.karaoke-bg) { position: relative; z-index: 1; }
+.karaoke-top {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 8px;
+}
+.karaoke-track__name {
+  font-size: 19px;
+  font-weight: 800;
+  color: #fff;
+  line-height: 1.2;
+}
+.karaoke-track__artist {
+  font-size: 13px;
+  color: rgba(255, 255, 255, 0.65);
+  margin-top: 2px;
+}
+.karaoke-lines {
+  flex: 1;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding: 22vh 4px;
+  text-align: center;
+  scrollbar-width: none;
+}
+.karaoke-lines::-webkit-scrollbar { display: none; }
+.karaoke-lines .karaoke-line {
+  font-size: 23px;
+  font-weight: 800;
+  line-height: 1.35;
+  color: rgba(255, 255, 255, 0.32);
+  padding: 9px 6px;
+  transition: color 0.25s ease, transform 0.25s cubic-bezier(0.22, 1, 0.36, 1), opacity 0.25s ease;
+  text-align: center;
+  border-radius: 0;
+}
+.karaoke-lines .karaoke-line--static { color: rgba(255, 255, 255, 0.72); font-size: 19px; font-weight: 600; }
+.karaoke-lines .karaoke-line-past { color: rgba(255, 255, 255, 0.22); }
+.karaoke-lines .karaoke-line-active {
+  color: #fff;
+  transform: scale(1.06);
+  text-shadow: 0 4px 30px var(--dynamic-color, rgba(255, 107, 107, 0.6));
+}
+.karaoke-empty {
+  color: rgba(255, 255, 255, 0.5);
+  font-size: 15px;
+  padding: 40px 0;
+}
+.karaoke-controls {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 34px;
+  padding-top: 8px;
+}
+.karaoke-controls .btn-icon { color: #fff; }
+.karaoke-controls .karaoke-play {
+  width: 66px;
+  height: 66px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.1);
+  border: 2px solid var(--dynamic-color, var(--accent-color));
+  box-shadow: 0 0 26px var(--dynamic-color, var(--accent-glow));
+}
+@media (min-width: 768px) {
+  .karaoke-lines .karaoke-line { font-size: 30px; }
+  .karaoke-lines { padding: 26vh 10%; }
+}

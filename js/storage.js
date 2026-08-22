@@ -281,6 +281,15 @@ const Storage = (() => {
     set(KEYS.LISTENING_HISTORY, []);
   }
 
+  function getMostPlayed(limit = 20) {
+    const plays = getStats().songPlays || {};
+    return Object.entries(plays)
+      .map(([id, v]) => ({ id, ...v }))
+      .filter(s => s.count >= 2 && s.name)
+      .sort((a, b) => b.count - a.count)
+      .slice(0, limit);
+  }
+
   function getStats() {
     return get(KEYS.STATS, {
       totalSongsPlayed: 0,
@@ -304,7 +313,28 @@ const Storage = (() => {
     const genre = song.language ? song.language : 'Unknown';
     stats.topGenres = stats.topGenres || {};
     stats.topGenres[genre] = (stats.topGenres[genre] || 0) + 1;
-    
+
+    // Per-song play counts (powers the Most Played shelf)
+    if (song.id) {
+      stats.songPlays = stats.songPlays || {};
+      const prev = stats.songPlays[song.id];
+      stats.songPlays[song.id] = {
+        count: (prev && prev.count ? prev.count : 0) + 1,
+        name: song.name,
+        artists: song.artists,
+        image: typeof song.image === 'string' ? song.image : (prev && prev.image) || '',
+        duration: song.duration || 0,
+        lastPlayed: Date.now()
+      };
+      // Keep the map bounded: retain the 300 most recently played entries
+      const ids = Object.keys(stats.songPlays);
+      if (ids.length > 300) {
+        ids.sort((a, b) => (stats.songPlays[b].lastPlayed || 0) - (stats.songPlays[a].lastPlayed || 0))
+           .slice(300)
+           .forEach(id => { delete stats.songPlays[id]; });
+      }
+    }
+
     set(KEYS.STATS, stats);
   }
 
@@ -621,6 +651,7 @@ const Storage = (() => {
     addSongToPlaylist,
     getListeningHistory,
     clearListeningHistory,
+    getMostPlayed,
     addListeningHistory,
     getStats,
     getHomeCache,

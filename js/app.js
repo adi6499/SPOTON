@@ -170,6 +170,8 @@ const App = (() => {
       bindArtworkDoubleTap();
       bindSleepTimerButton();
       bindPlayerActionRail();
+      bindFollowButton();
+      bindKaraokeButton();
       bindBackupRestore();
 
       // Restore last session (queue + track + position) unless a deep link is taking over
@@ -605,6 +607,8 @@ const App = (() => {
     });
 
     Player.on('pause', () => {
+      const t = Player.getCurrentTrack();
+      document.title = t ? `\u23F8 ${t.name} \u00B7 ${t.artists || 'MusicFlow'}` : 'MusicFlow \u2014 Ultimate Premium';
       UI.updatePlayPauseButton(false);
     });
 
@@ -623,6 +627,7 @@ const App = (() => {
       }
       if (data && data.currentTime !== undefined) {
         updateSyncedLyrics(data.currentTime);
+        updateKaraokeHighlight(data.currentTime);
       }
     });
 
@@ -631,6 +636,8 @@ const App = (() => {
       updateUpNextStrip();
       updateSleepBadge();
       updateRailFavState();
+      // Now playing in the browser tab title
+      document.title = track ? `\u25B6 ${track.name} \u00B7 ${track.artists || 'MusicFlow'}` : 'MusicFlow \u2014 Ultimate Premium';
       
       // Update full player with HD image and dynamic artwork
       if (track && track.image) {
@@ -2345,8 +2352,17 @@ const App = (() => {
       }
     });
 
+    // 9b. Most Played (per-song counts)
+    renderMostPlayedShelf();
+
     // 9c. Taste-based shelves: Made For You + "More from <artist>"
     renderTasteShelves();
+
+    // 9d. New releases from artists the user follows
+    try {
+      const followed = Storage.getFollowedArtists() || [];
+      if (followed.length > 0) checkNewReleasesFromFollowed(followed);
+    } catch (_) {}
 
     // 10. Load Recently Played
     const recentContainer = document.getElementById('recent-container');
@@ -3061,6 +3077,7 @@ const App = (() => {
       ['S', 'Toggle shuffle'],
       ['R', 'Cycle repeat mode'],
       ['Q', 'Expand player'],
+      ['K', 'Karaoke mode'],
       ['/', 'Focus search'],
       ['Ctrl + K', 'Command palette'],
       ['?', 'This help'],
@@ -3661,6 +3678,180 @@ const App = (() => {
     }
   }
 
+
+  // ---- Follow artist (activates the new-releases subsystem) ----
+  function updateFollowButton(artistName) {
+    const btn = document.getElementById('btn-artist-follow');
+    const label = document.getElementById('btn-artist-follow-label');
+    if (!btn || !label) return;
+    const id = 'artist_' + String(artistName || '').toLowerCase().replace(/\s+/g, '_');
+    const following = Storage.isArtistFollowed(id);
+    label.textContent = following ? 'Following' : 'Follow';
+    btn.classList.toggle('is-following', following);
+    btn.querySelector('.material-symbols-outlined').textContent = following ? 'how_to_reg' : 'person_add';
+  }
+
+  function bindFollowButton() {
+    document.getElementById('btn-artist-follow')?.addEventListener('click', () => {
+      const name = document.getElementById('artist-page-name')?.textContent?.trim();
+      if (!name) return;
+      const id = 'artist_' + name.toLowerCase().replace(/\s+/g, '_');
+      const img = document.getElementById('artist-page-img')?.src || '';
+      if (Storage.isArtistFollowed(id)) {
+        Storage.unfollowArtist(id);
+        UI.showToast(`Unfollowed ${name}`);
+      } else {
+        Storage.followArtist({ id, name, image: img });
+        UI.showToast(`\u2713 Following ${name} \u2014 you'll see their new releases on Home`, 'success');
+      }
+      updateFollowButton(name);
+      if (typeof Haptics !== 'undefined') Haptics.light();
+    });
+  }
+
+  // ---- Most Played shelf (per-song counts) ----
+  function renderMostPlayedShelf() {
+    const host = document.getElementById('home-feed-sections');
+    if (!host || !Storage.getMostPlayed) return;
+    const top = Storage.getMostPlayed(14);
+    const existing = document.getElementById('shelf-most-played');
+    if (existing) existing.remove();
+    if (top.length < 4) return;
+
+    const section = document.createElement('section');
+    section.className = 'shelf-section';
+    section.id = 'shelf-most-played';
+    section.innerHTML = `
+      <div class="shelf-header">
+        <div>
+          <div class="shelf-eyebrow">ON REPEAT</div>
+          <h2 class="shelf-title">Your Most Played</h2>
+        </div>
+      </div>
+      <div class="shelf-container"></div>`;
+    const cont = section.querySelector('.shelf-container');
+    UI.renderShelf(top, cont, 'song');
+    // Badge each card with its play count
+    [...cont.children].forEach((card, i) => {
+      if (!top[i]) return;
+      const badge = document.createElement('span');
+      badge.className = 'play-count-badge';
+      badge.textContent = `${top[i].count}\u00D7`;
+      card.style.position = 'relative';
+      card.appendChild(badge);
+    });
+    bindSongCardEvents(cont, top);
+    const taste = document.getElementById('taste-shelves');
+    if (taste) host.insertBefore(section, taste);
+    else host.prepend(section);
+  }
+
+  // ---- Full-screen karaoke lyrics mode ----
+  let karaokeActive = false;
+  function toggleKaraokeMode(force) {
+    const track = Player.getCurrentTrack();
+    let overlay = document.getElementById('karaoke-overlay');
+    const shouldOpen = force !== undefined ? force : !karaokeActive;
+
+    if (!shouldOpen) {
+      karaokeActive = false;
+      overlay?.classList.remove('open');
+      setTimeout(() => overlay?.remove(), 250);
+      return;
+    }
+    if (!track) { UI.showToast('Play a song first', 'info'); return; }
+
+    if (overlay) overlay.remove();
+    overlay = document.createElement('div');
+    overlay.id = 'karaoke-overlay';
+    overlay.innerHTML = `
+      <div class="karaoke-bg" style="background-image:url('${(typeof track.image === 'string' && track.image) || 'assets/logo.jpg'}')"></div>
+      <div class="karaoke-top">
+        <div class="karaoke-track">
+          <div class="karaoke-track__name">${track.name}</div>
+          <div class="karaoke-track__artist">${track.artists || ''}</div>
+        </div>
+        <button class="btn-icon" id="karaoke-close" aria-label="Exit karaoke">
+          <span class="material-symbols-outlined" style="font-size:26px;">close</span>
+        </button>
+      </div>
+      <div class="karaoke-lines" id="karaoke-lines"><div class="karaoke-empty">Loading lyrics\u2026</div></div>
+      <div class="karaoke-controls">
+        <button class="btn-icon" data-action="previous"><span class="material-symbols-outlined" style="font-size:30px;">skip_previous</span></button>
+        <button class="btn-icon karaoke-play" data-action="toggle-play"><span class="material-symbols-outlined" style="font-size:34px;">${Player.getIsPlaying() ? 'pause' : 'play_arrow'}</span></button>
+        <button class="btn-icon" data-action="next"><span class="material-symbols-outlined" style="font-size:30px;">skip_next</span></button>
+      </div>`;
+    document.body.appendChild(overlay);
+    // rAF alone can be throttled (background/low-power); timeout guarantees it
+    requestAnimationFrame(() => overlay.classList.add('open'));
+    setTimeout(() => overlay.classList.add('open'), 60);
+    karaokeActive = true;
+
+    overlay.querySelector('#karaoke-close').addEventListener('click', () => toggleKaraokeMode(false));
+    overlay.querySelectorAll('[data-action]').forEach(b => {
+      b.addEventListener('click', () => {
+        const a = b.dataset.action;
+        if (a === 'previous') Player.previous();
+        else if (a === 'next') Player.next();
+        else if (a === 'toggle-play') {
+          Player.togglePlayPause();
+          setTimeout(() => {
+            const icon = overlay.querySelector('.karaoke-play .material-symbols-outlined');
+            if (icon) icon.textContent = Player.getIsPlaying() ? 'pause' : 'play_arrow';
+          }, 200);
+        }
+      });
+    });
+
+    // Reuse the already-parsed synced lyrics when available
+    const linesHost = overlay.querySelector('#karaoke-lines');
+    const paint = () => {
+      if (parsedLyricsLines && parsedLyricsLines.length > 0) {
+        linesHost.innerHTML = parsedLyricsLines
+          .map((l, i) => `<div class="karaoke-line" data-k-idx="${i}" data-time="${l.time}">${l.text}</div>`).join('');
+      } else if (activeLyricsData && activeLyricsData.plain) {
+        linesHost.innerHTML = activeLyricsData.plain.split('\n')
+          .filter(t => t.trim())
+          .map(t => `<div class="karaoke-line karaoke-line--static">${t}</div>`).join('');
+      } else {
+        linesHost.innerHTML = '<div class="karaoke-empty">Lyrics aren\u2019t available for this song.</div>';
+      }
+    };
+    if (!parsedLyricsLines || parsedLyricsLines.length === 0) {
+      loadLyrics(track, true).then(paint).catch(paint);
+    } else {
+      paint();
+    }
+  }
+
+  function updateKaraokeHighlight(currentTime) {
+    if (!karaokeActive) return;
+    const host = document.getElementById('karaoke-lines');
+    if (!host) return;
+    const lines = host.querySelectorAll('.karaoke-line[data-time]');
+    if (!lines.length) return;
+    let activeIdx = -1;
+    for (let i = 0; i < lines.length; i++) {
+      if (parseFloat(lines[i].dataset.time) <= currentTime + 0.25) activeIdx = i;
+      else break;
+    }
+    if (activeIdx < 0) return;
+    if (host.dataset.active === String(activeIdx)) return;
+    host.dataset.active = String(activeIdx);
+    lines.forEach((l, i) => {
+      l.classList.toggle('karaoke-line-active', i === activeIdx);
+      l.classList.toggle('karaoke-line-past', i < activeIdx);
+    });
+    lines[activeIdx].scrollIntoView({ block: 'center', behavior: 'smooth' });
+  }
+
+  function bindKaraokeButton() {
+    document.getElementById('btn-full-karaoke')?.addEventListener('click', (e) => {
+      e.stopPropagation();
+      toggleKaraokeMode();
+    });
+  }
+
   // ---- Keyboard Shortcuts & Command Palette ----
 
   function bindKeyboardShortcuts() {
@@ -3743,9 +3934,14 @@ const App = (() => {
           e.preventDefault();
           showShortcutsHelp();
           break;
+        case 'k':
+        case 'K':
+          toggleKaraokeMode();
+          break;
         case 'Escape': {
           const help = document.getElementById('shortcuts-help-overlay');
           if (help && help.style.display !== 'none') help.style.display = 'none';
+          if (document.getElementById('karaoke-overlay')) toggleKaraokeMode(false);
           break;
         }
       }
@@ -3777,6 +3973,7 @@ const App = (() => {
           { label: 'Open Samples', action: () => navigateToPage('page-samples') },
           { label: 'Open Music Recap', action: () => navigateToPage('page-recap') },
           { label: 'Open Listening History', action: () => navigateToPage('page-history') },
+          { label: 'Karaoke Mode (full-screen lyrics)', action: () => toggleKaraokeMode(true) },
           { label: 'Share Current Song as Image', action: () => shareSongCard(Player.getCurrentTrack()) },
           { label: 'More Like Current Song', action: () => showMoreLikeThis(Player.getCurrentTrack()) },
           { label: 'Open Tune Radio', action: () => navigateToPage('tuner') },
@@ -4045,6 +4242,7 @@ const App = (() => {
     }
 
     UI.showPage('page-artist');
+    setTimeout(() => updateFollowButton(cleanName), 60);
     document.getElementById('btn-minimize-player')?.click();
     
     if (pushHistory) {
@@ -4781,6 +4979,9 @@ const App = (() => {
     navigateToPage,
     syncVisualizer,
     renderHistoryPage,
+    toggleKaraokeMode,
+    renderMostPlayedShelf,
+    updateFollowButton,
     shareSongCard,
     showMoreLikeThis,
     exportAllData,
