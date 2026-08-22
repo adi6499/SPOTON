@@ -8367,3 +8367,58 @@ input.form-input[type="text"] {
   color: #fff;
   box-shadow: 0 4px 14px var(--accent-glow);
 }
+
+/* ==========================================================
+   ULTRA GLASSMORPHISM — applied EVERYWHERE when toggled on.
+   The old rule set missed .mini-player itself (it painted an
+   opaque bar over the glassy container) plus header, dropdown,
+   toasts, tab bars and the queue rows. Higher specificity than
+   the component !important rules, so glass always wins.
+   ========================================================== */
+body.clear-glass .mini-player,
+body.clear-glass .header,
+body.clear-glass .search-dropdown,
+body.clear-glass .settings-nav-tabs,
+body.clear-glass .toast,
+body.clear-glass #cmd-palette > div,
+body.clear-glass .cmd-palette-card,
+body.clear-glass .welcome-onboarding-card,
+body.clear-glass .tabbed-settings-modal,
+body.clear-glass .up-next-strip,
+body.clear-glass .filter-chips-bar .filter-chip,
+body.clear-glass .lang-chip:not(.active),
+body.clear-glass .song-list-item,
+body.clear-glass .podcast-episode-card,
+body.clear-glass .profile-stat-box {
+  background: rgba(255, 255, 255, 0.06) !important;
+  backdrop-filter: blur(36px) saturate(160%) !important;
+  -webkit-backdrop-filter: blur(36px) saturate(160%) !important;
+  border-color: rgba(255, 255, 255, 0.12) !important;
+}
+
+body.clear-glass .mini-player {
+  border-top: 1px solid rgba(255, 255, 255, 0.14) !important;
+  box-shadow: 0 -8px 32px rgba(0, 0, 0, 0.35) !important;
+}
+
+body.clear-glass .toast {
+  box-shadow: 0 16px 40px rgba(0, 0, 0, 0.5) !important;
+}
+
+/* Light theme variants keep readability on bright backgrounds */
+body.theme-light.clear-glass .mini-player,
+body.theme-light.clear-glass .header,
+body.theme-light.clear-glass .search-dropdown,
+body.theme-light.clear-glass .settings-nav-tabs,
+body.theme-light.clear-glass .toast,
+body.theme-light.clear-glass .welcome-onboarding-card,
+body.theme-light.clear-glass .tabbed-settings-modal,
+body.theme-light.clear-glass .up-next-strip,
+body.theme-light.clear-glass .song-list-item,
+body.theme-light.clear-glass .podcast-episode-card,
+body.theme-light.clear-glass .profile-stat-box {
+  background: rgba(255, 255, 255, 0.45) !important;
+  backdrop-filter: blur(36px) saturate(160%) !important;
+  -webkit-backdrop-filter: blur(36px) saturate(160%) !important;
+  border-color: rgba(0, 0, 0, 0.1) !important;
+}
