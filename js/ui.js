@@ -359,8 +359,8 @@ const UI = (() => {
       container.innerHTML = `
         <div class="empty-state" style="padding: 48px 16px; text-align: center;">
           <div class="empty-state__icon" style="font-size: 44px; margin-bottom: 12px;">❤️</div>
-          <div class="empty-state__title" style="font-size: 22px; font-weight: 700; color: #fff;">Your Library is Empty</div>
-          <div class="empty-state__subtitle" style="color: #9ca3af; font-size: 14px; margin-top: 6px;">Search for songs, albums, and artists and tap the heart icon to build your library.</div>
+          <div class="empty-state__title" style="font-size: 22px; font-weight: 700; color: var(--text-primary);">Your Library is Empty</div>
+          <div class="empty-state__subtitle" style="color: var(--text-secondary); font-size: 14px; margin-top: 6px;">Search for songs, albums, and artists and tap the heart icon to build your library.</div>
         </div>`;
       return;
     }

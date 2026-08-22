@@ -164,6 +164,10 @@ const Player = (() => {
     }
   }
 
+  // Session restore state
+  let resumeSeekOnce = null; // { id, pos } applied once on next successful load
+  let lastSessionPersist = 0;
+
   // Callbacks
   let onPlay = null;
   let onPause = null;
@@ -224,6 +228,13 @@ const Player = (() => {
           // Gapless: just prefetch the next track URL but don't play yet
           checkAndPrefetchGapless();
         }
+      }
+
+      // Persist session (queue + position) every ~5s while playing
+      const nowTs = Date.now();
+      if (nowTs - lastSessionPersist > 5000) {
+        lastSessionPersist = nowTs;
+        persistSession();
       }
 
       onTimeUpdate?.({
@@ -292,6 +303,63 @@ const Player = (() => {
 
   bindAudioEvents(audio);
   bindAudioEvents(audio2);
+
+  // ---- Session Persistence (Continue where you left off) ----
+
+  function slimTrack(s) {
+    if (!s) return null;
+    return {
+      id: s.id, name: s.name, title: s.title || s.name,
+      artists: s.artists, artist: s.artist || s.artists,
+      album: s.album, duration: s.duration,
+      image: typeof s.image === 'string' ? s.image : '',
+      imageUrl: typeof s.imageUrl === 'string' ? s.imageUrl : '',
+      streamUrl: s.streamUrl || '', audioUrl: s.audioUrl || '',
+      downloadUrls: Array.isArray(s.downloadUrls) ? s.downloadUrls.slice(0, 6) : [],
+      year: s.year || '', language: s.language || ''
+    };
+  }
+
+  function persistSession() {
+    try {
+      const payload = {
+        v: 1,
+        queue: queue.slice(0, 150).map(slimTrack).filter(Boolean),
+        index: currentIndex,
+        position: (activeAudio && isFinite(activeAudio.currentTime)) ? Math.floor(activeAudio.currentTime) : 0,
+        ts: Date.now()
+      };
+      localStorage.setItem('mf_queue', JSON.stringify(payload));
+    } catch (e) { /* quota or serialization issue: non-fatal */ }
+  }
+
+  function restoreSession() {
+    try {
+      const raw = localStorage.getItem('mf_queue');
+      if (!raw) return null;
+      const payload = JSON.parse(raw);
+      if (!payload || !Array.isArray(payload.queue) || payload.queue.length === 0) return null;
+      // Don't clobber an active queue (e.g. a deep link already started playback)
+      if (queue.length > 0) return null;
+
+      queue = payload.queue.filter(s => s && (s.id || s.name));
+      currentIndex = Math.max(0, Math.min(payload.index || 0, queue.length - 1));
+      if (shuffleMode) generateShuffledIndices();
+
+      const track = queue[currentIndex] || null;
+      if (track && payload.position > 5 && (!track.duration || payload.position < track.duration - 5)) {
+        resumeSeekOnce = { id: track.id, pos: payload.position };
+      }
+
+      onQueueUpdate?.(queue, currentIndex);
+      if (track) onTrackChange?.(track, currentIndex);
+      return { track, position: resumeSeekOnce ? resumeSeekOnce.pos : 0, queueLength: queue.length };
+    } catch (e) {
+      return null;
+    }
+  }
+
+  window.addEventListener('beforeunload', persistSession);
 
   // ---- Queue Management ----
 
@@ -574,6 +642,17 @@ const Player = (() => {
             gaplessPrefetchedUrl = null;
           }
           playedSuccessfully = true;
+          // Apply one-shot resume position (Continue where you left off)
+          if (resumeSeekOnce) {
+            if (resumeSeekOnce.id === trackToPlay.id) {
+              const pos = resumeSeekOnce.pos;
+              try { activeAudio.currentTime = pos; } catch (e) {
+                activeAudio.addEventListener('loadedmetadata', () => { try { activeAudio.currentTime = pos; } catch (_) {} }, { once: true });
+              }
+            }
+            resumeSeekOnce = null;
+          }
+          persistSession();
           break;
         } catch (streamErr) {
           if (streamErr.name === 'AbortError') return;
@@ -1484,6 +1563,8 @@ const Player = (() => {
     setAmbientVolume,
     changeQuality,
     getStreamCodecDisplay,
+    restoreSession,
+    persistSession,
     initWebAudio
   };
 })();

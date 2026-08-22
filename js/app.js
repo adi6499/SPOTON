@@ -164,6 +164,19 @@ const App = (() => {
       });
       startAudioReactivePulse();
       bindBackupRestore();
+
+      // Restore last session (queue + track + position) unless a deep link is taking over
+      const hasDeepLink = window.location.hash.includes('/');
+      if (!hasDeepLink && Player.restoreSession) {
+        const resumed = Player.restoreSession();
+        if (resumed && resumed.track) {
+          const mins = Math.floor((resumed.position || 0) / 60);
+          const secs = String(Math.floor((resumed.position || 0) % 60)).padStart(2, '0');
+          UI.showToast(resumed.position > 5
+            ? `\u25B6 Resume \u201C${resumed.track.name}\u201D from ${mins}:${secs}`
+            : `\u25B6 Your queue is back \u2014 ${resumed.queueLength} songs`, 'info');
+        }
+      }
       handleDeepLinkOnLoad();
     } catch (e) {
       console.error('[App] Init failed:', e);
@@ -767,6 +780,29 @@ const App = (() => {
       clearTimeout(searchDebounceTimer);
       if (query.length >= 2) {
         searchDebounceTimer = setTimeout(() => performAutocomplete(query), 300);
+      }
+    });
+
+    // Keyboard navigation for the autocomplete dropdown (\u2191\u2193 to move, Enter to pick, Esc to close)
+    input.addEventListener('keydown', (e) => {
+      const dropdown = document.getElementById('search-dropdown');
+      if (!dropdown || dropdown.style.display === 'none') return;
+      const items = [...dropdown.querySelectorAll('.dropdown-item')];
+      if (items.length === 0) return;
+      let idx = items.findIndex(it => it.classList.contains('dropdown-item--active'));
+      if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
+        e.preventDefault();
+        if (e.key === 'ArrowDown') idx = (idx + 1) % items.length;
+        else idx = idx <= 0 ? items.length - 1 : idx - 1;
+        items.forEach(it => it.classList.remove('dropdown-item--active'));
+        items[idx].classList.add('dropdown-item--active');
+        items[idx].scrollIntoView({ block: 'nearest' });
+      } else if (e.key === 'Enter' && idx >= 0) {
+        e.preventDefault();
+        e.stopImmediatePropagation();
+        items[idx].click();
+      } else if (e.key === 'Escape') {
+        dropdown.style.display = 'none';
       }
     });
 
@@ -1701,6 +1737,28 @@ const App = (() => {
           if (song) {
             const rect = target.getBoundingClientRect();
             UI.showContextMenu(rect.left - 120, rect.bottom + 5, [
+              ...(() => {
+                const pls = Storage.getPlaylists() || [];
+                const items = pls.slice(0, 5).map(p => ({
+                  label: `Add to ${p.name}`,
+                  icon: '\u{1F4C1}',
+                  onClick: () => { Storage.addSongToPlaylist(p.id, song); UI.showToast(`Added to ${p.name}`, 'success'); }
+                }));
+                items.push({
+                  label: 'Add to New Playlist\u2026',
+                  icon: '\u2795',
+                  onClick: () => {
+                    const name = prompt('Playlist name:');
+                    if (name && name.trim()) {
+                      const np = Storage.createPlaylist(name.trim());
+                      Storage.addSongToPlaylist(np.id, song);
+                      UI.showToast(`Created \u201C${np.name}\u201D and added song`, 'success');
+                    }
+                  }
+                });
+                items.push({ type: 'divider' });
+                return items;
+              })(),
               { label: 'Play Next', icon: '▶️', onClick: () => { Player.playNext(song); UI.showToast('Added to Play Next'); } },
               { label: 'Add to Queue', icon: '🎵', onClick: () => { Player.addToQueue(song); UI.showToast('Added to Queue'); } },
               { label: 'Start Radio', icon: '📻', onClick: () => startRadioForSong(song) },
@@ -2798,7 +2856,7 @@ const App = (() => {
     if (overlay) { overlay.style.display = 'flex'; return; }
     overlay = document.createElement('div');
     overlay.id = 'shortcuts-help-overlay';
-    overlay.style.cssText = 'position:fixed;inset:0;z-index:10000;background:rgba(0,0,0,0.72);backdrop-filter:blur(14px);display:flex;align-items:center;justify-content:center;';
+    overlay.style.cssText = 'position:fixed;inset:0;z-index:10000;background:rgba(0,0,0,0.55);backdrop-filter:blur(14px);display:flex;align-items:center;justify-content:center;';
     const rows = [
       ['Space', 'Play / Pause'],
       ['\u2190 / \u2192', 'Previous / Next track'],
@@ -2814,15 +2872,15 @@ const App = (() => {
       ['Esc', 'Close overlays']
     ];
     overlay.innerHTML = `
-      <div style="background:var(--surface, #16162a);border:1px solid rgba(255,255,255,0.1);border-radius:20px;padding:28px 32px;max-width:420px;width:92vw;max-height:80vh;overflow:auto;box-shadow:0 24px 80px rgba(0,0,0,0.6);">
+      <div style="background:var(--bg-elevated, #16162a);border:1px solid var(--border, rgba(255,255,255,0.1));border-radius:20px;padding:28px 32px;max-width:420px;width:92vw;max-height:80vh;overflow:auto;box-shadow:0 24px 80px rgba(0,0,0,0.6);">
         <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:18px;">
           <h2 style="margin:0;font-size:20px;font-weight:800;">\u2328\uFE0F Keyboard Shortcuts</h2>
           <button id="shortcuts-help-close" class="btn-icon" aria-label="Close" style="font-size:20px;">\u2715</button>
         </div>
         ${rows.map(([k, d]) => `
           <div style="display:flex;align-items:center;justify-content:space-between;padding:7px 0;border-bottom:1px solid rgba(255,255,255,0.06);">
-            <span style="color:var(--text-sec,#aaa);font-size:14px;">${d}</span>
-            <kbd style="background:rgba(255,255,255,0.1);border:1px solid rgba(255,255,255,0.15);border-radius:6px;padding:3px 10px;font-size:12.5px;font-weight:700;">${k}</kbd>
+            <span style="color:var(--text-secondary,#aaa);font-size:14px;">${d}</span>
+            <kbd style="background:var(--bg-input, rgba(255,255,255,0.1));border:1px solid var(--border-hover, rgba(255,255,255,0.15));border-radius:6px;padding:3px 10px;font-size:12.5px;font-weight:700;color:var(--text-primary,#fff);">${k}</kbd>
           </div>`).join('')}
       </div>`;
     document.body.appendChild(overlay);

@@ -7755,3 +7755,20 @@ body.has-custom-bg #dynamic-bg {
   pointer-events: none;
   opacity: 0.85;
 }
+
+/* ---- UX round 2 ---- */
+/* Bigger, accessible tap target for shelf See All buttons */
+.search-shelf-see-all {
+  min-height: 34px;
+  padding: 6px 12px !important;
+  border-radius: var(--radius-full);
+}
+.search-shelf-see-all:hover { background: var(--bg-card-hover); }
+
+/* Keyboard-highlighted autocomplete row */
+.dropdown-item--active {
+  background: var(--bg-card-hover) !important;
+  outline: 2px solid var(--accent-color);
+  outline-offset: -2px;
+  border-radius: 8px;
+}
