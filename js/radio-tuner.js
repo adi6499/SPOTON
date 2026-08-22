@@ -123,18 +123,12 @@ const RadioTuner = (() => {
       } catch (e) {}
     }
 
-    // 4. Deduplicate and normalize
-    const seen = new Set();
-    const unique = [];
-    pool.forEach(song => {
-      if (song && song.id && !seen.has(song.id)) {
-        seen.add(song.id);
-        unique.push(API.normalizeSong(song));
-      }
-    });
-
-    // Shuffle with weighted randomization
-    const stationQueue = unique.sort(() => Math.random() - 0.5);
+    // 4. Normalize, kill title-variant clones, enforce artist diversity
+    const unique = pool.filter(s => s && s.id).map(API.normalizeSong);
+    const shuffled = unique.sort(() => Math.random() - 0.5);
+    const stationQueue = API.dedupeVariants
+      ? API.dedupeVariants(shuffled, { maxPerArtist: 5, maxRun: 2 })
+      : shuffled;
 
     if (stationQueue.length > 0) {
       Player.setQueue(stationQueue, 0);
@@ -173,10 +167,11 @@ const RadioTuner = (() => {
       
       const moreTracks = await API.searchSongs(`${seedArtist.name} similar songs ${vibeTag}`, 15);
       if (moreTracks && moreTracks.length > 0) {
-        const currentIds = new Set(queue.map(s => s.id));
-        const newSongs = moreTracks
-          .map(API.normalizeSong)
-          .filter(s => !currentIds.has(s.id));
+        const currentKeys = queue.map(s => API.getTitleKey ? API.getTitleKey(s) : s.id);
+        let newSongs = moreTracks.map(API.normalizeSong);
+        newSongs = API.dedupeVariants
+          ? API.dedupeVariants(newSongs, { maxPerArtist: 3, maxRun: 2, excludeKeys: currentKeys })
+          : newSongs.filter(s => !queue.some(q => q.id === s.id));
 
         if (newSongs.length > 0) {
           Player.appendToQueue(newSongs);

@@ -3376,11 +3376,7 @@ const App = (() => {
       if (secondaryArtist) {
         queryPromises.push(API.searchSongs(secondaryArtist, 15));
       }
-      if (norm.language) {
-        queryPromises.push(API.searchSongs(`trending ${norm.language}`, 15));
-      } else {
-        queryPromises.push(API.searchSongs('trending hits', 15));
-      }
+      queryPromises.push(API.getTrendingPool(15));
 
       const resultsArray = await Promise.allSettled(queryPromises);
       let combinedPool = [];
@@ -3406,10 +3402,13 @@ const App = (() => {
       });
 
       if (uniqueSongs.length > 1) {
-        const tail = uniqueSongs.slice(1).sort(() => Math.random() - 0.5);
+        // Kill slowed/8D/sped-up clones, cap per-artist, interleave artists
+        const seedKey = API.getTitleKey(norm);
+        let tail = uniqueSongs.slice(1).sort(() => Math.random() - 0.5);
+        tail = API.dedupeVariants(tail, { maxPerArtist: 4, maxRun: 2, excludeKeys: [seedKey] });
         const radioQueue = [norm, ...tail];
         Player.setQueue(radioQueue, 0);
-        UI.showToast(`Radio loaded for ${norm.name}`, 'success');
+        UI.showToast(`Radio loaded \u2014 ${radioQueue.length} unique tracks`, 'success');
       }
     } catch (err) {
       console.warn('Background radio expansion error:', err);

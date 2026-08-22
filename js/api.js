@@ -784,6 +784,84 @@ const API = (() => {
     };
   }
 
+  /**
+   * Real chart songs for autoplay/radio fallbacks. Uses the cached home
+   * recommendations instead of searching the literal word "trending"
+   * (which returns songs actually titled "Trending").
+   */
+  async function getTrendingPool(limit = 20) {
+    try {
+      const home = await getHomeRecommendations();
+      const pool = [...(home.trending || []), ...(home.global || []), ...(home.newReleases || [])];
+      if (pool.length > 0) {
+        return pool.slice(0, limit * 2).map(normalizeSong).filter(Boolean).slice(0, limit);
+      }
+    } catch (_) {}
+    try {
+      const res = await searchSongs('top hits', limit);
+      return (res || []).map(normalizeSong).filter(Boolean);
+    } catch (_) { return []; }
+  }
+
+  /**
+   * Canonical key for a track so "Song", "Song (Slowed)", "Song (8D Audio)",
+   * "Song - Ultra Slowed" all collapse to one entry.
+   */
+  function getTitleKey(song) {
+    if (!song) return '';
+    let t = String(song.name || song.title || '').toLowerCase();
+    t = t.replace(/\(.*?\)|\[.*?\]|\{.*?\}/g, ' ');       // drop bracketed segments
+    t = t.replace(/\s[-\u2013\u2014|].*$/, ' ');              // drop " - suffix" tails
+    t = t.replace(/\b(slowed|slow|reverb|reverbed|sped\s*up|speed\s*up|speedup|8d|9d|16d|3d|lofi|lo-fi|remix|flip|ultra|super|bass\s*boosted|boosted|nightcore|daycore|instrumental|karaoke|extended|tiktok|version|audio|edit|mix|cover|remake|remastered|remaster|vip|bonus|deluxe|live)\b/g, ' ');
+    t = t.replace(/[^a-z0-9\u0900-\u097f\u0a00-\u0a7f]+/g, ' ').trim().replace(/\s+/g, ' ');
+    const artist = String(song.artists || song.artist || '').toLowerCase().split(',')[0].trim();
+    return `${t}::${artist}`;
+  }
+
+  /**
+   * Dedupe a track list by canonical title (kills slowed/8D/sped-up clones),
+   * cap tracks per primary artist, and interleave so the same artist never
+   * plays more than `maxRun` times in a row. Order of first appearance wins.
+   */
+  function dedupeVariants(songs, opts = {}) {
+    const { maxPerArtist = 4, maxRun = 2, excludeKeys = null } = opts;
+    const seenKeys = new Set(excludeKeys || []);
+    const artistCount = {};
+    const kept = [];
+    (songs || []).forEach(s => {
+      if (!s) return;
+      const key = getTitleKey(s);
+      if (!key || key.startsWith('::')) return;      // empty title
+      if (seenKeys.has(key)) return;
+      const artist = key.split('::')[1] || 'unknown';
+      if ((artistCount[artist] || 0) >= maxPerArtist) return;
+      seenKeys.add(key);
+      artistCount[artist] = (artistCount[artist] || 0) + 1;
+      kept.push(s);
+    });
+
+    // Greedy interleave: avoid > maxRun consecutive tracks by one artist
+    const out = [];
+    const rest = [...kept];
+    while (rest.length) {
+      let idx = 0;
+      if (out.length >= maxRun) {
+        const lastArtists = out.slice(-maxRun).map(getPrimaryArtist);
+        const allSame = lastArtists.every(a => a === lastArtists[0]);
+        if (allSame) {
+          const diff = rest.findIndex(s => getPrimaryArtist(s) !== lastArtists[0]);
+          if (diff !== -1) idx = diff;
+        }
+      }
+      out.push(rest.splice(idx, 1)[0]);
+    }
+    return out;
+
+    function getPrimaryArtist(s) {
+      return String(s.artists || s.artist || '').toLowerCase().split(',')[0].trim();
+    }
+  }
+
   return {
     setBaseUrl,
     getBaseUrl,
@@ -805,6 +883,9 @@ const API = (() => {
     getDownloadUrl,
     getImageUrl,
     getHighResImage,
+    getTitleKey,
+    dedupeVariants,
+    getTrendingPool,
     normalizeSong,
     normalizeAlbum,
     normalizeArtist,

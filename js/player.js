@@ -903,9 +903,10 @@ const Player = (() => {
       if (repeatMode === 'all') {
         nextIndex = 0;
       } else {
-        // Fallback if prefetch failed or didn't run in time
+        // Endless autoplay: never let the music stop. Try several seeds and
+        // relax filters until something plays.
         const settings = Storage.getSettings();
-        if (settings.autoplay && queue[currentIndex]) {
+        if (settings.autoplay !== false && queue[currentIndex]) {
           try {
             const currentTrack = queue[currentIndex];
             let artists = [];
@@ -917,38 +918,62 @@ const Player = (() => {
               artists = [currentTrack.artist];
             }
             const seedArtist = (artists[Math.floor(Math.random() * artists.length)] || '').trim();
-            if (!seedArtist) return;
-            
-            let query = seedArtist;
-            if (Math.random() < 0.1) query = "Trending Top Hits";
+            const seedLang = (currentTrack.language || '').trim();
 
-            const res = await API.searchSongs(query, 15);
-            
-            const recentIds = Storage.getRecent().map(r => r.id);
-            const queueIds = queue.map(q => q.id);
-            const prefs = Storage.getSettings().languages || [];
-            
-            const newSongs = (res || []).filter(s => {
-              if (queueIds.includes(s.id) || recentIds.includes(s.id)) return false;
-              const lang = (s.language || '').toLowerCase();
-              if (prefs.length > 0 && lang !== '' && lang !== 'unknown' && !prefs.includes(lang)) return false;
-              return true;
-            });
-            
-            if (newSongs.length > 0) {
-              const norm = window.API ? window.API.normalizeSong(newSongs[0]) : newSongs[0];
-              queue.push(norm); 
-              nextIndex = queue.length - 1;
+            const seedQueries = [];
+            if (seedArtist) seedQueries.push(seedArtist, `${seedArtist} hits`);
+
+            const recentIds = new Set(Storage.getRecent().slice(0, 30).map(r => r.id));
+            const queueKeys = queue.map(q => (API.getTitleKey ? API.getTitleKey(q) : q.id));
+            const prefs = settings.languages || [];
+
+            let added = [];
+            for (let pass = 0; pass < 2 && added.length === 0; pass++) {
+              const relaxed = pass === 1; // second pass: ignore language prefs + recents
+              for (const q of seedQueries) {
+                let res = [];
+                try { res = await API.searchSongs(q, 15) || []; } catch (_) { continue; }
+                let candidates = res.map(s => API.normalizeSong(s)).filter(s => {
+                  if (!relaxed && recentIds.has(s.id)) return false;
+                  const sLang = (s.language || '').toLowerCase();
+                  if (!relaxed && prefs.length > 0 && sLang !== '' && sLang !== 'unknown' && !prefs.includes(sLang)) return false;
+                  return true;
+                });
+                candidates = API.dedupeVariants
+                  ? API.dedupeVariants(candidates, { maxPerArtist: 3, maxRun: 2, excludeKeys: queueKeys })
+                  : candidates;
+                if (candidates.length > 0) {
+                  added = candidates.slice(0, 5);
+                  break;
+                }
+              }
+            }
+
+            // Chart fallback: real trending songs, not a "trending" text search
+            if (added.length === 0 && API.getTrendingPool) {
+              try {
+                let pool = await API.getTrendingPool(15);
+                pool = API.dedupeVariants
+                  ? API.dedupeVariants(pool, { maxPerArtist: 2, maxRun: 2, excludeKeys: queueKeys })
+                  : pool;
+                added = pool.slice(0, 5);
+              } catch (_) {}
+            }
+
+            if (added.length > 0) {
+              queue.push(...added);
+              nextIndex = queue.length - added.length;
               if (shuffleMode) generateShuffledIndices();
             } else {
-              return; 
+              // Absolute last resort: loop the queue instead of going silent
+              nextIndex = 0;
             }
           } catch (e) {
-            console.error('[Player] Autoplay fetch failed:', e);
-            return;
+            console.error('[Player] Autoplay fetch failed, looping queue:', e);
+            nextIndex = 0;
           }
         } else {
-          return; 
+          return;
         }
       }
     }

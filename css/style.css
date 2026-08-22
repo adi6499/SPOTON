@@ -8312,3 +8312,33 @@ input.form-input[type="text"] {
   .welcome-subtitle { display: none; }
   .welcome-onboarding-card { padding-bottom: 20px; }
 }
+
+/* ==========================================================
+   QUEUE PAGE - Spotify-style clean rows on mobile
+   ========================================================== */
+@media (max-width: 767.98px) {
+  /* Number column is redundant next to artwork */
+  #queue-container .song-list-item__num { display: none; }
+  /* Keep rows minimal: remove is enough; heart/download live in the row menu */
+  #queue-container .song-list-item__actions .btn-fav,
+  #queue-container .song-list-item__actions .btn-download { display: none; }
+  #queue-container .song-list-item__duration { display: none; }
+
+  #queue-container .song-list-item {
+    padding: 8px 10px;
+    gap: 12px;
+    border-radius: 14px;
+  }
+  #queue-container .song-list-item__img { width: 46px; height: 46px; border-radius: 10px; }
+  #queue-container .song-list-item__name { font-size: 14.5px; font-weight: 600; }
+  #queue-container .song-list-item__artist { font-size: 12.5px; }
+
+  /* Active (now playing) row gets a soft accent card */
+  #queue-container .song-list-item.active {
+    background: linear-gradient(90deg, var(--accent-glow), transparent 70%);
+    border: 1px solid var(--accent-color);
+  }
+
+  /* Section header tools wrap cleanly */
+  #queue-container .section-header { flex-wrap: wrap; gap: 8px; }
+}
