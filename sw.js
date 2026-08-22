@@ -1,4 +1,4 @@
-const CACHE_NAME = 'musicflow-v92';
+const CACHE_NAME = 'musicflow-v93';
 const ASSETS = [
   './',
   './index.html',
@@ -23,7 +23,10 @@ const ASSETS = [
   './js/recap.js',
   './js/search.js',
   './js/app.js',
-  './assets/logo.jpg'
+  './assets/logo.jpg',
+  './assets/logo.png',
+  './assets/icon-192.png',
+  './assets/icon-512.png'
 ];
 
 self.addEventListener('install', (event) => {

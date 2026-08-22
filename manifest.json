@@ -4,13 +4,26 @@
   "start_url": "./",
   "display": "standalone",
   "background_color": "#0b132b",
-  "theme_color": "#0284c7",
+  "theme_color": "#563ce9",
   "description": "High-fidelity lossless streaming music, podcasts & video discovery platform.",
   "icons": [
     {
-      "src": "assets/logo.jpg",
-      "type": "image/jpeg",
-      "sizes": "512x512"
+      "src": "assets/icon-192.png",
+      "type": "image/png",
+      "sizes": "192x192",
+      "purpose": "any"
+    },
+    {
+      "src": "assets/icon-512.png",
+      "type": "image/png",
+      "sizes": "512x512",
+      "purpose": "any"
+    },
+    {
+      "src": "assets/icon-512.png",
+      "type": "image/png",
+      "sizes": "512x512",
+      "purpose": "maskable"
     }
   ]
 }
