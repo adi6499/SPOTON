@@ -169,6 +169,7 @@ const App = (() => {
       bindUpNextStrip();
       bindArtworkDoubleTap();
       bindSleepTimerButton();
+      bindPlayerActionRail();
       bindBackupRestore();
 
       // Restore last session (queue + track + position) unless a deep link is taking over
@@ -363,6 +364,9 @@ const App = (() => {
           glowAura.style.opacity = '';
         }
       }
+
+      // Live waveform strip (self-throttled to ~10fps)
+      try { drawWaveform(now || performance.now()); } catch (err) {}
 
       // Keep the circular visualizer in sync (throttled ~4x/sec)
       if (!renderPulse._vizTick || (now || performance.now()) - renderPulse._vizTick > 250) {
@@ -583,8 +587,19 @@ const App = (() => {
       UI.updatePlayPauseButton(false);
     });
 
+    const fmtChipTime = (s) => {
+      if (!isFinite(s) || s < 0) return '0:00';
+      const m = Math.floor(s / 60);
+      const sec = String(Math.floor(s % 60)).padStart(2, '0');
+      return `${m}:${sec}`;
+    };
+
     Player.on('timeupdate', (data) => {
       UI.updateProgress(data);
+      const chipText = document.getElementById('player-meta-time-text');
+      if (chipText && data) {
+        chipText.textContent = `${fmtChipTime(data.currentTime)} / ${fmtChipTime(data.duration)}`;
+      }
       if (data && data.currentTime !== undefined) {
         updateSyncedLyrics(data.currentTime);
       }
@@ -594,6 +609,7 @@ const App = (() => {
       UI.updatePlayerBar(track);
       updateUpNextStrip();
       updateSleepBadge();
+      updateRailFavState();
       
       // Update full player with HD image and dynamic artwork
       if (track && track.image) {
@@ -3210,6 +3226,120 @@ const App = (() => {
         else { Player.previous(); UI.showToast('\u23EE Previous'); }
       }
     }, { passive: true });
+  }
+
+  // ---- Player action rail (mockup: fav / download / add / share) ----
+  function updateRailFavState() {
+    const btn = document.getElementById('btn-rail-fav');
+    if (!btn) return;
+    const cur = Player.getCurrentTrack();
+    btn.classList.toggle('active', !!(cur && Storage.isFavorite(cur.id)));
+  }
+
+  function bindPlayerActionRail() {
+    const favBtn = document.getElementById('btn-rail-fav');
+    const dlBtn = document.getElementById('btn-rail-download');
+    const addBtn = document.getElementById('btn-rail-add');
+    const shareBtn = document.getElementById('btn-rail-share');
+
+    favBtn?.addEventListener('click', (e) => {
+      e.stopPropagation();
+      const cur = Player.getCurrentTrack();
+      if (!cur) return;
+      const nowFav = Storage.toggleFavorite(cur);
+      updateRailFavState();
+      if (typeof Haptics !== 'undefined') Haptics.light();
+      if (nowFav) UI.showToast(`\u2764\uFE0F Added \u201C${cur.name}\u201D to favorites`, 'success');
+      else UI.showToast(`Removed \u201C${cur.name}\u201D from favorites`, 'info', {
+        action: { label: 'Undo', onClick: () => { Storage.addFavorite(cur); updateRailFavState(); } }
+      });
+    });
+
+    dlBtn?.addEventListener('click', (e) => {
+      e.stopPropagation();
+      const cur = Player.getCurrentTrack();
+      if (cur && typeof Download !== 'undefined') Download.downloadSong(cur);
+    });
+
+    addBtn?.addEventListener('click', (e) => {
+      e.stopPropagation();
+      const cur = Player.getCurrentTrack();
+      if (!cur) return;
+      const rect = addBtn.getBoundingClientRect();
+      const pls = Storage.getPlaylists() || [];
+      const items = pls.slice(0, 6).map(p => ({
+        label: `Add to ${p.name}`,
+        icon: '\u{1F4C1}',
+        onClick: () => { Storage.addSongToPlaylist(p.id, cur); UI.showToast(`Added to ${p.name}`, 'success'); }
+      }));
+      items.push({
+        label: 'Add to New Playlist\u2026',
+        icon: '\u2795',
+        onClick: () => {
+          const name = prompt('Playlist name:');
+          if (name && name.trim()) {
+            const np = Storage.createPlaylist(name.trim());
+            Storage.addSongToPlaylist(np.id, cur);
+            UI.showToast(`Created \u201C${np.name}\u201D and added song`, 'success');
+          }
+        }
+      });
+      UI.showContextMenu(rect.left - 190, rect.top, items);
+    });
+
+    shareBtn?.addEventListener('click', (e) => {
+      e.stopPropagation();
+      const cur = Player.getCurrentTrack();
+      if (!cur) return;
+      const url = buildSongShareUrl(cur);
+      if (navigator.share) {
+        navigator.share({ title: cur.name, text: `Listen to ${cur.name} by ${cur.artists || ''}`, url }).catch(() => {});
+      } else {
+        navigator.clipboard.writeText(url);
+        UI.showToast('Song link copied to clipboard', 'success');
+      }
+    });
+  }
+
+  // ---- Live waveform strip above the progress bar ----
+  let waveformLastDraw = 0;
+  function drawWaveform(now) {
+    if (now - waveformLastDraw < 100) return; // ~10fps is plenty
+    waveformLastDraw = now;
+    const canvas = document.getElementById('waveform-canvas');
+    if (!canvas) return;
+    const pc = document.getElementById('player-container');
+    if (!pc || !pc.classList.contains('player-expanded')) return;
+    const ctx = canvas.getContext('2d');
+    const analyser = (Player.getAnalyserNode && Player.getAnalyserNode()) || null;
+    const N = 56;
+    let data = null;
+    let hasSignal = false;
+    if (analyser) {
+      data = new Uint8Array(analyser.frequencyBinCount);
+      analyser.getByteFrequencyData(data);
+      hasSignal = data.some(v => v > 0);
+    }
+    const accent = (getComputedStyle(document.documentElement).getPropertyValue('--dynamic-color') || '').trim() || '#ff5167';
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    ctx.fillStyle = accent;
+    const bw = canvas.width / N;
+    const t = now / 320;
+    const playing = Player.getIsPlaying && Player.getIsPlaying();
+    for (let i = 0; i < N; i++) {
+      let v;
+      if (hasSignal) {
+        v = data[Math.floor(i * data.length / (N * 2))] / 255;
+      } else if (playing) {
+        v = Math.sin(t + i * 0.45) * 0.28 + 0.45;
+      } else {
+        v = 0.12 + Math.sin(i * 0.5) * 0.05;
+      }
+      const h = Math.max(3, v * canvas.height * 0.92);
+      ctx.globalAlpha = 0.3 + v * 0.7;
+      ctx.fillRect(i * bw + bw * 0.28, (canvas.height - h) / 2, bw * 0.44, h);
+    }
+    ctx.globalAlpha = 1;
   }
 
   // ---- Keyboard Shortcuts & Command Palette ----

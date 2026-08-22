@@ -580,12 +580,32 @@
           <div id="lyrics-panel" class="lyrics-panel" style="display:none;">
             <div class="lyrics-content">Lyrics aren't available for this song.</div>
           </div>
+
+          <!-- Vertical quick-action rail (mockup) -->
+          <div class="player-action-rail" id="player-action-rail">
+            <button class="rail-btn" id="btn-rail-fav" aria-label="Favorite" title="Favorite">
+              <span class="material-symbols-outlined">favorite</span>
+            </button>
+            <button class="rail-btn" id="btn-rail-download" aria-label="Download" title="Download">
+              <span class="material-symbols-outlined">download</span>
+            </button>
+            <button class="rail-btn" id="btn-rail-add" aria-label="Add to playlist" title="Add to playlist">
+              <span class="material-symbols-outlined">add</span>
+            </button>
+            <button class="rail-btn" id="btn-rail-share" aria-label="Share" title="Share">
+              <span class="material-symbols-outlined">share</span>
+            </button>
+          </div>
         </div>
         <div class="full-player__info">
           <div style="flex:1; min-width:0;">
             <h2 id="full-player-name" class="full-player__name">No Song Selected</h2>
             <p id="full-player-artist" class="full-player__artist">-</p>
             <div class="player-badges-row" style="display: flex; align-items: center; gap: 8px; margin-top: 6px; flex-wrap: wrap;">
+              <span class="player-meta-chip" id="player-meta-time">
+                <span class="material-symbols-outlined" style="font-size: 13px;">graphic_eq</span>
+                <span id="player-meta-time-text">0:00 / 0:00</span>
+              </span>
               <p id="full-player-codec" class="full-player__codec interactive-quality-badge" title="Tap to change audio quality" onclick="UI.openAudioQualityModal()"></p>
               <button id="btn-player-haptics" class="player-haptic-badge active" title="Toggle Apple Music Haptic Feedback" onclick="if(typeof Haptics!=='undefined') Haptics.toggle();">
                 <span class="material-symbols-outlined" style="font-size: 13px;">vibration</span>
@@ -596,6 +616,7 @@
           <button class="btn-icon btn-fav" data-action="fav-current" title="Favorite"><span class="material-symbols-outlined" style="font-size: 28px; color: var(--secondary-container, #00f1fe); font-variation-settings: 'FILL' 1;">favorite</span></button>
         </div>
         <div class="full-player__progress-area">
+          <canvas id="waveform-canvas" width="640" height="44" aria-hidden="true"></canvas>
           <div class="player-progress" id="full-progress">
              <div id="full-progress-fill"><div id="full-progress-thumb"></div></div>
           </div>
@@ -617,10 +638,12 @@
            <button class="btn-icon" data-action="volume-max" title="Max Volume" onclick="Player.setVolume(1); UI.updateVolumeIcon(1);"><span class="material-symbols-outlined" style="font-size: 24px;">volume_up</span></button>
         </div>
         <button id="up-next-strip" class="up-next-strip" style="display:none;" aria-label="Play next song">
-          <span class="up-next-strip__label">UP NEXT</span>
           <img id="up-next-img" class="up-next-strip__img" src="assets/logo.jpg" alt="" onerror="this.src='assets/logo.jpg'">
-          <span id="up-next-title" class="up-next-strip__title"></span>
-          <span class="material-symbols-outlined" style="font-size: 18px; opacity: 0.7;">skip_next</span>
+          <span class="up-next-strip__text">
+            <span id="up-next-title" class="up-next-strip__title"></span>
+            <span class="up-next-strip__label">Up Next</span>
+          </span>
+          <span class="material-symbols-outlined up-next-strip__play">play_arrow</span>
         </button>
         <div class="full-player__controls-secondary">
           <button class="btn-icon" id="btn-full-lyrics" aria-label="Toggle Lyrics" title="Live Lyrics">
