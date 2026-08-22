@@ -427,6 +427,7 @@ const UI = (() => {
       <button class="filter-chip ${activeFilter === 'all' ? 'active' : ''}" data-filter="all" style="padding: 6px 16px; border-radius: 999px; font-size: 13px; font-weight: 600; cursor: pointer; white-space: nowrap;">All (${favs.length})</button>
       <button class="filter-chip ${activeFilter === 'downloaded' ? 'active' : ''}" data-filter="downloaded" style="padding: 6px 16px; border-radius: 999px; font-size: 13px; font-weight: 600; cursor: pointer; white-space: nowrap;">Downloaded</button>
       <button class="filter-chip ${activeFilter === 'artists' ? 'active' : ''}" data-filter="artists" style="padding: 6px 16px; border-radius: 999px; font-size: 13px; font-weight: 600; cursor: pointer; white-space: nowrap;">Artists</button>
+      <button class="filter-chip" id="btn-lib-history-chip" style="padding: 6px 16px; border-radius: 999px; font-size: 13px; font-weight: 600; cursor: pointer; white-space: nowrap;">\u{1F553} History</button>
       <button class="filter-chip" id="btn-lib-recap-chip" style="padding: 6px 16px; border-radius: 999px; font-size: 13px; font-weight: 600; background: linear-gradient(135deg, #00f1fe 0%, #3b82f6 100%); color: #000; border: none; cursor: pointer; white-space: nowrap;">✨ Weekly Recap</button>
     `;
 

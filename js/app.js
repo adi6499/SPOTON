@@ -1065,7 +1065,9 @@ const App = (() => {
     'queue': 'page-queue',
     'page-queue': 'page-queue',
     'recap': 'page-recap',
-    'page-recap': 'page-recap'
+    'page-recap': 'page-recap',
+    'history': 'page-history',
+    'page-history': 'page-history'
   };
 
   const CANONICAL_HASH = {
@@ -1075,7 +1077,8 @@ const App = (() => {
     'page-samples': 'samples',
     'page-search': 'search',
     'page-queue': 'queue',
-    'page-recap': 'recap'
+    'page-recap': 'recap',
+    'page-history': 'history'
   };
 
   function navigate(pageId, pushHistory = true) {
@@ -1157,6 +1160,8 @@ const App = (() => {
         const act = document.querySelector('#queue-container .song-list-item.active');
         if (act) act.scrollIntoView({ block: 'center', behavior: 'smooth' });
       }, 150);
+    } else if (pageId === 'page-history') {
+      renderHistoryPage();
     } else if (pageId === 'page-recap') {
       Recap.renderRecap(document.getElementById('recap-container'));
     } else if (pageId === 'page-home') {
@@ -1822,6 +1827,20 @@ const App = (() => {
             if (!song) song = Storage.getFavorites().find(s => s.id === songId);
             if (!song) song = Storage.getRecent().find(s => s.id === songId);
             if (!song) song = Player.getQueue().find(s => s.id === songId);
+            if (!song) song = (Storage.getListeningHistory() || []).find(s => s.id === songId);
+            // Home-shelf cards belong to none of those collections - the menu
+            // used to silently do nothing there. Cards carry their own payload.
+            if (!song && card.dataset.songData) {
+              try { song = JSON.parse(decodeURIComponent(card.dataset.songData)); } catch (_) {}
+            }
+            if (!song) {
+              const nameEl = card.querySelector('.song-card__name, .song-card__title, .quick-pick-item__title');
+              const artistEl = card.querySelector('.song-card__artist, .quick-pick-item__artist');
+              const imgEl = card.querySelector('img');
+              if (nameEl) {
+                song = { id: songId, name: nameEl.textContent.trim(), artists: artistEl ? artistEl.textContent.trim() : '', image: imgEl ? imgEl.src : '' };
+              }
+            }
           } else {
             song = Player.getCurrentTrack();
           }
@@ -1854,6 +1873,7 @@ const App = (() => {
               { label: 'Play Next', icon: '▶️', onClick: () => { Player.playNext(song); UI.showToast('Added to Play Next'); } },
               { label: 'Add to Queue', icon: '🎵', onClick: () => { Player.addToQueue(song); UI.showToast('Added to Queue'); } },
               { label: 'Start Radio', icon: '📻', onClick: () => startRadioForSong(song) },
+{ label: 'More Like This', icon: '✨', onClick: () => showMoreLikeThis(song) },
               { label: 'Download', icon: '⬇️', onClick: () => typeof Download !== 'undefined' ? Download.downloadSong(song) : null },
               { type: 'divider' },
               { label: 'Go to Artist', icon: '👤', onClick: () => {
@@ -3319,14 +3339,23 @@ const App = (() => {
       e.stopPropagation();
       const cur = Player.getCurrentTrack();
       if (!cur) return;
-      const url = buildSongShareUrl(cur);
-      if (navigator.share) {
-        navigator.share({ title: cur.name, text: `Listen to ${cur.name} by ${cur.artists || ''}`, url }).catch(() => {});
-      } else {
-        navigator.clipboard.writeText(url);
-        UI.showToast('Song link copied to clipboard', 'success');
-      }
+      const rect = shareBtn.getBoundingClientRect();
+      UI.showContextMenu(rect.left - 200, rect.top, [
+        { label: 'Share song link', icon: '\u{1F517}', onClick: () => shareSongLink(cur) },
+        { label: 'Share as image card', icon: '\u{1F5BC}\uFE0F', onClick: () => shareSongCard(cur) },
+        { label: 'More like this', icon: '\u2728', onClick: () => showMoreLikeThis(cur) }
+      ]);
     });
+  }
+
+  function shareSongLink(cur) {
+    const url = buildSongShareUrl(cur);
+    if (navigator.share) {
+      navigator.share({ title: cur.name, text: `Listen to ${cur.name} by ${cur.artists || ''}`, url }).catch(() => {});
+    } else {
+      navigator.clipboard.writeText(url);
+      UI.showToast('Song link copied to clipboard', 'success');
+    }
   }
 
   // ---- Live waveform strip above the progress bar ----
@@ -3368,6 +3397,268 @@ const App = (() => {
       ctx.fillRect(i * bw + bw * 0.28, (canvas.height - h) / 2, bw * 0.44, h);
     }
     ctx.globalAlpha = 1;
+  }
+
+
+  // ---- Listening History page (grouped by day, replay, clear) ----
+  // Library "History" chip -> history page
+  document.addEventListener('click', (e) => {
+    if (e.target.closest && e.target.closest('#btn-lib-history-chip')) {
+      e.preventDefault();
+      navigateToPage('page-history');
+    }
+  });
+
+  function renderHistoryPage() {
+    const host = document.getElementById('history-container');
+    if (!host) return;
+    const history = Storage.getListeningHistory() || [];
+
+    if (history.length === 0) {
+      host.innerHTML = `
+        <div class="empty-state" style="padding: 60px 16px; text-align: center;">
+          <div class="empty-state__icon" style="font-size: 44px;">\u{1F553}</div>
+          <div class="empty-state__title" style="font-size: 21px; font-weight: 800; color: var(--text-primary); margin-top: 10px;">No listening history yet</div>
+          <div class="empty-state__subtitle" style="color: var(--text-secondary); font-size: 14px; margin-top: 6px;">Play a few songs and they'll show up here.</div>
+        </div>`;
+      return;
+    }
+
+    // Group by calendar day
+    const startOfDay = (ts) => { const d = new Date(ts); d.setHours(0, 0, 0, 0); return d.getTime(); };
+    const today = startOfDay(Date.now());
+    const dayMs = 86400000;
+    const groups = new Map();
+    history.forEach(s => {
+      const key = startOfDay(s.playedAt || Date.now());
+      if (!groups.has(key)) groups.set(key, []);
+      groups.get(key).push(s);
+    });
+
+    const labelFor = (key) => {
+      if (key === today) return 'Today';
+      if (key === today - dayMs) return 'Yesterday';
+      return new Date(key).toLocaleDateString(undefined, { weekday: 'short', day: 'numeric', month: 'short' });
+    };
+
+    host.innerHTML = `
+      <div class="section-header" style="align-items: center;">
+        <h2 class="section-title">Listening History</h2>
+        <div class="section-actions">
+          <span class="section-count">${history.length} plays</span>
+          <button class="btn-text" id="btn-clear-history">Clear</button>
+        </div>
+      </div>
+      <div id="history-groups"></div>`;
+
+    const groupHost = host.querySelector('#history-groups');
+    [...groups.entries()].sort((a, b) => b[0] - a[0]).slice(0, 30).forEach(([key, songs]) => {
+      const sec = document.createElement('div');
+      sec.className = 'history-day';
+      sec.innerHTML = `<div class="history-day__label">${labelFor(key)} \u00B7 ${songs.length}</div>`;
+      const list = document.createElement('div');
+      list.className = 'song-list';
+      songs.slice(0, 40).forEach((song, i) => {
+        const row = UI.renderSongListItem(song, i, {});
+        const time = document.createElement('span');
+        time.className = 'history-time';
+        time.textContent = new Date(song.playedAt || Date.now()).toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' });
+        row.querySelector('.song-list-item__info')?.appendChild(time);
+        list.appendChild(row);
+      });
+      sec.appendChild(list);
+      groupHost.appendChild(sec);
+      bindSongCardEvents(list, songs);
+    });
+
+    host.querySelector('#btn-clear-history')?.addEventListener('click', () => {
+      const backup = Storage.getListeningHistory();
+      if (!confirm('Clear your entire listening history?')) return;
+      Storage.clearListeningHistory ? Storage.clearListeningHistory() : localStorage.removeItem('mf_listening_history');
+      renderHistoryPage();
+      UI.showToast('History cleared', 'info', {
+        action: { label: 'Undo', onClick: () => {
+          localStorage.setItem('mf_listening_history', JSON.stringify(backup));
+          renderHistoryPage();
+          UI.showToast('History restored', 'success');
+        } }
+      });
+    });
+  }
+
+  // ---- Share as image card (canvas) ----
+  async function shareSongCard(song) {
+    if (!song) return;
+    UI.showToast('Creating share card\u2026', 'info');
+    const W = 1080, H = 1350;
+    const canvas = document.createElement('canvas');
+    canvas.width = W; canvas.height = H;
+    const ctx = canvas.getContext('2d');
+
+    // Load artwork (crossOrigin so the canvas stays exportable)
+    const img = await new Promise(resolve => {
+      const im = new Image();
+      im.crossOrigin = 'anonymous';
+      im.onload = () => resolve(im);
+      im.onerror = () => resolve(null);
+      im.src = (typeof song.image === 'string' && song.image) ? song.image : 'assets/logo.jpg';
+    });
+
+    // Background: blurred artwork wash + dark gradient
+    if (img) {
+      ctx.filter = 'blur(60px) saturate(1.6)';
+      ctx.drawImage(img, -120, -120, W + 240, H + 240);
+      ctx.filter = 'none';
+    } else {
+      ctx.fillStyle = '#1a1030';
+      ctx.fillRect(0, 0, W, H);
+    }
+    const grad = ctx.createLinearGradient(0, 0, 0, H);
+    grad.addColorStop(0, 'rgba(10,8,18,0.55)');
+    grad.addColorStop(0.55, 'rgba(10,8,18,0.72)');
+    grad.addColorStop(1, 'rgba(10,8,18,0.96)');
+    ctx.fillStyle = grad;
+    ctx.fillRect(0, 0, W, H);
+
+    // Artwork card
+    const AW = 720, AX = (W - AW) / 2, AY = 190;
+    ctx.save();
+    ctx.shadowColor = 'rgba(0,0,0,0.6)';
+    ctx.shadowBlur = 60;
+    ctx.shadowOffsetY = 24;
+    const r = 48;
+    ctx.beginPath();
+    ctx.moveTo(AX + r, AY);
+    ctx.arcTo(AX + AW, AY, AX + AW, AY + AW, r);
+    ctx.arcTo(AX + AW, AY + AW, AX, AY + AW, r);
+    ctx.arcTo(AX, AY + AW, AX, AY, r);
+    ctx.arcTo(AX, AY, AX + AW, AY, r);
+    ctx.closePath();
+    ctx.clip();
+    if (img) ctx.drawImage(img, AX, AY, AW, AW);
+    else { ctx.fillStyle = '#2a2140'; ctx.fillRect(AX, AY, AW, AW); }
+    ctx.restore();
+
+    // Text
+    const fit = (text, size, maxW) => {
+      ctx.font = `800 ${size}px "Geist", "Helvetica Neue", Arial, sans-serif`;
+      let t = String(text || '');
+      while (ctx.measureText(t).width > maxW && t.length > 4) t = t.slice(0, -2);
+      return t === String(text || '') ? t : t + '\u2026';
+    };
+    ctx.textAlign = 'center';
+    ctx.fillStyle = '#ffffff';
+    ctx.font = '800 64px "Geist", "Helvetica Neue", Arial, sans-serif';
+    ctx.fillText(fit(song.name, 64, W - 160), W / 2, AY + AW + 130);
+    ctx.fillStyle = 'rgba(255,255,255,0.72)';
+    ctx.font = '500 40px "Geist", "Helvetica Neue", Arial, sans-serif';
+    ctx.fillText(fit(song.artists || song.artist, 40, W - 200), W / 2, AY + AW + 196);
+
+    // Header + footer branding
+    ctx.fillStyle = 'rgba(255,255,255,0.6)';
+    ctx.font = '800 30px "Geist", "Helvetica Neue", Arial, sans-serif';
+    ctx.letterSpacing = '6px';
+    ctx.fillText('NOW PLAYING', W / 2, 110);
+    ctx.letterSpacing = '0px';
+
+    // Waveform flourish
+    ctx.fillStyle = 'rgba(255,255,255,0.85)';
+    const bars = 34, bw = 8, gap = 12, tw = bars * bw + (bars - 1) * gap, bx = (W - tw) / 2, by = AY + AW + 280;
+    for (let i = 0; i < bars; i++) {
+      const t = i / (bars - 1);
+      const h = 14 + Math.abs(Math.sin(t * Math.PI * 3.2)) * 62 * Math.sin(t * Math.PI);
+      ctx.globalAlpha = 0.35 + 0.55 * Math.sin(t * Math.PI);
+      ctx.fillRect(bx + i * (bw + gap), by - h / 2, bw, Math.max(8, h));
+    }
+    ctx.globalAlpha = 1;
+
+    ctx.fillStyle = 'rgba(255,255,255,0.5)';
+    ctx.font = '700 30px "Geist", "Helvetica Neue", Arial, sans-serif';
+    ctx.fillText('\u266A  MusicFlow', W / 2, H - 76);
+
+    const blob = await new Promise(res => canvas.toBlob(res, 'image/png', 0.95));
+    if (!blob) { UI.showToast('Could not create the card', 'error'); return; }
+    const file = new File([blob], `musicflow-${(song.name || 'song').replace(/[^a-z0-9]+/gi, '-').toLowerCase()}.png`, { type: 'image/png' });
+
+    if (navigator.canShare && navigator.canShare({ files: [file] })) {
+      try {
+        await navigator.share({ files: [file], title: song.name, text: `${song.name} \u2014 ${song.artists || ''}` });
+        return;
+      } catch (_) { /* user cancelled or share failed: fall through to download */ }
+    }
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = file.name;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    setTimeout(() => URL.revokeObjectURL(a.href), 5000);
+    UI.showToast('Share card saved to your downloads', 'success');
+  }
+
+  // ---- "More like this": related songs sheet ----
+  async function showMoreLikeThis(song) {
+    if (!song) return;
+    let sheet = document.getElementById('more-like-sheet');
+    if (sheet) sheet.remove();
+    sheet = document.createElement('div');
+    sheet.id = 'more-like-sheet';
+    sheet.className = 'modal-overlay';
+    sheet.style.display = 'flex';
+    sheet.innerHTML = `
+      <div class="modal more-like-card">
+        <div class="modal-header">
+          <div>
+            <div class="shelf-eyebrow">MORE LIKE</div>
+            <h2 style="margin:0; font-size:19px;">${song.name}</h2>
+          </div>
+          <button class="btn-icon" id="more-like-close" aria-label="Close">\u2715</button>
+        </div>
+        <div class="more-like-body"><div class="loading-shelf"></div></div>
+      </div>`;
+    document.body.appendChild(sheet);
+    const close = () => sheet.remove();
+    sheet.addEventListener('click', (e) => { if (e.target === sheet) close(); });
+    sheet.querySelector('#more-like-close').addEventListener('click', close);
+
+    try {
+      const artist = String(song.artists || song.artist || '').split(',')[0].trim();
+      const results = await Promise.allSettled([
+        API.searchSongs(`${artist} best songs`, 18),
+        API.searchSongs(song.album || song.name, 12)
+      ]);
+      let pool = [];
+      results.forEach(r => { if (r.status === 'fulfilled' && Array.isArray(r.value)) pool.push(...r.value); });
+      let list = pool.map(API.normalizeSong).filter(s => s && s.id !== song.id);
+      list = API.filterByLanguagePrefs(list, { minKeep: 8 });
+      list = API.dedupeVariants(list, { maxPerArtist: 4, maxRun: 2, excludeKeys: [API.getTitleKey(song)] }).slice(0, 20);
+
+      const body = sheet.querySelector('.more-like-body');
+      if (list.length === 0) {
+        body.innerHTML = `<div style="padding:32px; text-align:center; color:var(--text-secondary);">No similar tracks found.</div>`;
+        return;
+      }
+      body.innerHTML = '';
+      const listEl = document.createElement('div');
+      listEl.className = 'song-list';
+      list.forEach((s, i) => listEl.appendChild(UI.renderSongListItem(s, i, {})));
+      body.appendChild(listEl);
+      bindSongCardEvents(listEl, list);
+
+      const playAll = document.createElement('button');
+      playAll.className = 'btn-primary';
+      playAll.style.cssText = 'width:100%; margin-top:14px; padding:13px; border-radius:var(--radius-full); font-weight:800;';
+      playAll.textContent = `\u25B6 Play all ${list.length}`;
+      playAll.addEventListener('click', () => {
+        Player.setQueue(list, 0);
+        Player.playSong(list[0], 0);
+        UI.showToast(`Playing ${list.length} similar tracks`, 'success');
+        close();
+      });
+      body.appendChild(playAll);
+    } catch (e) {
+      sheet.querySelector('.more-like-body').innerHTML = `<div style="padding:32px; text-align:center; color:var(--text-secondary);">Couldn't load similar songs.</div>`;
+    }
   }
 
   // ---- Keyboard Shortcuts & Command Palette ----
@@ -3485,6 +3776,9 @@ const App = (() => {
           { label: 'Open Podcasts', action: () => navigateToPage('page-podcasts') },
           { label: 'Open Samples', action: () => navigateToPage('page-samples') },
           { label: 'Open Music Recap', action: () => navigateToPage('page-recap') },
+          { label: 'Open Listening History', action: () => navigateToPage('page-history') },
+          { label: 'Share Current Song as Image', action: () => shareSongCard(Player.getCurrentTrack()) },
+          { label: 'More Like Current Song', action: () => showMoreLikeThis(Player.getCurrentTrack()) },
           { label: 'Open Tune Radio', action: () => navigateToPage('tuner') },
           { label: 'Open Settings', action: () => document.getElementById('settings-modal').style.display = 'flex' },
           { label: 'Sleep Timer: 15 min', action: () => { Player.setSleepTimer(15); UI.showToast('Sleep timer set: 15 min'); } },
@@ -4486,6 +4780,9 @@ const App = (() => {
   const exportedApp = {
     navigateToPage,
     syncVisualizer,
+    renderHistoryPage,
+    shareSongCard,
+    showMoreLikeThis,
     exportAllData,
     showShortcutsHelp,
     performSearch,

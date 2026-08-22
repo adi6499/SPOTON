@@ -277,6 +277,10 @@ const Storage = (() => {
     updateStats(song);
   }
 
+  function clearListeningHistory() {
+    set(KEYS.LISTENING_HISTORY, []);
+  }
+
   function getStats() {
     return get(KEYS.STATS, {
       totalSongsPlayed: 0,
@@ -616,6 +620,7 @@ const Storage = (() => {
     renamePlaylist,
     addSongToPlaylist,
     getListeningHistory,
+    clearListeningHistory,
     addListeningHistory,
     getStats,
     getHomeCache,

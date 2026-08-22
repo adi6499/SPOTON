@@ -9175,3 +9175,36 @@ body.perf-lite #waveform-canvas { display: none !important; }
   .player-media-toggle-pill { display: none !important; }
   .full-player__controls-secondary { padding: 3px 16px; gap: 22px !important; }
 }
+
+/* ---- Listening History page ---- */
+.history-day { margin-bottom: 22px; }
+.history-day__label {
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 1.4px;
+  text-transform: uppercase;
+  color: var(--accent-color);
+  margin: 0 0 8px 4px;
+}
+.history-time {
+  display: block;
+  font-size: 11px;
+  color: var(--text-tertiary);
+  margin-top: 2px;
+}
+
+/* ---- More like this sheet ---- */
+.more-like-card {
+  max-width: 560px;
+  display: flex;
+  flex-direction: column;
+  max-height: 85vh;
+}
+.more-like-body {
+  overflow-y: auto;
+  padding: 4px 16px 16px;
+  overscroll-behavior: contain;
+}
+@media (max-width: 767.98px) {
+  .more-like-card { max-height: 88dvh; }
+}
