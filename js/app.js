@@ -163,6 +163,8 @@ const App = (() => {
         });
       });
       startAudioReactivePulse();
+      bindBackupRestore();
+      handleDeepLinkOnLoad();
     } catch (e) {
       console.error('[App] Init failed:', e);
     }
@@ -314,6 +316,12 @@ const App = (() => {
           glowAura.style.transform = '';
           glowAura.style.opacity = '';
         }
+      }
+
+      // Keep the circular visualizer in sync (throttled ~4x/sec)
+      if (!renderPulse._vizTick || (now || performance.now()) - renderPulse._vizTick > 250) {
+        renderPulse._vizTick = now || performance.now();
+        try { syncVisualizer(); } catch (err) {}
       }
 
       audioPulseFrame = requestAnimationFrame(renderPulse);
@@ -781,9 +789,9 @@ const App = (() => {
       input.focus();
     });
 
-    // Focus search on Ctrl+K
+    // Focus search on '/' (Ctrl+K is reserved for the command palette)
     document.addEventListener('keydown', (e) => {
-      if ((e.ctrlKey || e.metaKey) && e.key === 'k') {
+      if (e.key === '/' && !e.ctrlKey && !e.metaKey && !['INPUT', 'TEXTAREA', 'SELECT'].includes(e.target.tagName)) {
         e.preventDefault();
         input.focus();
         input.select();
@@ -1709,10 +1717,10 @@ const App = (() => {
               { type: 'divider' },
               { label: 'Share', icon: '🔗', onClick: () => {
                 if (navigator.share) {
-                  navigator.share({ title: song.name, text: `Listen to ${song.name} by ${song.artists || 'Unknown Artist'}`, url: window.location.href }).catch(()=>{});
+                  navigator.share({ title: song.name, text: `Listen to ${song.name} by ${song.artists || 'Unknown Artist'}`, url: buildSongShareUrl(song) }).catch(()=>{});
                 } else {
-                  navigator.clipboard.writeText(window.location.href);
-                  UI.showToast('Link copied to clipboard', 'success');
+                  navigator.clipboard.writeText(buildSongShareUrl(song));
+                  UI.showToast('Song link copied to clipboard', 'success');
                 }
               }}
             ]);
@@ -1946,11 +1954,11 @@ const App = (() => {
             { type: 'divider' },
             { label: 'Share', icon: '🔗', onClick: () => {
               if (navigator.share) {
-                navigator.share({ title: song.name, text: `Listen to ${song.name} by ${song.artists}`, url: window.location.href })
+                navigator.share({ title: song.name, text: `Listen to ${song.name} by ${song.artists}`, url: buildSongShareUrl(song) })
                   .catch(() => UI.showToast('Failed to share', 'error'));
               } else {
-                navigator.clipboard.writeText(window.location.href);
-                UI.showToast('Link copied to clipboard', 'success');
+                navigator.clipboard.writeText(buildSongShareUrl(song));
+                UI.showToast('Song link copied to clipboard', 'success');
               }
             }}
           ]);
@@ -2311,6 +2319,12 @@ const App = (() => {
       UI.showToast(`Beat-Reactive Artwork Scaling ${e.target.checked ? 'enabled' : 'disabled'}`);
     });
 
+    document.getElementById('toggle-visualizer')?.addEventListener('change', (e) => {
+      Storage.updateSettings({ visualizer: e.target.checked });
+      syncVisualizer();
+      UI.showToast(`Audio visualizer ${e.target.checked ? 'enabled' : 'disabled'}`);
+    });
+
     document.getElementById('toggle-glass')?.addEventListener('change', (e) => {
       Storage.updateSettings({ glassEffect: e.target.checked });
       applyTheme();
@@ -2383,6 +2397,29 @@ const App = (() => {
     });
 
 
+  }
+
+  // Start/stop the circular visualizer based on player state & setting
+  function syncVisualizer() {
+    const canvas = document.getElementById('visualizer-canvas');
+    if (!canvas) return;
+    const pc = document.getElementById('player-container');
+    const expanded = pc && pc.classList.contains('player-expanded');
+    const settings = (typeof Storage !== 'undefined' && Storage.getSettings) ? Storage.getSettings() : {};
+    const enabled = settings.visualizer !== false; // default ON
+    const playing = (typeof Player !== 'undefined' && Player.getIsPlaying) ? Player.getIsPlaying() : false;
+    const shouldRun = expanded && enabled && playing;
+
+    if (shouldRun && !visualizerRAF) {
+      canvas.style.display = 'block';
+      startVisualizer();
+    } else if (!shouldRun && visualizerRAF) {
+      canvas.style.display = 'none';
+      cancelAnimationFrame(visualizerRAF);
+      visualizerRAF = null;
+      const ctx = canvas.getContext('2d');
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+    }
   }
 
   function startVisualizer() {
@@ -2664,6 +2701,135 @@ const App = (() => {
     }
   }
 
+
+  // Build a shareable deep-link URL for a song
+  function buildSongShareUrl(song) {
+    if (!song || !song.id) return window.location.origin + window.location.pathname;
+    return `${window.location.origin}${window.location.pathname}#song/${encodeURIComponent(song.id)}`;
+  }
+
+  // ---- Deep Links: open #song/<id>, #album/<id>, #artist/<name>, #playlist/<id> on load ----
+  async function handleDeepLinkOnLoad() {
+    const hash = decodeURIComponent(window.location.hash.slice(1));
+    if (!hash || !hash.includes('/')) return;
+    const slash = hash.indexOf('/');
+    const type = hash.slice(0, slash);
+    const id = hash.slice(slash + 1);
+    if (!id) return;
+    try {
+      if (type === 'song') {
+        const details = await API.getSongDetails(id);
+        if (details && details.length > 0) {
+          const s = API.normalizeSong(details[0]);
+          Player.setQueue([s], 0);
+          await Player.playSong(s);
+          UI.showToast(`Playing shared song: ${s.name}`, 'success');
+        }
+      } else if (type === 'album') {
+        openAlbumPage(id, '', '');
+      } else if (type === 'artist') {
+        openArtistPage(id, '');
+      } else if (type === 'playlist') {
+        openPlaylistPage(id, '', '');
+      }
+    } catch (e) {
+      console.warn('[DeepLink] Failed to open shared link:', e.message);
+    }
+  }
+
+  // ---- Backup & Restore (Settings > Your Data) ----
+  function exportAllData() {
+    const data = {};
+    for (let i = 0; i < localStorage.length; i++) {
+      const k = localStorage.key(i);
+      if (k && k.startsWith('mf_')) data[k] = localStorage.getItem(k);
+    }
+    const payload = { app: 'MusicFlow', version: 1, exportedAt: new Date().toISOString(), data };
+    const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = `musicflow-backup-${new Date().toISOString().slice(0, 10)}.json`;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    setTimeout(() => URL.revokeObjectURL(a.href), 5000);
+    UI.showToast('Backup downloaded \u2014 keep it safe!', 'success');
+  }
+
+  function importAllData(file) {
+    const reader = new FileReader();
+    reader.onload = () => {
+      try {
+        const payload = JSON.parse(reader.result);
+        if (!payload || payload.app !== 'MusicFlow' || !payload.data || typeof payload.data !== 'object') {
+          UI.showToast('Not a valid MusicFlow backup file', 'error');
+          return;
+        }
+        let restored = 0;
+        Object.entries(payload.data).forEach(([k, v]) => {
+          if (k.startsWith('mf_') && typeof v === 'string') {
+            localStorage.setItem(k, v);
+            restored++;
+          }
+        });
+        UI.showToast(`Restored ${restored} data entries \u2014 reloading\u2026`, 'success');
+        setTimeout(() => window.location.reload(), 1200);
+      } catch (e) {
+        UI.showToast('Could not read backup: ' + e.message, 'error');
+      }
+    };
+    reader.readAsText(file);
+  }
+
+  function bindBackupRestore() {
+    document.getElementById('btn-export-data')?.addEventListener('click', exportAllData);
+    const fileInput = document.getElementById('input-import-data');
+    document.getElementById('btn-import-data')?.addEventListener('click', () => fileInput?.click());
+    fileInput?.addEventListener('change', (e) => {
+      const file = e.target.files && e.target.files[0];
+      if (file) importAllData(file);
+      e.target.value = '';
+    });
+  }
+
+  // ---- Keyboard Shortcuts Help Overlay ----
+  function showShortcutsHelp() {
+    let overlay = document.getElementById('shortcuts-help-overlay');
+    if (overlay) { overlay.style.display = 'flex'; return; }
+    overlay = document.createElement('div');
+    overlay.id = 'shortcuts-help-overlay';
+    overlay.style.cssText = 'position:fixed;inset:0;z-index:10000;background:rgba(0,0,0,0.72);backdrop-filter:blur(14px);display:flex;align-items:center;justify-content:center;';
+    const rows = [
+      ['Space', 'Play / Pause'],
+      ['\u2190 / \u2192', 'Previous / Next track'],
+      ['\u2191 / \u2193', 'Volume up / down'],
+      ['F', 'Toggle favorite for current song'],
+      ['M', 'Mute / Unmute'],
+      ['S', 'Toggle shuffle'],
+      ['R', 'Cycle repeat mode'],
+      ['Q', 'Expand player'],
+      ['/', 'Focus search'],
+      ['Ctrl + K', 'Command palette'],
+      ['?', 'This help'],
+      ['Esc', 'Close overlays']
+    ];
+    overlay.innerHTML = `
+      <div style="background:var(--surface, #16162a);border:1px solid rgba(255,255,255,0.1);border-radius:20px;padding:28px 32px;max-width:420px;width:92vw;max-height:80vh;overflow:auto;box-shadow:0 24px 80px rgba(0,0,0,0.6);">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:18px;">
+          <h2 style="margin:0;font-size:20px;font-weight:800;">\u2328\uFE0F Keyboard Shortcuts</h2>
+          <button id="shortcuts-help-close" class="btn-icon" aria-label="Close" style="font-size:20px;">\u2715</button>
+        </div>
+        ${rows.map(([k, d]) => `
+          <div style="display:flex;align-items:center;justify-content:space-between;padding:7px 0;border-bottom:1px solid rgba(255,255,255,0.06);">
+            <span style="color:var(--text-sec,#aaa);font-size:14px;">${d}</span>
+            <kbd style="background:rgba(255,255,255,0.1);border:1px solid rgba(255,255,255,0.15);border-radius:6px;padding:3px 10px;font-size:12.5px;font-weight:700;">${k}</kbd>
+          </div>`).join('')}
+      </div>`;
+    document.body.appendChild(overlay);
+    overlay.addEventListener('click', (e) => { if (e.target === overlay) overlay.style.display = 'none'; });
+    overlay.querySelector('#shortcuts-help-close').addEventListener('click', () => overlay.style.display = 'none');
+  }
+
   // ---- Keyboard Shortcuts & Command Palette ----
 
   function bindKeyboardShortcuts() {
@@ -2712,6 +2878,39 @@ const App = (() => {
           // Custom shortcut to show queue
           document.getElementById('player-container').classList.add('player-expanded');
           break;
+        case 'f':
+        case 'F': {
+          const cur = Player.getCurrentTrack();
+          if (cur) {
+            const nowFav = Storage.toggleFavorite(cur);
+            UI.showToast(nowFav ? `\u2764\uFE0F Added \u201C${cur.name}\u201D to favorites` : `Removed \u201C${cur.name}\u201D from favorites`);
+            if (UI.updateFavoriteButton) UI.updateFavoriteButton(nowFav);
+          }
+          break;
+        }
+        case 'ArrowUp': {
+          e.preventDefault();
+          const vUp = Math.min(1, (Player.getVolume() || 0) + 0.05);
+          Player.setVolume(vUp);
+          UI.showToast(`Volume: ${Math.round(vUp * 100)}%`);
+          break;
+        }
+        case 'ArrowDown': {
+          e.preventDefault();
+          const vDn = Math.max(0, (Player.getVolume() || 0) - 0.05);
+          Player.setVolume(vDn);
+          UI.showToast(`Volume: ${Math.round(vDn * 100)}%`);
+          break;
+        }
+        case '?':
+          e.preventDefault();
+          showShortcutsHelp();
+          break;
+        case 'Escape': {
+          const help = document.getElementById('shortcuts-help-overlay');
+          if (help && help.style.display !== 'none') help.style.display = 'none';
+          break;
+        }
       }
     });
 
@@ -2731,7 +2930,22 @@ const App = (() => {
           { label: 'Play / Pause', action: () => Player.togglePlayPause() },
           { label: 'Next Track', action: () => Player.next() },
           { label: 'Previous Track', action: () => Player.previous() },
+          { label: 'Toggle Shuffle', action: () => UI.updateShuffleButton(Player.toggleShuffle()) },
+          { label: 'Cycle Repeat Mode', action: () => UI.updateRepeatButton(Player.cycleRepeat()) },
+          { label: 'Favorite Current Song', action: () => { const c = Player.getCurrentTrack(); if (c) { Storage.toggleFavorite(c); UI.showToast('Favorite toggled'); } } },
+          { label: 'Go Home', action: () => navigateToPage('page-home') },
+          { label: 'Open Library', action: () => navigateToPage('page-favorites') },
+          { label: 'Open Queue', action: () => navigateToPage('page-queue') },
+          { label: 'Open Podcasts', action: () => navigateToPage('page-podcasts') },
+          { label: 'Open Samples', action: () => navigateToPage('page-samples') },
+          { label: 'Open Music Recap', action: () => navigateToPage('page-recap') },
+          { label: 'Open Tune Radio', action: () => navigateToPage('tuner') },
           { label: 'Open Settings', action: () => document.getElementById('settings-modal').style.display = 'flex' },
+          { label: 'Sleep Timer: 15 min', action: () => { Player.setSleepTimer(15); UI.showToast('Sleep timer set: 15 min'); } },
+          { label: 'Sleep Timer: 30 min', action: () => { Player.setSleepTimer(30); UI.showToast('Sleep timer set: 30 min'); } },
+          { label: 'Sleep Timer: Off', action: () => { Player.setSleepTimer(0); UI.showToast('Sleep timer off'); } },
+          { label: 'Export Backup (Download Data)', action: () => exportAllData() },
+          { label: 'Keyboard Shortcuts Help', action: () => showShortcutsHelp() },
           { label: 'Dark Mode', action: () => { Storage.updateSettings({theme:'dark'}); applyTheme(); } },
           { label: 'Light Mode', action: () => { Storage.updateSettings({theme:'light'}); applyTheme(); } }
         ];
@@ -3644,6 +3858,10 @@ const App = (() => {
   window.checkNewReleasesFromFollowed = checkNewReleasesFromFollowed;
 
   const exportedApp = {
+    navigateToPage,
+    syncVisualizer,
+    exportAllData,
+    showShortcutsHelp,
     performSearch,
     loadHomePage,
     bindSongCardEvents,

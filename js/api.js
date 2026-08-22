@@ -809,3 +809,6 @@ const API = (() => {
     decodeHtml,
   };
 })();
+
+// Expose module globally so cross-module window.* guards work
+window.API = API;

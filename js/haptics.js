@@ -312,3 +312,5 @@ if (typeof window !== 'undefined') {
 if (typeof module !== 'undefined' && module.exports) {
   module.exports = Haptics;
 }
+
+if (typeof window !== "undefined") window.Haptics = Haptics;

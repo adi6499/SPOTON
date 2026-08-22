@@ -618,3 +618,5 @@ const Storage = (() => {
     restoreFromBackup
   };
 })();
+
+window.Storage = Storage;

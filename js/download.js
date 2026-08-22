@@ -73,3 +73,5 @@ const Download = (() => {
 
   return { downloadSong };
 })();
+
+window.Download = Download;

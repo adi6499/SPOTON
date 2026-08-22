@@ -1487,3 +1487,5 @@ const Player = (() => {
     initWebAudio
   };
 })();
+
+window.Player = Player;

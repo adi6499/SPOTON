@@ -1,6 +1,7 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
+
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
   <meta name="mobile-web-app-capable" content="yes">
@@ -562,6 +563,7 @@
 
         <div class="full-player__artwork">
           <div class="artwork-glow-aura"></div>
+          <canvas id="visualizer-canvas" width="400" height="400" aria-hidden="true" style="display:none;"></canvas>
 
           <img id="full-player-img" src="assets/logo.jpg" alt="Album Art" onerror="this.src='assets/logo.jpg'">
           
@@ -791,6 +793,25 @@
                 <input type="checkbox" id="toggle-beat-pulse" checked>
                 <span class="switch-slider"></span>
               </label>
+              <label class="switch-wrap" style="margin-bottom: 16px;">
+                <span>Circular Audio Visualizer</span>
+                <input type="checkbox" id="toggle-visualizer" checked>
+                <span class="switch-slider"></span>
+              </label>
+
+              <h3>Your Data</h3>
+              <p style="font-size: 12.5px; color: var(--text-sec); margin: 4px 0 10px;">Download all your favorites, playlists, history &amp; settings as a backup file — or restore them on another device.</p>
+              <div style="display: flex; gap: 10px; margin-bottom: 20px;">
+                <button type="button" id="btn-export-data" class="btn-primary" style="flex: 1; padding: 11px; font-weight: 700; border-radius: var(--radius-md); display: flex; align-items: center; justify-content: center; gap: 7px;">
+                  <span class="material-symbols-outlined" style="font-size: 19px;">download</span>
+                  <span>Export Backup</span>
+                </button>
+                <button type="button" id="btn-import-data" class="btn-primary" style="flex: 1; padding: 11px; font-weight: 700; border-radius: var(--radius-md); display: flex; align-items: center; justify-content: center; gap: 7px; background: rgba(255,255,255,0.09); color: var(--text-primary);">
+                  <span class="material-symbols-outlined" style="font-size: 19px;">upload</span>
+                  <span>Import Backup</span>
+                </button>
+                <input type="file" id="input-import-data" accept="application/json,.json" style="display: none;">
+              </div>
 
               <h3>App Installation</h3>
               <button type="button" id="btn-settings-install-pwa" class="btn-primary" style="width: 100%; padding: 12px; font-weight: 700; border-radius: var(--radius-md); display: flex; align-items: center; justify-content: center; gap: 8px; box-shadow: 0 4px 16px var(--accent-glow);">

@@ -1959,3 +1959,5 @@ const UI = (() => {
 window.startQuickPick = (song) => UI.startQuickPick(song);
 window.showRadioStartedAnimation = (song) => UI.showRadioStartedAnimation(song);
 window.testRadioAnimation = (name) => UI.showRadioStartedAnimation({ name: name || 'Endless Radio Flow', artists: 'MusicFlow AI', image: 'assets/logo.jpg' });
+
+window.UI = UI;

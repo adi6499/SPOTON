@@ -7745,3 +7745,13 @@ body.has-custom-bg #dynamic-bg {
 
 
 
+
+/* ---- Circular Audio Visualizer (full player) ---- */
+#visualizer-canvas {
+  position: absolute;
+  z-index: 1;
+  width: min(96vw, 400px);
+  height: min(96vw, 400px);
+  pointer-events: none;
+  opacity: 0.85;
+}

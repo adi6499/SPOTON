@@ -131,3 +131,5 @@ const Recs = (() => {
     getDailyMixes
   };
 })();
+
+window.Recs = Recs;

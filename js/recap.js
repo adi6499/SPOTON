@@ -567,3 +567,5 @@ if (typeof module !== 'undefined' && module.exports) {
   module.exports = Recap;
 }
 
+
+if (typeof window !== "undefined") window.Recap = Recap;
