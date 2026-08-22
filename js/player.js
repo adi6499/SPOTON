@@ -178,6 +178,7 @@ const Player = (() => {
   let onQueueUpdate = null;
   let onLoadStart = null;
   let onCanPlay = null;
+  let onSleepTimer = null;
 
   // Initialize settings
   const settings = Storage.getSettings();
@@ -1275,7 +1276,14 @@ const Player = (() => {
 
   function setSleepTimer(minutes) {
     if (sleepTimerId && sleepTimerId !== 'song') clearTimeout(sleepTimerId);
-    if (sleepTimerId) clearTimeout(sleepTimerId);
+    // "End of current song" mode: pause when the current track finishes
+    if (minutes === 'song') {
+      sleepTimerMinutes = 'song';
+      sleepTimerId = 'song';
+      onSleepTimer?.('song');
+      return;
+    }
+    minutes = parseInt(minutes, 10) || 0;
     sleepTimerMinutes = minutes;
     if (minutes > 0) {
       const ms = minutes * 60 * 1000;
@@ -1503,6 +1511,7 @@ const Player = (() => {
       case 'play': onPlay = callback; break;
       case 'pause': onPause = callback; break;
       case 'timeupdate': onTimeUpdate = callback; break;
+      case 'sleeptimer': onSleepTimer = callback; break;
       case 'trackchange': onTrackChange = callback; break;
       case 'ended': onEnded = callback; break;
       case 'error': onError = callback; break;

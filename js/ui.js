@@ -371,8 +371,41 @@ const UI = (() => {
     libHeader.innerHTML = `
       <h1 class="library-header-title">Your Library</h1>
       <span class="library-header-badge">${favs.length} ${favs.length === 1 ? 'Song' : 'Songs'}</span>
+      ${favs.length > 0 ? `
+      <div class="library-header-actions">
+        <button class="btn-lib-action" id="btn-fav-play-all" aria-label="Play all favorites">
+          <span class="material-symbols-outlined" style="font-size: 18px; font-variation-settings: 'FILL' 1;">play_arrow</span>
+          Play All
+        </button>
+        <button class="btn-lib-action secondary" id="btn-fav-shuffle" aria-label="Shuffle favorites">
+          <span class="material-symbols-outlined" style="font-size: 18px;">shuffle</span>
+          Shuffle
+        </button>
+      </div>` : ''}
     `;
     container.appendChild(libHeader);
+
+    // Play All / Shuffle favorites
+    const favPlayAllBtn = libHeader.querySelector('#btn-fav-play-all');
+    const favShuffleBtn = libHeader.querySelector('#btn-fav-shuffle');
+    if (favPlayAllBtn) favPlayAllBtn.addEventListener('click', () => {
+      const list = Storage.getFavorites() || [];
+      if (!list.length) return;
+      Player.setQueue(list, 0);
+      Player.playSong(list[0], 0);
+      showToast(`Playing ${list.length} favorites`);
+    });
+    if (favShuffleBtn) favShuffleBtn.addEventListener('click', () => {
+      const list = [...(Storage.getFavorites() || [])];
+      if (!list.length) return;
+      for (let i = list.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [list[i], list[j]] = [list[j], list[i]];
+      }
+      Player.setQueue(list, 0);
+      Player.playSong(list[0], 0);
+      showToast(`Shuffling ${list.length} favorites`);
+    });
 
     // 1. Library Filter Chips Bar
     const filterChips = document.createElement('div');

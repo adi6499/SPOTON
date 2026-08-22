@@ -163,6 +163,10 @@ const App = (() => {
         });
       });
       startAudioReactivePulse();
+      initVoiceSearch();
+      bindUpNextStrip();
+      bindArtworkDoubleTap();
+      bindSleepTimerButton();
       bindBackupRestore();
 
       // Restore last session (queue + track + position) unless a deep link is taking over
@@ -559,6 +563,8 @@ const App = (() => {
 
     Player.on('trackchange', (track) => {
       UI.updatePlayerBar(track);
+      updateUpNextStrip();
+      updateSleepBadge();
       
       // Update full player with HD image and dynamic artwork
       if (track && track.image) {
@@ -608,6 +614,7 @@ const App = (() => {
     });
 
     Player.on('queueupdate', () => {
+      updateUpNextStrip();
       // Refresh queue view if active
       const queuePage = document.getElementById('page-queue');
       if (queuePage && queuePage.classList.contains('active')) {
@@ -2886,6 +2893,168 @@ const App = (() => {
     document.body.appendChild(overlay);
     overlay.addEventListener('click', (e) => { if (e.target === overlay) overlay.style.display = 'none'; });
     overlay.querySelector('#shortcuts-help-close').addEventListener('click', () => overlay.style.display = 'none');
+  }
+
+
+  // ---- Voice Search (Web Speech API) ----
+  function initVoiceSearch() {
+    const micBtn = document.getElementById('btn-voice-search');
+    if (!micBtn) return;
+    const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+    if (!SR) return; // unsupported browser: keep hidden
+    micBtn.style.display = 'flex';
+    let recognizing = false;
+    let rec = null;
+    micBtn.addEventListener('click', () => {
+      if (recognizing) { try { rec.stop(); } catch (_) {} return; }
+      rec = new SR();
+      rec.lang = 'en-IN';
+      rec.interimResults = false;
+      rec.maxAlternatives = 1;
+      recognizing = true;
+      micBtn.classList.add('listening');
+      UI.showToast('\u{1F399}\uFE0F Listening\u2026 say a song or artist', 'info');
+      rec.onresult = (ev) => {
+        const text = ev.results[0][0].transcript;
+        const input = document.getElementById('search-input');
+        if (input && text) {
+          input.value = text;
+          input.dispatchEvent(new Event('input', { bubbles: true }));
+          Storage.addSearchHistory(text);
+          performSearch(text);
+        }
+      };
+      rec.onerror = (ev) => {
+        if (ev.error === 'not-allowed') UI.showToast('Microphone access denied', 'error');
+        else if (ev.error !== 'aborted') UI.showToast('Didn\u2019t catch that \u2014 try again', 'info');
+      };
+      rec.onend = () => { recognizing = false; micBtn.classList.remove('listening'); };
+      try { rec.start(); } catch (_) { recognizing = false; micBtn.classList.remove('listening'); }
+    });
+  }
+
+  // ---- Up Next preview strip in the full player ----
+  function updateUpNextStrip() {
+    const strip = document.getElementById('up-next-strip');
+    if (!strip) return;
+    const q = Player.getQueue();
+    const idx = Player.getCurrentIndex();
+    let nxt = null;
+    if (q.length > 1 && idx >= 0) {
+      if (idx + 1 < q.length) nxt = q[idx + 1];
+      else if (Player.getRepeatMode && Player.getRepeatMode() === 'all') nxt = q[0];
+    }
+    if (!nxt) { strip.style.display = 'none'; return; }
+    strip.style.display = 'flex';
+    const img = document.getElementById('up-next-img');
+    const title = document.getElementById('up-next-title');
+    if (img) img.src = (typeof nxt.image === 'string' && nxt.image) ? nxt.image : 'assets/logo.jpg';
+    if (title) title.textContent = `${nxt.name}${nxt.artists ? ' \u2022 ' + nxt.artists : ''}`;
+  }
+
+  function bindUpNextStrip() {
+    const strip = document.getElementById('up-next-strip');
+    if (!strip) return;
+    strip.addEventListener('click', (e) => {
+      e.stopPropagation();
+      if (typeof Haptics !== 'undefined') Haptics.light();
+      Player.next();
+    });
+  }
+
+  // ---- Double-tap artwork to favorite (with heart burst) ----
+  function bindArtworkDoubleTap() {
+    const artworkWrap = document.querySelector('.full-player__artwork');
+    if (!artworkWrap) return;
+
+    function burstHeart(x, y) {
+      const rect = artworkWrap.getBoundingClientRect();
+      const heart = document.createElement('span');
+      heart.className = 'heart-burst';
+      heart.textContent = '\u2764\uFE0F';
+      heart.style.left = `${x - rect.left}px`;
+      heart.style.top = `${y - rect.top}px`;
+      artworkWrap.appendChild(heart);
+      setTimeout(() => heart.remove(), 950);
+    }
+
+    function favoriteCurrent(x, y) {
+      const cur = Player.getCurrentTrack();
+      if (!cur) return;
+      const nowFav = Storage.toggleFavorite(cur);
+      if (nowFav) {
+        burstHeart(x, y);
+        if (typeof Haptics !== 'undefined') Haptics.medium && Haptics.medium();
+        UI.showToast(`\u2764\uFE0F Added \u201C${cur.name}\u201D to favorites`, 'success');
+      } else {
+        UI.showToast(`Removed \u201C${cur.name}\u201D from favorites`);
+      }
+      if (UI.updateFavoriteButton) UI.updateFavoriteButton(nowFav);
+    }
+
+    // Desktop double-click
+    artworkWrap.addEventListener('dblclick', (e) => {
+      e.preventDefault();
+      favoriteCurrent(e.clientX, e.clientY);
+    });
+
+    // Mobile double-tap
+    let lastTap = 0;
+    artworkWrap.addEventListener('touchend', (e) => {
+      const now = Date.now();
+      if (now - lastTap < 320 && e.changedTouches && e.changedTouches[0]) {
+        e.preventDefault();
+        const t = e.changedTouches[0];
+        favoriteCurrent(t.clientX, t.clientY);
+        lastTap = 0;
+      } else {
+        lastTap = now;
+      }
+    }, { passive: false });
+  }
+
+  // ---- Sleep timer quick menu in the full player ----
+  function updateSleepBadge() {
+    const badge = document.getElementById('sleep-timer-badge');
+    const btn = document.getElementById('btn-full-sleep');
+    if (!badge || !btn) return;
+    const val = Player.getSleepTimerMinutes();
+    if (val === 'song') {
+      badge.textContent = '\u266A';
+      badge.style.display = 'inline-block';
+      btn.classList.add('active');
+    } else if (val > 0) {
+      badge.textContent = `${val}m`;
+      badge.style.display = 'inline-block';
+      btn.classList.add('active');
+    } else {
+      badge.style.display = 'none';
+      btn.classList.remove('active');
+    }
+  }
+
+  function bindSleepTimerButton() {
+    const btn = document.getElementById('btn-full-sleep');
+    if (!btn) return;
+    btn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      const rect = btn.getBoundingClientRect();
+      const setTimer = (v, label) => () => {
+        Player.setSleepTimer(v);
+        updateSleepBadge();
+        const sel = document.getElementById('select-timer');
+        if (sel) sel.value = String(v);
+        UI.showToast(v === 0 ? 'Sleep timer off' : `\u{1F319} Sleep timer: ${label}`, 'info');
+      };
+      UI.showContextMenu(rect.left - 140, rect.top - 10, [
+        { label: 'Off', icon: '\u274C', onClick: setTimer(0, 'Off') },
+        { label: '15 minutes', icon: '\u{1F319}', onClick: setTimer(15, '15 min') },
+        { label: '30 minutes', icon: '\u{1F319}', onClick: setTimer(30, '30 min') },
+        { label: '45 minutes', icon: '\u{1F319}', onClick: setTimer(45, '45 min') },
+        { label: '60 minutes', icon: '\u{1F319}', onClick: setTimer(60, '60 min') },
+        { label: 'End of current song', icon: '\u266A', onClick: setTimer('song', 'end of song') }
+      ]);
+    });
   }
 
   // ---- Keyboard Shortcuts & Command Palette ----

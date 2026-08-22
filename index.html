@@ -157,6 +157,9 @@
         <div class="search-container">
           <span class="material-symbols-outlined search-icon" style="font-size: 20px;">search</span>
           <input type="search" id="search-input" class="search-bar" placeholder="Search songs, artists, albums..." autocomplete="off" aria-label="Search music">
+          <button class="search-mic" id="btn-voice-search" aria-label="Voice search" title="Search by voice" style="display:none;">
+            <span class="material-symbols-outlined" style="font-size: 19px;">mic</span>
+          </button>
           <button class="search-clear" id="search-clear" aria-label="Clear search">
             <span class="material-symbols-outlined" style="font-size: 18px;">close</span>
           </button>
@@ -613,9 +616,19 @@
            <input type="range" class="volume-slider" min="0" max="100" value="80" aria-label="Volume">
            <button class="btn-icon" data-action="volume-max" title="Max Volume" onclick="Player.setVolume(1); UI.updateVolumeIcon(1);"><span class="material-symbols-outlined" style="font-size: 24px;">volume_up</span></button>
         </div>
+        <button id="up-next-strip" class="up-next-strip" style="display:none;" aria-label="Play next song">
+          <span class="up-next-strip__label">UP NEXT</span>
+          <img id="up-next-img" class="up-next-strip__img" src="assets/logo.jpg" alt="" onerror="this.src='assets/logo.jpg'">
+          <span id="up-next-title" class="up-next-strip__title"></span>
+          <span class="material-symbols-outlined" style="font-size: 18px; opacity: 0.7;">skip_next</span>
+        </button>
         <div class="full-player__controls-secondary">
           <button class="btn-icon" id="btn-full-lyrics" aria-label="Toggle Lyrics" title="Live Lyrics">
             <span class="material-symbols-outlined" style="font-size: 24px;">chat_bubble_outline</span>
+          </button>
+          <button class="btn-icon" id="btn-full-sleep" aria-label="Sleep Timer" title="Sleep Timer" style="position: relative;">
+            <span class="material-symbols-outlined" style="font-size: 24px;">bedtime</span>
+            <span id="sleep-timer-badge" style="display:none; position:absolute; top:-2px; right:-4px; background:var(--accent-color); color:#fff; font-size:9px; font-weight:800; padding:1px 5px; border-radius:8px; line-height:1.4;"></span>
           </button>
           <button class="btn-icon" id="btn-full-queue" aria-label="Toggle Queue" title="Queue">
             <span class="material-symbols-outlined" style="font-size: 24px;">queue_music</span>
