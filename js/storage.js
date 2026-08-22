@@ -23,6 +23,8 @@ const Storage = (() => {
   const MAX_RECENT = 50;
   const MAX_HISTORY = 1000;
 
+  const BACKUP_KEY = 'mf_data_backup_v2';
+
   // ---- Generic Helpers ----
 
   function get(key, fallback = null) {
@@ -37,6 +39,9 @@ const Storage = (() => {
   function set(key, value) {
     try {
       localStorage.setItem(key, JSON.stringify(value));
+      if (key !== BACKUP_KEY && key !== KEYS.HOME_CACHE && key !== KEYS.DAILY_MIX_CACHE) {
+        createDataBackupSnapshot();
+      }
     } catch (e) {
       console.warn('[Storage] Failed to save:', e.message);
     }
@@ -409,21 +414,127 @@ const Storage = (() => {
     });
   }
 
-  // ---- Phase 3: User Profile ----
+  // ---- Phase 3: User Profile & Permanent Data Protection ----
+
+  function createDataBackupSnapshot() {
+    try {
+      const snapshot = {
+        version: 2,
+        timestamp: Date.now(),
+        profile: get(KEYS.USER_PROFILE, null),
+        favorites: get(KEYS.FAVORITES, []),
+        playlists: get(KEYS.PLAYLISTS, []),
+        recent: get(KEYS.RECENT, []),
+        settings: get(KEYS.SETTINGS, null),
+        searchHistory: get(KEYS.SEARCH_HISTORY, []),
+        followedArtists: get(KEYS.FOLLOWED_ARTISTS, []),
+        podcastProgress: get(KEYS.PODCAST_PROGRESS, {}),
+        libraryPrefs: get(KEYS.LIBRARY_PREFS, null)
+      };
+      localStorage.setItem(BACKUP_KEY, JSON.stringify(snapshot));
+    } catch (_) {}
+  }
+
+  function restoreFromBackup() {
+    try {
+      const raw = localStorage.getItem(BACKUP_KEY);
+      if (!raw) return false;
+      const snapshot = JSON.parse(raw);
+      if (!snapshot) return false;
+
+      if (snapshot.profile && !localStorage.getItem(KEYS.USER_PROFILE)) {
+        set(KEYS.USER_PROFILE, snapshot.profile);
+      }
+      if (snapshot.favorites?.length && !localStorage.getItem(KEYS.FAVORITES)) {
+        set(KEYS.FAVORITES, snapshot.favorites);
+      }
+      if (snapshot.playlists?.length && !localStorage.getItem(KEYS.PLAYLISTS)) {
+        set(KEYS.PLAYLISTS, snapshot.playlists);
+      }
+      if (snapshot.settings && !localStorage.getItem(KEYS.SETTINGS)) {
+        set(KEYS.SETTINGS, snapshot.settings);
+      }
+      if (snapshot.recent?.length && !localStorage.getItem(KEYS.RECENT)) {
+        set(KEYS.RECENT, snapshot.recent);
+      }
+      return true;
+    } catch (_) {
+      return false;
+    }
+  }
+
+  function initDataProtection() {
+    // 1. Request permanent storage from browser (PWA/Installed/Web)
+    if (typeof navigator !== 'undefined' && navigator.storage && navigator.storage.persist) {
+      navigator.storage.persist().then(persistent => {
+        if (persistent) {
+          console.log('[Storage] Persistent storage granted by browser — data will never be cleared!');
+        }
+      }).catch(() => {});
+    }
+
+    // 2. Heal any missing keys from backup snapshot if available
+    restoreFromBackup();
+
+    // 3. Ensure user profile exists and has hasOnboarded correctly set
+    const profile = get(KEYS.USER_PROFILE, null);
+    const hasAnyExistingData = localStorage.getItem(KEYS.FAVORITES) || 
+                               localStorage.getItem(KEYS.PLAYLISTS) || 
+                               localStorage.getItem(KEYS.RECENT) || 
+                               localStorage.getItem(KEYS.SETTINGS);
+
+    if (profile) {
+      if (profile.username && profile.hasOnboarded === undefined) {
+        profile.hasOnboarded = true;
+        set(KEYS.USER_PROFILE, profile);
+      }
+    } else if (hasAnyExistingData) {
+      // Existing user updating app -> preserve data and never prompt onboarding again
+      set(KEYS.USER_PROFILE, {
+        username: 'Adesh',
+        avatar: '🎧',
+        bio: 'Music enthusiast & audiophile',
+        joinedDate: new Date().toLocaleDateString('en-US', { month: 'short', year: 'numeric' }),
+        hasOnboarded: true
+      });
+    }
+
+    // 4. Update backup snapshot
+    createDataBackupSnapshot();
+  }
+
+  // Auto-run data protection on script evaluation
+  try {
+    initDataProtection();
+  } catch (_) {}
 
   function getUserProfile() {
-    return get(KEYS.USER_PROFILE, {
-      username: 'Adesh',
-      avatar: '🎧',
-      bio: 'Music enthusiast & audiophile',
-      joinedDate: new Date().toLocaleDateString('en-US', { month: 'short', year: 'numeric' })
-    });
+    let profile = get(KEYS.USER_PROFILE, null);
+    if (!profile) {
+      const hasAnyExistingData = localStorage.getItem(KEYS.FAVORITES) || 
+                                 localStorage.getItem(KEYS.PLAYLISTS) || 
+                                 localStorage.getItem(KEYS.SETTINGS);
+      profile = {
+        username: 'Adesh',
+        avatar: '🎧',
+        bio: 'Music enthusiast & audiophile',
+        joinedDate: new Date().toLocaleDateString('en-US', { month: 'short', year: 'numeric' }),
+        hasOnboarded: Boolean(hasAnyExistingData)
+      };
+      set(KEYS.USER_PROFILE, profile);
+      createDataBackupSnapshot();
+    }
+    return profile;
   }
 
   function saveUserProfile(profile) {
     const current = getUserProfile();
     const updated = { ...current, ...profile };
+    if (profile && profile.username) {
+      updated.hasOnboarded = true;
+    }
     set(KEYS.USER_PROFILE, updated);
+    createDataBackupSnapshot();
     return updated;
   }
 
@@ -501,6 +612,9 @@ const Storage = (() => {
     getPodcastProgress,
     savePodcastProgress,
     getLibraryPreferences,
-    saveLibraryPreferences
+    saveLibraryPreferences,
+    initDataProtection,
+    createDataBackupSnapshot,
+    restoreFromBackup
   };
 })();

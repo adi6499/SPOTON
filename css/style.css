@@ -1064,52 +1064,11 @@ body.has-player .page {
 .btn-danger:hover { background: #f87171; }
 
 /* ========================================
-   Bottom Navigation (Mobile: Apple Music Floating Glass Pill)
+   Bottom Navigation & Player Docking
    ======================================== */
 .bottom-nav {
-  position: fixed;
-  bottom: calc(var(--safe-bottom, 0px) + 12px);
-  left: 16px;
-  right: 16px;
-  max-width: 420px;
-  margin: 0 auto;
-  height: 60px;
-  border-radius: 9999px;
-  background: rgba(22, 22, 28, 0.65) !important;
-  backdrop-filter: blur(36px) saturate(190%) !important;
-  -webkit-backdrop-filter: blur(36px) saturate(190%) !important;
-  border: 1px solid rgba(255, 255, 255, 0.12) !important;
-  box-shadow: 0 16px 36px rgba(0, 0, 0, 0.45), 0 0 0 1px rgba(255, 255, 255, 0.06) inset;
-  display: flex;
-  align-items: center;
-  justify-content: space-around;
-  padding: 0 16px;
-  z-index: 200;
-  transition: transform 0.35s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.3s ease;
+  display: none;
 }
-
-body.theme-light .bottom-nav {
-  background: rgba(255, 255, 255, 0.75) !important;
-  border: 1px solid rgba(0, 0, 0, 0.08) !important;
-  box-shadow: 0 16px 36px rgba(0, 0, 0, 0.12), 0 0 0 1px rgba(255, 255, 255, 0.8) inset;
-}
-
-.nav-item {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: 4px;
-  padding: 4px;
-  color: var(--text-tertiary);
-  font-size: 10px;
-  font-weight: 600;
-  transition: color var(--anim-micro);
-  min-width: 44px;
-  min-height: 44px;
-}
-.nav-item svg { width: 24px; height: 24px; stroke-width: 2.5; }
-.nav-item.active { color: var(--accent-color); }
 
 /* ========================================
    Desktop Responsiveness
@@ -1288,48 +1247,10 @@ body.theme-light .bottom-nav {
     justify-content: space-around;
     align-items: center;
   }
-  .bottom-nav .nav-item {
-    min-width: 48px;
-    min-height: 48px;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    gap: 3px;
-    font-size: 10.5px;
-    font-weight: 700;
-    color: var(--text-secondary);
-    background: none;
-    border: none;
-    cursor: pointer;
-    transition: all 0.2s cubic-bezier(0.2, 0.8, 0.2, 1);
-  }
-  .bottom-nav .nav-item svg {
-    width: 22px;
-    height: 22px;
-  }
-  .bottom-nav .nav-item:active {
-    transform: scale(0.92);
-  }
-  .bottom-nav .nav-item.active {
-    color: var(--accent-light);
-  }
-
-  /* Floating Mini Player above Bottom Nav */
-  #player-container.player-minimized {
-    height: 60px;
-    left: 10px;
-    right: 10px;
-    bottom: calc(64px + env(safe-area-inset-bottom, 0px));
-    border-radius: 16px !important;
-    z-index: 140;
-    box-shadow: 0 8px 32px rgba(0,0,0,0.6);
-    backdrop-filter: blur(24px);
-    -webkit-backdrop-filter: blur(24px);
-  }
-
-  .main-scroll-area {
-    padding-bottom: calc(64px + 60px + env(safe-area-inset-bottom, 0px) + 20px) !important;
+  .main-scroll-area,
+  .page,
+  #queue-container {
+    padding-bottom: calc(62px + 60px + env(safe-area-inset-bottom, 16px) + 24px) !important;
   }
 }
 
@@ -1475,23 +1396,40 @@ body:not(.has-player) #player-container {
 /* --- MINIMIZED STATE (Mobile: Apple Music Floating Glass Pill) --- */
 #player-container.player-minimized {
   position: fixed;
-  bottom: calc(var(--safe-bottom, 0px) + 82px);
-  left: 12px;
-  right: 12px;
+  bottom: calc(60px + 14px + env(safe-area-inset-bottom, 12px) + 8px);
+  left: 14px;
+  right: 14px;
   max-width: 440px;
   margin: 0 auto;
-  height: 62px;
-  background: rgba(24, 24, 30, 0.72) !important;
+  height: 60px;
+  background: rgba(22, 20, 32, 0.85) !important;
   backdrop-filter: blur(40px) saturate(200%) !important;
   -webkit-backdrop-filter: blur(40px) saturate(200%) !important;
   border: 1px solid rgba(255, 255, 255, 0.14) !important;
   border-radius: 20px !important;
-  box-shadow: 0 14px 40px rgba(0, 0, 0, 0.5), 0 0 0 1px rgba(255, 255, 255, 0.08) inset;
-  z-index: 500;
+  box-shadow: 0 14px 40px rgba(0, 0, 0, 0.55), 0 0 0 1px rgba(255, 255, 255, 0.08) inset;
+  z-index: 900;
   cursor: pointer;
   overflow: hidden;
   transform: translateY(200%) !important;
   transition: transform 0.35s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.3s ease;
+}
+
+@media (min-width: 769px) {
+  #player-container.player-minimized {
+    bottom: 0;
+    left: 0;
+    right: 0;
+    max-width: 100%;
+    height: var(--player-bar-height, 74px);
+    border-radius: 0 !important;
+    border-top: 1px solid var(--border) !important;
+    border-left: none !important;
+    border-right: none !important;
+    border-bottom: none !important;
+    background: var(--bg-surface, #121218) !important;
+    box-shadow: 0 -4px 24px rgba(0,0,0,0.35) !important;
+  }
 }
 
 body.has-player #player-container.player-minimized {
@@ -1503,9 +1441,9 @@ body.has-player #player-container.player-minimized {
 }
 
 body.theme-light #player-container.player-minimized {
-  background: rgba(255, 255, 255, 0.78) !important;
+  background: rgba(255, 255, 255, 0.9) !important;
   border: 1px solid rgba(0, 0, 0, 0.08) !important;
-  box-shadow: 0 14px 40px rgba(0, 0, 0, 0.12), 0 0 0 1px rgba(255, 255, 255, 0.9) inset;
+  box-shadow: 0 14px 40px rgba(0, 0, 0, 0.1), 0 0 0 1px rgba(255, 255, 255, 0.9) inset;
 }
 
 .mini-player {
@@ -4476,7 +4414,7 @@ body.density-compact .song-list-item {
   display: block;
 }
 
-/* ---- 8. 5-Item Bottom Navigation Styling ---- */
+/* ---- 8. 5-Item Bottom Navigation Styling (Apple Music Floating Glass Pill & Glide Tab Bar) ---- */
 .bottom-nav {
   display: none;
 }
@@ -4486,41 +4424,141 @@ body.density-compact .song-list-item {
     justify-content: space-around;
     align-items: center;
     position: fixed;
-    bottom: 0;
-    left: 0;
-    right: 0;
-    height: calc(64px + env(safe-area-inset-bottom, 16px));
-    padding: 6px 4px calc(8px + env(safe-area-inset-bottom, 16px));
-    background: rgba(18, 18, 24, 0.92);
-    backdrop-filter: blur(28px) saturate(180%);
-    -webkit-backdrop-filter: blur(28px) saturate(180%);
-    border-top: 1px solid rgba(255, 255, 255, 0.08);
+    bottom: calc(14px + env(safe-area-inset-bottom, 12px));
+    left: 14px;
+    right: 14px;
+    max-width: 440px;
+    margin: 0 auto;
+    height: 60px;
+    border-radius: 9999px !important;
+    background: rgba(18, 16, 26, 0.82) !important;
+    backdrop-filter: blur(36px) saturate(190%) !important;
+    -webkit-backdrop-filter: blur(36px) saturate(190%) !important;
+    border: 1px solid rgba(255, 255, 255, 0.12) !important;
+    box-shadow: 0 16px 40px rgba(0, 0, 0, 0.5), 0 0 0 1px rgba(255, 255, 255, 0.06) inset !important;
+    padding: 0 8px;
     z-index: 1000;
     box-sizing: border-box;
+    touch-action: none; /* Fluid pointer tracking across all tabs */
+    user-select: none;
+    -webkit-user-select: none;
+    transition: transform 0.35s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.3s ease;
   }
+
+  body.theme-light .bottom-nav {
+    background: rgba(255, 255, 255, 0.88) !important;
+    border: 1px solid rgba(0, 0, 0, 0.08) !important;
+    box-shadow: 0 16px 40px rgba(0, 0, 0, 0.12), 0 0 0 1px rgba(255, 255, 255, 0.8) inset !important;
+  }
+
+  /* Liquid Glass Glide Capsule Indicator */
+  .bottom-nav-indicator {
+    position: absolute;
+    top: 6px;
+    bottom: 6px;
+    left: 0;
+    width: 20%;
+    border-radius: 999px;
+    background: rgba(255, 81, 103, 0.16);
+    border: 1px solid rgba(255, 81, 103, 0.32);
+    box-shadow: 0 4px 18px rgba(255, 81, 103, 0.22), inset 0 1px 1px rgba(255, 255, 255, 0.25);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    pointer-events: none;
+    z-index: 1;
+    transition: transform 0.32s cubic-bezier(0.175, 0.885, 0.32, 1.275), width 0.2s ease, opacity 0.2s ease;
+    opacity: 1;
+    transform: translate3d(0, 0, 0);
+  }
+
+  body.theme-light .bottom-nav-indicator {
+    background: rgba(255, 81, 103, 0.12);
+    border: 1px solid rgba(255, 81, 103, 0.28);
+    box-shadow: 0 4px 18px rgba(255, 81, 103, 0.15), inset 0 1px 1px rgba(255, 255, 255, 0.8);
+  }
+
+  /* While dragging / gliding: enlarged liquid frosted glass glider */
+  .bottom-nav.is-gliding {
+    transform: none;
+    box-shadow: 0 16px 44px rgba(0, 0, 0, 0.55), 0 0 0 1px rgba(255, 255, 255, 0.1) inset !important;
+  }
+
+  .bottom-nav.is-gliding .bottom-nav-indicator {
+    transition: transform 0.05s ease-out, width 0.08s ease;
+    top: 3px;
+    bottom: 3px;
+    background: rgba(255, 81, 103, 0.3);
+    border: 1.5px solid rgba(255, 81, 103, 0.5);
+    box-shadow: 0 8px 30px var(--accent-glow, rgba(255, 81, 103, 0.6)), 0 0 16px rgba(255, 81, 103, 0.35), inset 0 1px 2px rgba(255, 255, 255, 0.65);
+    backdrop-filter: blur(18px);
+    -webkit-backdrop-filter: blur(18px);
+  }
+
+  .bottom-nav.is-gliding .nav-item {
+    transition: color 0.15s ease;
+  }
+
   .bottom-nav .nav-item {
+    position: relative;
+    z-index: 2;
     flex: 1;
     display: flex;
     flex-direction: column;
     align-items: center;
     justify-content: center;
     gap: 3px;
-    padding: 4px 0;
+    padding: 4px 6px;
     background: none;
     border: none;
-    color: var(--text-secondary);
+    color: var(--text-tertiary, #94a3b8);
     font-size: 10px;
-    font-weight: 700;
+    font-weight: 600;
+    letter-spacing: 0.2px;
     cursor: pointer;
-    transition: all 0.2s ease;
+    border-radius: 999px;
+    transition: color 0.2s ease;
+    user-select: none;
+    -webkit-user-select: none;
+    min-width: 0;
   }
+
+  .bottom-nav .nav-item .material-symbols-outlined {
+    font-size: 22px !important;
+    color: inherit;
+    transition: color 0.2s ease;
+  }
+
   .bottom-nav .nav-item svg {
-    width: 20px;
-    height: 20px;
+    width: 22px;
+    height: 22px;
+    stroke: currentColor;
+    fill: none;
   }
+
+  .bottom-nav .nav-item:active {
+    transform: none;
+  }
+
   .bottom-nav .nav-item.active {
-    color: var(--accent-light);
-    transform: translateY(-2px);
+    color: var(--accent-color, #ff5167) !important;
+    font-weight: 700;
+  }
+
+  .bottom-nav .nav-item.active .material-symbols-outlined {
+    color: var(--accent-color, #ff5167) !important;
+    font-variation-settings: 'FILL' 1;
+    filter: drop-shadow(0 2px 8px var(--accent-glow, rgba(255, 81, 103, 0.4)));
+  }
+
+  /* Glide Hover state (pure color & glow, no icon bloating) */
+  .bottom-nav .nav-item.glide-hover {
+    color: var(--accent-color, #ff5167) !important;
+  }
+
+  .bottom-nav .nav-item.glide-hover .material-symbols-outlined {
+    color: var(--accent-color, #ff5167) !important;
+    font-variation-settings: 'FILL' 1;
+    filter: drop-shadow(0 2px 8px var(--accent-glow, rgba(255, 81, 103, 0.4)));
   }
 }
 
@@ -5847,21 +5885,35 @@ button:active, .btn-icon:active, .nav-item:active {
   box-shadow: 0 0 0 2px rgba(14, 165, 233, 0.2) !important;
 }
 
-/* Samples Feed Container & Upright Album Card */
+/* Samples Feed Container & Full-Screen Immersive View */
+body.on-samples-page .header {
+  display: none !important;
+}
+
+body.on-samples-page .main-scroll-area {
+  padding: 0 !important;
+  margin: 0 !important;
+  overflow: hidden !important;
+  height: 100dvh !important;
+  max-height: 100dvh !important;
+}
+
 #page-samples {
-  height: calc(100dvh - 140px) !important;
-  max-height: 100% !important;
+  height: 100dvh !important;
+  max-height: 100dvh !important;
   overflow: hidden !important;
   padding: 0 !important;
+  margin: 0 !important;
   position: relative !important;
   background: #000000 !important;
 }
 
 .samples-viewport {
-  height: 100% !important;
+  height: 100dvh !important;
   width: 100% !important;
   overflow-y: scroll !important;
   scroll-snap-type: y mandatory !important;
+  overscroll-behavior-y: contain !important;
   scrollbar-width: none !important;
   -webkit-overflow-scrolling: touch !important;
 }
@@ -5871,8 +5923,9 @@ button:active, .btn-icon:active, .nav-item:active {
 }
 
 .sample-card {
-  height: calc(100dvh - 140px) !important;
-  min-height: calc(100dvh - 140px) !important;
+  height: 100dvh !important;
+  min-height: 100dvh !important;
+  max-height: 100dvh !important;
   scroll-snap-align: start !important;
   scroll-snap-stop: always !important;
   position: relative !important;
@@ -5881,8 +5934,39 @@ button:active, .btn-icon:active, .nav-item:active {
   align-items: center !important;
   justify-content: center !important;
   overflow: hidden !important;
+  box-sizing: border-box !important;
   background: linear-gradient(135deg, #111827 0%, #000000 100%) !important;
-  padding: 0 !important;
+}
+
+.sample-info-overlay {
+  position: absolute !important;
+  bottom: calc(84px + env(safe-area-inset-bottom, 14px)) !important;
+  left: 18px !important;
+  right: 90px !important;
+  z-index: 20 !important;
+  pointer-events: auto !important;
+}
+
+.sample-floating-actions {
+  position: absolute !important;
+  bottom: calc(84px + env(safe-area-inset-bottom, 14px)) !important;
+  right: 14px !important;
+  display: flex !important;
+  flex-direction: column !important;
+  align-items: center !important;
+  gap: 12px !important;
+  z-index: 25 !important;
+  pointer-events: auto !important;
+}
+
+/* Hide global mini player when inside full-screen Samples feed */
+body.on-samples-page #player-container.player-minimized,
+body.on-samples-page .player-minimized {
+  display: none !important;
+  visibility: hidden !important;
+  opacity: 0 !important;
+  pointer-events: none !important;
+  transform: translateY(200%) !important;
 }
 
 .sample-record-disc, .sample-card__vinyl {
@@ -7494,7 +7578,7 @@ body.has-custom-bg #dynamic-bg {
    ========================================================== */
 #toast-container {
   position: fixed !important;
-  bottom: calc(90px + env(safe-area-inset-bottom, 20px)) !important;
+  bottom: calc(130px + env(safe-area-inset-bottom, 20px)) !important;
   left: 50% !important;
   transform: translateX(-50%) !important;
   z-index: 99999999 !important;
@@ -7527,6 +7611,7 @@ body.has-custom-bg #dynamic-bg {
   transition: all 0.35s cubic-bezier(0.175, 0.885, 0.32, 1.275) !important;
   pointer-events: auto !important;
   text-align: center !important;
+  max-width: 90vw;
 }
 
 .toast.show {
@@ -7548,6 +7633,14 @@ body.has-custom-bg #dynamic-bg {
 }
 .toast-error .toast-icon {
   color: #eb4d4b !important;
+}
+
+.toast-warning {
+  border-color: rgba(254, 202, 87, 0.5) !important;
+  box-shadow: 0 16px 40px rgba(0, 0, 0, 0.65), 0 0 25px rgba(254, 202, 87, 0.3) !important;
+}
+.toast-warning .toast-icon {
+  color: #feca57 !important;
 }
 
 .toast-info {

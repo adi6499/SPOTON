@@ -432,7 +432,7 @@ const SearchEngine = (() => {
       el.addEventListener('click', async (e) => {
         if (e.target.closest('.btn-icon')) return;
         Player.setQueue(state.results.songs, idx);
-        await Player.playSong(song);
+        await Player.playSong(song, idx);
       });
 
       list.appendChild(el);
@@ -786,7 +786,7 @@ const SearchEngine = (() => {
           el.addEventListener('click', async (e) => {
             if (e.target.closest('.btn-icon')) return;
             Player.setQueue(state.results.songs, i);
-            await Player.playSong(song);
+            await Player.playSong(song, i);
           });
           songsContainer.appendChild(el);
         });
@@ -853,7 +853,7 @@ const SearchEngine = (() => {
             el.addEventListener('click', async (e) => {
               if (e.target.closest('.btn-icon')) return;
               Player.setQueue(state.results.songs, i);
-              await Player.playSong(song);
+              await Player.playSong(song, i);
             });
             list.appendChild(el);
           });

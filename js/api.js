@@ -11,10 +11,8 @@ const API = (() => {
 
   const INSTANCES = [
     'https://spoton-trpn.vercel.app',
+    'https://jiosaavn-api-sage.vercel.app',
     localApiUrl,
-    'https://saavn.dev',
-    'https://jiosaavn-api-privatecvc2.vercel.app',
-    'https://saavn.me',
   ];
 
   let currentInstanceIndex = 0;
@@ -44,15 +42,19 @@ const API = (() => {
    * Core fetch wrapper with retry & instance fallback
    * Each request independently tries instances without mutating shared state
    */
-  async function request(endpoint, retries = 2) {
+  async function request(endpoint, retries = INSTANCES.length) {
     let lastError = null;
 
-    for (let attempt = 0; attempt <= retries; attempt++) {
+    for (let attempt = 0; attempt < retries; attempt++) {
       const instanceUrl = INSTANCES[(currentInstanceIndex + attempt) % INSTANCES.length];
       const url = `${instanceUrl}${endpoint}`;
 
       try {
-        const response = await fetch(url);
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 4500);
+        const response = await fetch(url, { signal: controller.signal });
+        clearTimeout(timeoutId);
+
         if (!response.ok) {
           throw new Error(`HTTP ${response.status}: ${response.statusText}`);
         }
@@ -67,7 +69,7 @@ const API = (() => {
       }
     }
 
-    throw lastError;
+    throw lastError || new Error('All API instances failed');
   }
 
   // ---- Search Endpoints ----
@@ -283,8 +285,22 @@ const API = (() => {
    */
   async function getSongDetails(ids) {
     const idStr = Array.isArray(ids) ? ids.join(',') : ids;
-    const data = await request(`/api/songs/${idStr}`);
-    return data?.data || [];
+    try {
+      const data = await request(`/api/songs/${idStr}`);
+      if (Array.isArray(data?.data)) {
+        return data.data;
+      }
+      if (data?.data && typeof data.data === 'object') {
+        if (Array.isArray(data.data.songs)) return data.data.songs;
+        if (Array.isArray(data.data.results)) return data.data.results;
+        if (data.data.id || data.data.name) return [data.data];
+      }
+      if (Array.isArray(data)) return data;
+      return [];
+    } catch (e) {
+      console.warn(`[API] getSongDetails failed for ${idStr}:`, e);
+      return [];
+    }
   }
 
   /**
@@ -434,17 +450,26 @@ const API = (() => {
    * @returns {string|null} Best quality URL
    */
   function getBestDownloadUrl(song) {
-    if (!song?.downloadUrl) return null;
+    if (!song) return null;
 
-    const urls = song.downloadUrl;
-    if (Array.isArray(urls)) {
-      // Pick highest quality (last in array is usually 320kbps)
+    const urls = song.downloadUrl || song.downloadUrls || song.download_url || song.media_url;
+    if (Array.isArray(urls) && urls.length > 0) {
+      // Look for 320kbps first, then 160kbps, then last element
+      const match320 = urls.find(u => (u?.quality === '320kbps' || u?.bitrate === '320') && (u?.url || u?.link));
+      if (match320) return match320.url || match320.link;
+      const match160 = urls.find(u => (u?.quality === '160kbps' || u?.bitrate === '160') && (u?.url || u?.link));
+      if (match160) return match160.url || match160.link;
+      
       const best = urls[urls.length - 1];
+      if (typeof best === 'string') return best;
       return best?.url || best?.link || null;
     }
 
-    // Sometimes it's a direct string
-    if (typeof urls === 'string') return urls;
+    // Direct strings
+    if (typeof urls === 'string' && urls.startsWith('http')) return urls;
+    if (typeof song.streamUrl === 'string' && song.streamUrl.startsWith('http')) return song.streamUrl;
+    if (typeof song.audioUrl === 'string' && song.audioUrl.startsWith('http')) return song.audioUrl;
+    if (typeof song.url === 'string' && (song.url.endsWith('.mp4') || song.url.endsWith('.mp3') || song.url.endsWith('.m4a'))) return song.url;
 
     return null;
   }
@@ -456,46 +481,13 @@ const API = (() => {
    * @returns {string|null}
    */
   function getDownloadUrl(song, quality = '320kbps') {
-    if (!song?.downloadUrl || !Array.isArray(song.downloadUrl)) {
+    if (!song) return null;
+    const urls = song.downloadUrl || song.downloadUrls || song.download_url;
+    if (!urls || !Array.isArray(urls)) {
       return getBestDownloadUrl(song);
     }
-    const match = song.downloadUrl.find(u => u.quality === quality);
+    const match = urls.find(u => u?.quality === quality);
     return match?.url || match?.link || getBestDownloadUrl(song);
-  }
-
-  /**
-   * Get the best quality image URL from song/album data
-   * @param {Object} item - Song/album object
-   * @returns {string} Image URL
-   */
-  function getImageUrl(item) {
-    if (!item?.image) return '';
-
-    const images = item.image;
-    if (Array.isArray(images)) {
-      const best = images[images.length - 1];
-      return best?.url || best?.link || '';
-    }
-    if (typeof images === 'string') return images;
-    return '';
-  }
-
-  /**
-   * Decode HTML entities in text strings returned by the API
-   * @param {string} str - String with entities like &quot;, &amp;, &#039;
-   * @returns {string} Clean decoded string
-   */
-  function decodeHtml(str) {
-    if (!str || typeof str !== 'string') return str || '';
-    return str
-      .replace(/&amp;/g, '&')
-      .replace(/&quot;/g, '"')
-      .replace(/&#039;/g, "'")
-      .replace(/&apos;/g, "'")
-      .replace(/&lt;/g, '<')
-      .replace(/&gt;/g, '>')
-      .replace(/&#(\d+);/g, (match, dec) => String.fromCharCode(dec))
-      .trim();
   }
 
   /**
@@ -511,7 +503,7 @@ const API = (() => {
     if (!images) return '';
 
     if (typeof images === 'string') return images;
-    if (Array.isArray(images)) {
+    if (Array.isArray(images) && images.length > 0) {
       const best = images[images.length - 1];
       if (typeof best === 'string') return best;
       return best?.url || best?.link || '';
@@ -520,6 +512,31 @@ const API = (() => {
       return images.url || images.link || '';
     }
     return '';
+  }
+
+  /**
+   * Decode HTML entities in text strings returned by the API
+   * @param {string} str - String with entities like &quot;, &amp;, &#039;
+   * @returns {string} Clean decoded string
+   */
+  function decodeHtml(str) {
+    if (!str) return '';
+    if (typeof str !== 'string') {
+      if (typeof str === 'object') {
+        str = str.name || str.title || str.artist || '';
+      } else {
+        str = String(str);
+      }
+    }
+    return str
+      .replace(/&amp;/g, '&')
+      .replace(/&quot;/g, '"')
+      .replace(/&#039;/g, "'")
+      .replace(/&apos;/g, "'")
+      .replace(/&lt;/g, '<')
+      .replace(/&gt;/g, '>')
+      .replace(/&#(\d+);/g, (match, dec) => String.fromCharCode(dec))
+      .trim();
   }
 
   /**
@@ -532,35 +549,55 @@ const API = (() => {
     
     function extractArtistName(a) {
       if (!a) return '';
-      if (typeof a === 'string') return a;
-      if (typeof a === 'object') return a.name || a.title || a.artist || '';
+      if (typeof a === 'string') return a !== '[object Object]' ? a : '';
+      if (typeof a === 'object') {
+        return a.name || a.title || a.artist || a.role || '';
+      }
       return String(a);
     }
 
     let result = '';
-    if (typeof raw.artists === 'string') {
+    if (typeof raw.artists === 'string' && raw.artists !== '[object Object]') {
       result = raw.artists;
     } else if (Array.isArray(raw.artists)) {
       result = raw.artists.map(extractArtistName).filter(Boolean).join(', ');
     } else if (raw.artists && typeof raw.artists === 'object') {
       if (Array.isArray(raw.artists.primary) && raw.artists.primary.length > 0) {
         result = raw.artists.primary.map(extractArtistName).filter(Boolean).join(', ');
+      } else if (raw.artists.primary && typeof raw.artists.primary === 'object') {
+        result = extractArtistName(raw.artists.primary);
       } else if (Array.isArray(raw.artists.all) && raw.artists.all.length > 0) {
         result = raw.artists.all.map(extractArtistName).filter(Boolean).join(', ');
+      } else if (raw.artists.name) {
+        result = raw.artists.name;
       }
-    } else if (typeof raw.primaryArtists === 'string') {
-      result = raw.primaryArtists;
-    } else if (Array.isArray(raw.primaryArtists)) {
-      result = raw.primaryArtists.map(extractArtistName).filter(Boolean).join(', ');
-    } else if (typeof raw.artist === 'string') {
-      result = raw.artist;
-    } else if (Array.isArray(raw.artist)) {
-      result = raw.artist.map(extractArtistName).filter(Boolean).join(', ');
-    } else if (raw.artist && typeof raw.artist === 'object') {
-      result = extractArtistName(raw.artist);
+    }
+    
+    if (!result || result.trim() === '' || result.includes('[object Object]')) {
+      if (typeof raw.primaryArtists === 'string' && raw.primaryArtists !== '[object Object]') {
+        result = raw.primaryArtists;
+      } else if (Array.isArray(raw.primaryArtists)) {
+        result = raw.primaryArtists.map(extractArtistName).filter(Boolean).join(', ');
+      } else if (typeof raw.featuredArtists === 'string' && raw.featuredArtists !== '[object Object]') {
+        result = raw.featuredArtists;
+      } else if (Array.isArray(raw.featuredArtists)) {
+        result = raw.featuredArtists.map(extractArtistName).filter(Boolean).join(', ');
+      } else if (typeof raw.artist === 'string' && raw.artist !== '[object Object]') {
+        result = raw.artist;
+      } else if (Array.isArray(raw.artist)) {
+        result = raw.artist.map(extractArtistName).filter(Boolean).join(', ');
+      } else if (raw.artist && typeof raw.artist === 'object') {
+        result = extractArtistName(raw.artist);
+      } else if (typeof raw.subtitle === 'string' && raw.subtitle !== '[object Object]') {
+        result = raw.subtitle;
+      } else if (raw.more_info) {
+        if (typeof raw.more_info.singers === 'string') result = raw.more_info.singers;
+        else if (typeof raw.more_info.music === 'string') result = raw.more_info.music;
+        else if (typeof raw.more_info.artistMap?.primary_artists === 'string') result = raw.more_info.artistMap.primary_artists;
+      }
     }
 
-    if (!result || result.trim() === '' || result === '[object Object]') {
+    if (!result || result.trim() === '' || result.includes('[object Object]')) {
       result = 'Unknown Artist';
     }
     
@@ -589,13 +626,17 @@ const API = (() => {
       img = '';
     }
 
-    let audioUrl = getBestDownloadUrl(raw) || raw.streamUrl || raw.audioUrl || raw.url || '';
+    let audioUrl = getBestDownloadUrl(raw) || raw.streamUrl || raw.audioUrl || '';
     if (typeof audioUrl === 'object' && audioUrl !== null) {
       audioUrl = audioUrl.url || audioUrl.link || '';
     }
-    if (typeof audioUrl !== 'string' || audioUrl === '[object Object]') {
+    if (typeof audioUrl !== 'string' || audioUrl.includes('[object Object]')) {
       audioUrl = '';
     }
+
+    const downloadUrlsList = Array.isArray(raw.downloadUrl) 
+      ? raw.downloadUrl 
+      : (Array.isArray(raw.downloadUrls) ? raw.downloadUrls : (audioUrl ? [{ quality: '320kbps', url: audioUrl }] : []));
 
     return {
       id: String(raw.id || `track_${Date.now()}_${Math.random().toString(36).substr(2, 4)}`),
@@ -604,15 +645,16 @@ const API = (() => {
       artists: artists,
       artist: artists,
       album: album,
-      duration: raw.duration || 0,
+      duration: Number(raw.duration) || 0,
       image: img,
       imageUrl: img,
       streamUrl: audioUrl,
       audioUrl: audioUrl,
-      downloadUrls: raw.downloadUrl || [],
+      downloadUrl: downloadUrlsList,
+      downloadUrls: downloadUrlsList,
       year: raw.year || '',
       language: raw.language || '',
-      hasLyrics: raw.hasLyrics || false,
+      hasLyrics: Boolean(raw.hasLyrics),
       raw: raw,
     };
   }

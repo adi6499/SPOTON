@@ -582,9 +582,8 @@ const App = (() => {
       }
     });
 
-    Player.on('error', () => {
-      UI.showToast('Playback error. Trying next track...', 'error');
-      setTimeout(() => Player.next(), 1500);
+    Player.on('error', (err) => {
+      console.warn('[App] Playback error encountered:', err);
     });
 
     Player.on('queueupdate', () => {
@@ -988,11 +987,28 @@ const App = (() => {
       btn.classList.toggle('active', isMatch);
     });
 
+    // Smoothly animate floating glide indicator on mobile bottom-nav
+    const bottomNav = document.querySelector('.bottom-nav');
+    const indicator = bottomNav?.querySelector('.bottom-nav-indicator');
+    if (bottomNav && indicator) {
+      const activeBtn = bottomNav.querySelector('.nav-item.active');
+      if (activeBtn) {
+        const navRect = bottomNav.getBoundingClientRect();
+        const itemRect = activeBtn.getBoundingClientRect();
+        if (itemRect.width > 0) {
+          indicator.style.width = `${itemRect.width}px`;
+          indicator.style.transform = `translate3d(${Math.max(0, itemRect.left - navRect.left)}px, 0, 0)`;
+        }
+      }
+    }
+
     if (pushHistory) {
       history.pushState({ type: 'page', pageId, route: canonicalHash }, '', '#' + canonicalHash);
     }
 
     // Load page-specific content
+    document.body.classList.toggle('on-samples-page', pageId === 'page-samples');
+
     if (pageId === 'page-samples') {
       if (typeof Samples !== 'undefined') {
         Samples.openSamplesPage();
@@ -1020,7 +1036,176 @@ const App = (() => {
     }
   }
 
+  // ---- Apple Music Style Touch & Glide Navigation Gesture ----
+
+  function initAppleGlideTabBar() {
+    const nav = document.querySelector('.bottom-nav');
+    if (!nav) return;
+
+    let indicator = nav.querySelector('.bottom-nav-indicator');
+    if (!indicator) {
+      indicator = document.createElement('div');
+      indicator.className = 'bottom-nav-indicator';
+      nav.insertBefore(indicator, nav.firstChild);
+    }
+
+    const items = Array.from(nav.querySelectorAll('.nav-item'));
+    if (items.length === 0) return;
+
+    let isGliding = false;
+    let currentHoverIndex = -1;
+    let startPointerX = 0;
+
+    function updateIndicatorPosition(index, animate = true) {
+      if (index < 0 || index >= items.length) return;
+      const navRect = nav.getBoundingClientRect();
+      const itemRect = items[index].getBoundingClientRect();
+      
+      const leftOffset = Math.max(0, itemRect.left - navRect.left);
+      const width = itemRect.width;
+
+      indicator.style.width = `${width}px`;
+      indicator.style.transform = `translate3d(${leftOffset}px, 0, 0) scale(1, 1)`;
+    }
+
+    function syncWithActiveNav() {
+      const idx = items.findIndex(item => item.classList.contains('active'));
+      if (idx !== -1) {
+        updateIndicatorPosition(idx, false);
+      }
+    }
+
+    setTimeout(syncWithActiveNav, 120);
+    window.addEventListener('resize', syncWithActiveNav);
+
+    function getClosestItemIndex(pointerX) {
+      let closestIdx = 0;
+      let minDistance = Infinity;
+
+      items.forEach((item, i) => {
+        const itemRect = item.getBoundingClientRect();
+        const centerX = itemRect.left + itemRect.width / 2;
+        const dist = Math.abs(pointerX - centerX);
+
+        if (dist < minDistance) {
+          minDistance = dist;
+          closestIdx = i;
+        }
+      });
+
+      items.forEach((item, i) => {
+        item.classList.toggle('glide-hover', i === closestIdx);
+      });
+
+      return closestIdx;
+    }
+
+    function resetItemStates() {
+      items.forEach(item => {
+        item.classList.remove('glide-hover');
+      });
+    }
+
+    function onPointerDown(e) {
+      if (e.pointerType === 'mouse' && e.button !== 0) return;
+      
+      isGliding = true;
+      startPointerX = e.clientX;
+      nav.classList.add('is-gliding');
+
+      try {
+        nav.setPointerCapture(e.pointerId);
+      } catch (_) {}
+
+      const closestIdx = getClosestItemIndex(e.clientX);
+      if (closestIdx !== -1) {
+        currentHoverIndex = closestIdx;
+        const navRect = nav.getBoundingClientRect();
+        const itemRect = items[closestIdx].getBoundingClientRect();
+        
+        // Enlarged glass glider size when touching & gliding
+        const gliderWidth = itemRect.width + 16;
+        const leftOffset = Math.max(2, Math.min(navRect.width - gliderWidth - 2, e.clientX - navRect.left - gliderWidth / 2));
+        
+        indicator.style.width = `${gliderWidth}px`;
+        indicator.style.transform = `translate3d(${leftOffset}px, 0, 0) scale(1.06, 1.04)`;
+
+        if (typeof Haptics !== 'undefined' && Haptics.selection) {
+          Haptics.selection();
+        }
+      }
+    }
+
+    function onPointerMove(e) {
+      if (!isGliding) return;
+
+      const closestIdx = getClosestItemIndex(e.clientX);
+      if (closestIdx !== -1) {
+        const navRect = nav.getBoundingClientRect();
+        const itemRect = items[closestIdx].getBoundingClientRect();
+        
+        // Enlarged glass glider that follows finger smoothly with expanded width & aura
+        const gliderWidth = itemRect.width + 20;
+        const leftOffset = Math.max(2, Math.min(navRect.width - gliderWidth - 2, e.clientX - navRect.left - gliderWidth / 2));
+        
+        indicator.style.width = `${gliderWidth}px`;
+        indicator.style.transform = `translate3d(${leftOffset}px, 0, 0) scale(1.08, 1.05)`;
+
+        if (closestIdx !== currentHoverIndex) {
+          currentHoverIndex = closestIdx;
+          if (typeof Haptics !== 'undefined' && Haptics.selection) {
+            Haptics.selection();
+          }
+        }
+      }
+    }
+
+    function onPointerUp(e) {
+      if (!isGliding) return;
+      isGliding = false;
+      nav.classList.remove('is-gliding');
+
+      try {
+        nav.releasePointerCapture(e.pointerId);
+      } catch (_) {}
+
+      resetItemStates();
+
+      const closestIdx = currentHoverIndex !== -1 ? currentHoverIndex : items.findIndex(item => item.classList.contains('active'));
+      if (closestIdx !== -1 && closestIdx < items.length) {
+        updateIndicatorPosition(closestIdx, true);
+        const selectedItem = items[closestIdx];
+        if (selectedItem) {
+          const route = selectedItem.dataset.route;
+          const page = selectedItem.dataset.page;
+          const targetRoute = route || (page ? page.replace('page-', '') : 'home');
+
+          if (typeof Haptics !== 'undefined' && Haptics.light) {
+            Haptics.light();
+          }
+
+          if (targetRoute) {
+            navigateToPage(targetRoute, true);
+          }
+        }
+      } else {
+        syncWithActiveNav();
+      }
+      currentHoverIndex = -1;
+    }
+
+    nav.addEventListener('pointerdown', onPointerDown);
+    nav.addEventListener('pointermove', onPointerMove);
+    nav.addEventListener('pointerup', onPointerUp);
+    nav.addEventListener('pointercancel', onPointerUp);
+
+    // Sync indicator position on state changes
+    window.addEventListener('popstate', () => setTimeout(syncWithActiveNav, 50));
+  }
+
   function setupNavigationEvents() {
+    initAppleGlideTabBar();
+
     document.querySelectorAll('.nav-item').forEach(item => {
       item.addEventListener('click', (e) => {
         const route = item.dataset.route;

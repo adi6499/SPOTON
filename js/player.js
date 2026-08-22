@@ -42,6 +42,17 @@ const Player = (() => {
   let sleepTimerMinutes = 0;
   let targetVolume = 0.8;
   let gaplessPrefetchedUrl = null;
+  let _lastErrorToastTime = 0;
+
+  function showPlayerErrorToast(msg) {
+    const now = Date.now();
+    if (now - _lastErrorToastTime > 2000) {
+      _lastErrorToastTime = now;
+      if (typeof UI !== 'undefined' && UI.showToast) {
+        UI.showToast(msg, 'warning');
+      }
+    }
+  }
 
   // Web Audio API Context (Initialized on demand to protect background audio playback)
   let audioCtx = null;
@@ -257,9 +268,7 @@ const Player = (() => {
 
       const currentTrack = (currentIndex >= 0 && queue[currentIndex]) ? queue[currentIndex] : getCurrentTrack();
       const trackTitle = currentTrack?.name || 'Current track';
-      if (typeof UI !== 'undefined' && UI.showToast) {
-        UI.showToast(`Track "${trackTitle}" unavailable. Auto-skipping...`, 'warning');
-      }
+      showPlayerErrorToast(`Track "${trackTitle}" unavailable. Auto-skipping...`);
 
       if (queue.length > 1) {
         setTimeout(() => {
@@ -354,20 +363,30 @@ const Player = (() => {
 
   // ---- Playback Controls ----
 
-  async function playSong(song) {
+  async function playAtIndex(index) {
+    if (index < 0 || index >= queue.length) return;
+    currentIndex = index;
+    await loadAndPlay(queue[currentIndex]);
+    onQueueUpdate?.(queue, currentIndex);
+  }
+
+  async function playSong(song, explicitIndex = null) {
     if (!song) return;
     const normalized = (window.API && API.normalizeSong) ? API.normalizeSong(song) : { ...song };
 
-    // If song is not in queue, add and play
-    const existingIndex = queue.findIndex(q => q.id === normalized.id);
-    if (existingIndex === -1) {
-      queue.push(normalized);
-      currentIndex = queue.length - 1;
+    if (explicitIndex !== null && explicitIndex >= 0 && explicitIndex < queue.length) {
+      currentIndex = explicitIndex;
     } else {
-      currentIndex = existingIndex;
+      const existingIndex = queue.findIndex(q => q.id === normalized.id);
+      if (existingIndex === -1) {
+        queue.push(normalized);
+        currentIndex = queue.length - 1;
+      } else {
+        currentIndex = existingIndex;
+      }
     }
 
-    await loadAndPlay(normalized);
+    await loadAndPlay(queue[currentIndex] || normalized);
     onQueueUpdate?.(queue, currentIndex);
   }
 
@@ -406,7 +425,7 @@ const Player = (() => {
       onTrackChange?.(trackToPlay, currentIndex);
 
       let qual = getAdaptiveQuality(Storage.getSettings().audioQuality || 'auto');
-      let streamUrl = null;
+      let streamUrl = song.audioUrl || song.streamUrl || null;
 
       // 0. Check offline IndexedDB cache first
       if (typeof SmartDownloads !== 'undefined' && SmartDownloads.getOfflineAudioUrl) {
@@ -418,9 +437,6 @@ const Player = (() => {
           }
         } catch (_) {}
       }
-
-      // Check basic direct stream first
-      streamUrl = song.audioUrl || song.streamUrl || trackToPlay.audioUrl || trackToPlay.streamUrl || null;
 
       // Extract available stream URLs in order of preference
       function extractCandidateStreams(songObj) {
@@ -442,10 +458,15 @@ const Player = (() => {
         return urls.filter(u => typeof u === 'string' && u.startsWith('http'));
       }
 
-      let candidateUrls = extractCandidateStreams(song);
+      let candidateUrls = [];
+      if (streamUrl) {
+        candidateUrls.push(streamUrl);
+      } else {
+        candidateUrls = extractCandidateStreams(song);
+      }
 
       // If no candidate stream URLs, fetch full song details
-      if (candidateUrls.length === 0) {
+      if (candidateUrls.length === 0 && song.id) {
         try {
           const details = await API.getSongDetails(song.id);
           if (details && details.length > 0) {
@@ -480,12 +501,10 @@ const Player = (() => {
 
       if (candidateUrls.length === 0) {
         console.warn('[Player] No stream URL available for:', song.name);
-        if (typeof UI !== 'undefined' && UI.showToast) {
-          UI.showToast(`Track "${song.name}" unavailable. Auto-skipping...`, 'warning');
-        }
-        onError?.({ message: 'No stream URL available' });
+        showPlayerErrorToast(`Track "${song.name}" unavailable. Auto-skipping...`);
+        onError?.({ message: 'No stream URL available', song });
         if (queue.length > 1) {
-          setTimeout(() => next(false), 400);
+          setTimeout(() => next(false), 500);
         }
         return;
       }
@@ -621,12 +640,10 @@ const Player = (() => {
         return;
       }
       console.error('[Player] Play error:', error);
-      if (typeof UI !== 'undefined' && UI.showToast) {
-        UI.showToast(`⚠️ Cannot play "${trackToPlay?.name || 'track'}". Skipping...`, 'warning');
-      }
+      showPlayerErrorToast(`⚠️ Cannot play "${trackToPlay?.name || 'track'}". Skipping...`);
       onError?.(error);
       if (queue.length > 1) {
-        setTimeout(() => next(false), 400);
+        setTimeout(() => next(false), 500);
       }
     }
     
@@ -1419,6 +1436,7 @@ const Player = (() => {
 
   return {
     playSong,
+    playAtIndex,
     play,
     pause,
     togglePlayPause,

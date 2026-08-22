@@ -95,7 +95,7 @@ const Haptics = (function () {
     let didTrigger = false;
 
     // 1. Android & Standards-Compliant Hardware Vibration
-    if (hasUserInteracted && typeof navigator !== 'undefined' && typeof navigator.vibrate === 'function') {
+    if (typeof navigator !== 'undefined' && typeof navigator.vibrate === 'function') {
       try {
         navigator.vibrate(pattern);
         didTrigger = true;
@@ -166,7 +166,7 @@ const Haptics = (function () {
   }
 
   function updatePlayerHapticsBadge() {
-    if (typeof document === 'undefined') return;
+    if (typeof document === 'undefined' || typeof document.getElementById !== 'function') return;
     const btn = document.getElementById('btn-player-haptics');
     const text = document.getElementById('player-haptics-text');
     const enabled = isEnabled();

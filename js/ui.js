@@ -5,9 +5,22 @@
 const UI = (() => {
   // ---- Toast Notification System ----
 
-  let toastTimeout = null;
+  let activeToast = null;
+  let toastTimer = null;
+  let lastToastMsg = '';
+  let lastToastTime = 0;
 
   function showToast(message, type = 'info', options = {}) {
+    if (!message) return;
+    const now = Date.now();
+    
+    // Deduplicate identical message within 2 seconds
+    if (message === lastToastMsg && (now - lastToastTime < 2000)) {
+      return;
+    }
+    lastToastMsg = message;
+    lastToastTime = now;
+
     let container = document.getElementById('toast-container');
     if (!container) {
       container = document.createElement('div');
@@ -20,28 +33,42 @@ const UI = (() => {
       else if (type === 'success') Haptics.success();
     }
 
+    // Dismiss existing toast immediately to avoid clutter
+    if (activeToast) {
+      clearTimeout(toastTimer);
+      const old = activeToast;
+      old.classList.remove('show');
+      setTimeout(() => old.remove(), 220);
+      activeToast = null;
+    }
+
     const toast = document.createElement('div');
     toast.className = `toast toast-${type}`;
+    const icon = type === 'success' ? '✓' : type === 'error' ? '✕' : type === 'warning' ? '⚠' : 'ℹ';
     toast.innerHTML = `
-      <span class="toast-icon">${type === 'success' ? '✓' : type === 'error' ? '✕' : 'ℹ'}</span>
+      <span class="toast-icon">${icon}</span>
       <span class="toast-msg">${message}</span>
     `;
     
-    if (options.onClick) {
-      toast.style.cursor = 'pointer';
-      toast.addEventListener('click', () => {
-        options.onClick();
-        toast.classList.remove('show');
-      });
-    }
+    toast.style.cursor = 'pointer';
+    toast.addEventListener('click', () => {
+      if (options.onClick) options.onClick();
+      toast.classList.remove('show');
+      setTimeout(() => toast.remove(), 220);
+      if (activeToast === toast) activeToast = null;
+    });
 
     container.appendChild(toast);
+    activeToast = toast;
     requestAnimationFrame(() => toast.classList.add('show'));
 
-    const duration = options.duration || 3000;
-    setTimeout(() => {
+    const duration = options.duration || 2600;
+    toastTimer = setTimeout(() => {
       toast.classList.remove('show');
-      toast.addEventListener('transitionend', () => toast.remove());
+      setTimeout(() => {
+        toast.remove();
+        if (activeToast === toast) activeToast = null;
+      }, 220);
     }, duration);
   }
 
@@ -104,6 +131,14 @@ const UI = (() => {
 
   function truncate(text, maxLen = 30) {
     if (!text) return '';
+    if (typeof text !== 'string') {
+      if (typeof text === 'object') {
+        text = text.name || text.title || text.artist || (Array.isArray(text) ? text.map(t => t?.name || t).join(', ') : '') || '';
+      } else {
+        text = String(text);
+      }
+    }
+    if (text.includes('[object Object]')) return 'Unknown Artist';
     return text.length > maxLen ? text.substring(0, maxLen) + '…' : text;
   }
 
@@ -572,6 +607,8 @@ const UI = (() => {
       return;
     }
 
+    container.style.paddingBottom = 'calc(140px + env(safe-area-inset-bottom, 20px))';
+
     const header = document.createElement('div');
     header.className = 'section-header';
     header.innerHTML = `
@@ -593,16 +630,59 @@ const UI = (() => {
         isActive: i === currentIdx,
         showRemove: true,
       });
-      el.style.touchAction = 'none'; // Prevent scrolling during drag
+      el.style.cursor = 'pointer';
       
-      // Inject Drag Handle
+      // Inject Drag Handle with touchAction: none only on handle
       const dragHandle = document.createElement('div');
       dragHandle.className = 'drag-handle';
       dragHandle.innerHTML = '<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2"><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="18" x2="21" y2="18"/></svg>';
       dragHandle.style.cursor = 'grab';
       dragHandle.style.padding = '10px';
       dragHandle.style.opacity = '0.5';
+      dragHandle.style.touchAction = 'none';
       el.insertBefore(dragHandle, el.firstChild);
+
+      // Direct item click -> plays exactly this queue track index
+      el.addEventListener('click', async (e) => {
+        if (e.target.closest('.btn-icon') || e.target.closest('.drag-handle')) return;
+        await Player.playAtIndex(i);
+        renderQueue(container);
+      });
+
+      // Favorite toggle button
+      const favBtn = el.querySelector('[data-action="fav"]');
+      if (favBtn) {
+        favBtn.addEventListener('click', (e) => {
+          e.stopPropagation();
+          const isFav = Storage.toggleFavorite(song);
+          favBtn.classList.toggle('active', isFav);
+          const svg = favBtn.querySelector('svg');
+          if (svg) svg.setAttribute('fill', isFav ? 'currentColor' : 'none');
+          showToast(isFav ? 'Added to favorites ❤️' : 'Removed from favorites', isFav ? 'success' : 'info');
+        });
+      }
+
+      // Download button
+      const dlBtn = el.querySelector('[data-action="download"]');
+      if (dlBtn) {
+        dlBtn.addEventListener('click', (e) => {
+          e.stopPropagation();
+          if (typeof Download !== 'undefined' && Download.downloadSong) {
+            Download.downloadSong(song);
+          }
+        });
+      }
+
+      // Remove from queue button
+      const rmBtn = el.querySelector('[data-action="remove-queue"]');
+      if (rmBtn) {
+        rmBtn.addEventListener('click', (e) => {
+          e.stopPropagation();
+          Player.removeFromQueue(i);
+          renderQueue(container);
+          showToast('Removed from queue', 'info');
+        });
+      }
 
       list.appendChild(el);
     });

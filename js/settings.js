@@ -243,7 +243,17 @@ const Settings = (() => {
 
   function checkAndShowOnboarding() {
     const profile = Storage.getUserProfile();
+    // Only show if never onboarded AND no existing user data is found
     if (!profile.hasOnboarded) {
+      const hasExistingData = localStorage.getItem('mf_favorites') || 
+                             localStorage.getItem('mf_playlists') || 
+                             localStorage.getItem('mf_recent') || 
+                             (profile.username && profile.username !== 'Adesh');
+      if (hasExistingData) {
+        Storage.saveUserProfile({ hasOnboarded: true });
+        return;
+      }
+
       const modal = document.getElementById('welcome-onboarding-modal');
       if (!modal) return;
 

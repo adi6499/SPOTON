@@ -25,13 +25,17 @@ function test(name, fn) {
 let lastVibratePattern = null;
 let vibrateCallCount = 0;
 
-global.navigator = {
-  vibrate: (pattern) => {
-    lastVibratePattern = pattern;
-    vibrateCallCount++;
-    return true;
-  }
-};
+Object.defineProperty(globalThis, 'navigator', {
+  value: {
+    vibrate: (pattern) => {
+      lastVibratePattern = pattern;
+      vibrateCallCount++;
+      return true;
+    }
+  },
+  configurable: true,
+  writable: true
+});
 
 global.document = {
   addEventListener: () => {},
