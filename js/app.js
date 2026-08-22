@@ -162,6 +162,7 @@ const App = (() => {
           navigateToPage('page-queue');
         });
       });
+      applyPerformanceMode();
       startAudioReactivePulse();
       initVoiceSearch();
       bindMiniPlayerSwipe();
@@ -188,6 +189,27 @@ const App = (() => {
     }
   }
 
+  // ---- Adaptive Performance Mode (low-end device support) ----
+
+  function detectLowEndDevice() {
+    try {
+      const cores = navigator.hardwareConcurrency || 8;
+      const mem = navigator.deviceMemory || 8; // GB, Chrome/Android only
+      const saveData = navigator.connection && navigator.connection.saveData;
+      const reducedMotion = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+      return cores <= 4 || mem <= 3 || !!saveData || reducedMotion;
+    } catch (_) {
+      return false;
+    }
+  }
+
+  function applyPerformanceMode() {
+    const mode = Storage.getSettings().perfMode || 'auto';
+    const lite = mode === 'lite' || (mode === 'auto' && detectLowEndDevice());
+    document.body.classList.toggle('perf-lite', lite);
+    return lite;
+  }
+
   // ---- Real-Time Audio-Reactive Beat & Micro-Beat Scaling ----
   const audioFreqData = new Uint8Array(64);
   let audioPulseFrame = null;
@@ -198,6 +220,12 @@ const App = (() => {
     if (audioPulseFrame) return;
 
     function renderPulse(now) {
+      // Lite mode: skip all per-frame artwork physics, idle-poll cheaply so
+      // the loop resumes instantly if the user switches back to High Fidelity
+      if (document.body.classList.contains('perf-lite')) {
+        setTimeout(() => { audioPulseFrame = requestAnimationFrame(renderPulse); }, 900);
+        return;
+      }
       const pc = document.getElementById('player-container');
       const isPlayerExpanded = pc && pc.classList.contains('player-expanded');
       const isPlaying = document.body.classList.contains('is-playing') || (typeof Player !== 'undefined' && Player.getIsPlaying && Player.getIsPlaying());
@@ -2239,6 +2267,9 @@ const App = (() => {
     const toggleGlass = document.getElementById('toggle-glass');
     if (toggleGlass) toggleGlass.checked = settings.glassEffect === true;
 
+    const perfModeSelect = document.getElementById('select-perf-mode');
+    if (perfModeSelect) perfModeSelect.value = settings.perfMode || 'auto';
+
     const langCheckboxes = document.querySelectorAll('#settings-languages input[type="checkbox"]');
     const prefs = settings.languages || ['hindi', 'english', 'punjabi'];
     langCheckboxes.forEach(cb => {
@@ -2412,6 +2443,12 @@ const App = (() => {
       UI.showToast(`Audio visualizer ${e.target.checked ? 'enabled' : 'disabled'}`);
     });
 
+    document.getElementById('select-perf-mode')?.addEventListener('change', (e) => {
+      Storage.updateSettings({ perfMode: e.target.value });
+      const lite = applyPerformanceMode();
+      UI.showToast(lite ? '\u26A1 Lite mode on \u2014 max smoothness' : '\u2728 High fidelity effects on');
+    });
+
     document.getElementById('toggle-glass')?.addEventListener('change', (e) => {
       Storage.updateSettings({ glassEffect: e.target.checked });
       applyTheme();
@@ -2495,7 +2532,7 @@ const App = (() => {
     const settings = (typeof Storage !== 'undefined' && Storage.getSettings) ? Storage.getSettings() : {};
     const enabled = settings.visualizer !== false; // default ON
     const playing = (typeof Player !== 'undefined' && Player.getIsPlaying) ? Player.getIsPlaying() : false;
-    const shouldRun = expanded && enabled && playing;
+    const shouldRun = expanded && enabled && playing && !document.body.classList.contains('perf-lite');
 
     if (shouldRun && !visualizerRAF) {
       canvas.style.display = 'block';

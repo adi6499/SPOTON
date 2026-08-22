@@ -8684,3 +8684,92 @@ body.theme-light.clear-glass .profile-stat-box {
 #queue-container .drag-handle { color: var(--text-tertiary); opacity: 0.7; }
 #queue-container .song-list-item { margin-bottom: 6px; }
 #queue-container .song-list-item .btn-remove { opacity: 0.75; }
+
+/* ==========================================================
+   PERF-LITE MODE — budget phones get the same app, minus the
+   GPU-melting effects. Auto-detected (cores/RAM/save-data) or
+   forced from Settings > Appearance > Performance.
+   ========================================================== */
+
+/* 1. Backdrop blur is the single heaviest effect on weak GPUs:
+      replace every frosted surface with a solid elevated tone. */
+body.perf-lite .bottom-nav,
+body.perf-lite .mini-player,
+body.perf-lite #player-container.player-minimized,
+body.perf-lite .header,
+body.perf-lite .sidebar,
+body.perf-lite .modal,
+body.perf-lite .modal-overlay,
+body.perf-lite .context-menu,
+body.perf-lite .search-dropdown,
+body.perf-lite .toast,
+body.perf-lite .settings-nav-tabs,
+body.perf-lite .up-next-strip,
+body.perf-lite .full-player__controls-secondary,
+body.perf-lite .player-media-toggle-pill,
+body.perf-lite .welcome-onboarding-card,
+body.perf-lite .tabbed-settings-modal,
+body.perf-lite .full-player__codec,
+body.perf-lite .player-haptic-badge {
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+}
+body.perf-lite .bottom-nav,
+body.perf-lite .mini-player,
+body.perf-lite .header,
+body.perf-lite .context-menu,
+body.perf-lite .search-dropdown {
+  background: var(--bg-elevated) !important;
+}
+body.perf-lite .modal-overlay {
+  background: rgba(0, 0, 0, 0.8) !important;
+}
+
+/* 2. Ambient effects: pure decoration, pure cost */
+body.perf-lite .aurora-bg,
+body.perf-lite .ambient-mesh-orb,
+body.perf-lite .artwork-glow-aura,
+body.perf-lite #visualizer-canvas {
+  display: none !important;
+}
+
+/* 3. Entrance stagger + hover lifts off; press feedback stays (cheap) */
+body.perf-lite .shelf-container .song-card,
+body.perf-lite .song-grid .song-card,
+body.perf-lite .quick-picks-grid .quick-pick-item,
+body.perf-lite .song-list .song-list-item {
+  animation: none !important;
+}
+body.perf-lite .song-card:hover,
+body.perf-lite .quick-pick-item:hover,
+body.perf-lite .podcast-show-card:hover,
+body.perf-lite .library-card:hover {
+  transform: none !important;
+}
+
+/* 4. Big blurry glows/shadows repaint whole layers - flatten them */
+body.perf-lite .song-card__img,
+body.perf-lite .quick-pick-item__img,
+body.perf-lite .full-player__artwork img,
+body.perf-lite .mini-player {
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3) !important;
+}
+body.perf-lite .is-playing .full-player__artwork img {
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.4) !important;
+}
+body.perf-lite .full-player__controls .btn-play,
+body.perf-lite .full-player__controls .btn-massive {
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.4) !important;
+}
+
+/* 5. Shorter transitions = snappier feel on slow compositors */
+body.perf-lite * {
+  transition-duration: 0.12s !important;
+  animation-duration: 0.16s !important;
+}
+
+/* 6. Aura breathing / gradient animations off */
+body.perf-lite .is-playing .artwork-glow-aura,
+body.perf-lite #mini-progress-fill {
+  animation: none !important;
+}
