@@ -197,10 +197,15 @@ const App = (() => {
   function detectLowEndDevice() {
     try {
       const cores = navigator.hardwareConcurrency || 8;
-      const mem = navigator.deviceMemory || 8; // GB, Chrome/Android only
-      const saveData = navigator.connection && navigator.connection.saveData;
-      const reducedMotion = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-      return cores <= 4 || mem <= 3 || !!saveData || reducedMotion;
+      // deviceMemory is Chrome/Android only - Safari never reports it, so an
+      // unknown value must NOT be treated as low memory.
+      const mem = typeof navigator.deviceMemory === 'number' ? navigator.deviceMemory : null;
+      const saveData = !!(navigator.connection && navigator.connection.saveData);
+      // iPhones report just 4-6 cores yet are fast; a core count alone must not
+      // trigger Lite mode (that made every iPhone run the reduced UI).
+      // prefers-reduced-motion is handled by its own media query, so it no
+      // longer forces Lite either.
+      return cores <= 2 || (mem !== null && mem <= 3) || saveData;
     } catch (_) {
       return false;
     }

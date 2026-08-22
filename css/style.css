@@ -8764,8 +8764,11 @@ body.perf-lite .full-player__controls .btn-massive {
 
 /* 5. Shorter transitions = snappier feel on slow compositors */
 body.perf-lite * {
+  /* Only transitions are shortened. A blanket animation-duration override
+     also hit looping animations (vinyl spin, equalizer bars, pulses),
+     making them spin/blink many times a second. Decorative animations are
+     switched off explicitly above instead. */
   transition-duration: 0.12s !important;
-  animation-duration: 0.16s !important;
 }
 
 /* 6. Aura breathing / gradient animations off */
