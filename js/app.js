@@ -3071,6 +3071,13 @@ const App = (() => {
     const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
     if (!SR) return; // unsupported browser: keep hidden
     micBtn.style.display = 'flex';
+    micBtn.closest('.search-container')?.classList.add('has-mic');
+    // With mic + clear occupying the right edge, the long placeholder gets
+    // clipped mid-word on phones - use a shorter one there.
+    const searchInputEl = document.getElementById('search-input');
+    if (searchInputEl && window.matchMedia('(max-width: 767.98px)').matches) {
+      searchInputEl.placeholder = 'Songs, artists, albums…';
+    }
     let recognizing = false;
     let rec = null;
     micBtn.addEventListener('click', () => {

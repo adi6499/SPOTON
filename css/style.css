@@ -9074,3 +9074,48 @@ body.perf-lite #waveform-canvas { display: none !important; }
 #full-player-img, #mini-player-img, .artwork-glow-aura {
   will-change: transform;
 }
+
+/* ---- Search bar: reserve room for the mic + clear buttons ---- */
+.search-container.has-mic .search-bar {
+  padding-right: 80px !important;
+  text-overflow: ellipsis;
+}
+.search-container.has-mic .search-mic { right: 40px; }
+.search-container.has-mic .search-clear { right: 10px; }
+
+/* ---- Bottom nav: fit 6 labels, inset the active pill ---- */
+@media (max-width: 767.98px) {
+  .bottom-nav {
+    padding-left: 6px !important;
+    padding-right: 6px !important;
+  }
+  .bottom-nav .nav-item {
+    padding-left: 1px;
+    padding-right: 1px;
+    min-width: 0;
+    overflow: hidden;
+  }
+  .bottom-nav .nav-item span:last-child {
+    max-width: 100%;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    letter-spacing: 0;
+  }
+  /* The nav was a 9999px pill (30px corner) while the active indicator sits
+     flush at its edge - the corner curve visually cut the first/last tab.
+     A softer nav radius nests the indicator cleanly at any position. */
+  .bottom-nav {
+    border-radius: 26px !important;
+  }
+  .bottom-nav-indicator {
+    top: 5px !important;
+    bottom: 5px !important;
+    border-radius: 18px !important;
+  }
+}
+/* Narrow phones: icons-only keeps every tab tappable and clean */
+@media (max-width: 359.98px) {
+  .bottom-nav .nav-item span:last-child { display: none; }
+  .bottom-nav .nav-item .material-symbols-outlined { font-size: 25px; }
+}
