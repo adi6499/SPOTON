@@ -8848,3 +8848,50 @@ body.perf-lite #mini-progress-fill {
   /* Section headers: consistent rhythm on the feed */
   .shelf-header .shelf-title { font-size: 19px; letter-spacing: -0.2px; }
 }
+
+/* ==========================================================
+   GLASS MODE READABILITY FIX (from iOS screenshot: quality
+   modal was see-through, player bled through the rows).
+   Overlays that float over bright content need opacity that
+   carries the design even when iOS drops backdrop-filter
+   inside scrollable sheets. Later in cascade = wins.
+   ========================================================== */
+body.clear-glass .modal,
+body.clear-glass .modal-content,
+body.clear-glass .tabbed-settings-modal,
+body.clear-glass .welcome-onboarding-card,
+body.clear-glass .audio-quality-modal-card,
+body.clear-glass .context-menu,
+body.clear-glass .search-dropdown,
+body.clear-glass .toast {
+  background: rgba(16, 14, 28, 0.9) !important;
+  backdrop-filter: blur(30px) saturate(150%) !important;
+  -webkit-backdrop-filter: blur(30px) saturate(150%) !important;
+  border-color: rgba(255, 255, 255, 0.13) !important;
+}
+
+body.theme-light.clear-glass .modal,
+body.theme-light.clear-glass .modal-content,
+body.theme-light.clear-glass .tabbed-settings-modal,
+body.theme-light.clear-glass .welcome-onboarding-card,
+body.theme-light.clear-glass .audio-quality-modal-card,
+body.theme-light.clear-glass .context-menu,
+body.theme-light.clear-glass .search-dropdown,
+body.theme-light.clear-glass .toast {
+  background: rgba(255, 255, 255, 0.92) !important;
+  border-color: rgba(0, 0, 0, 0.1) !important;
+}
+
+/* Quality rows: keep their own subtle cards readable inside the sheet */
+body.clear-glass .quality-option-item {
+  background: rgba(255, 255, 255, 0.05) !important;
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+}
+
+/* Dim + blur the page behind any overlay a touch harder in glass mode */
+body.clear-glass .modal-overlay {
+  background: rgba(0, 0, 0, 0.6) !important;
+  backdrop-filter: blur(10px) !important;
+  -webkit-backdrop-filter: blur(10px) !important;
+}
