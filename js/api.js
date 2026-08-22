@@ -794,13 +794,36 @@ const API = (() => {
       const home = await getHomeRecommendations();
       const pool = [...(home.trending || []), ...(home.global || []), ...(home.newReleases || [])];
       if (pool.length > 0) {
-        return pool.slice(0, limit * 2).map(normalizeSong).filter(Boolean).slice(0, limit);
+        const normalized = pool.map(normalizeSong).filter(Boolean);
+        return filterByLanguagePrefs(normalized, { minKeep: limit }).slice(0, limit);
       }
     } catch (_) {}
     try {
       const res = await searchSongs('top hits', limit);
       return (res || []).map(normalizeSong).filter(Boolean);
     } catch (_) { return []; }
+  }
+
+  /**
+   * Strictly honor the user's chosen languages. Songs with a KNOWN
+   * non-matching language are dropped; unknown-language songs only backfill
+   * when there aren't enough matches (so pools never come back empty).
+   */
+  function filterByLanguagePrefs(songs, opts = {}) {
+    const prefs = ((typeof Storage !== 'undefined' && Storage.getSettings().languages) || []).map(l => String(l).toLowerCase());
+    if (!prefs.length) return songs || [];
+    const { minKeep = 10 } = opts;
+    const match = [];
+    const unknown = [];
+    (songs || []).forEach(s => {
+      if (!s) return;
+      const lang = String(s.language || '').toLowerCase();
+      if (prefs.includes(lang)) match.push(s);
+      else if (!lang || lang === 'unknown') unknown.push(s);
+      // known non-matching language: dropped
+    });
+    if (match.length >= minKeep) return match;
+    return [...match, ...unknown.slice(0, Math.max(0, minKeep - match.length))];
   }
 
   /**
@@ -886,6 +909,7 @@ const API = (() => {
     getTitleKey,
     dedupeVariants,
     getTrendingPool,
+    filterByLanguagePrefs,
     normalizeSong,
     normalizeAlbum,
     normalizeArtist,

@@ -287,6 +287,35 @@ const Settings = (() => {
         });
       }
 
+      // Language chips: the single most important personalization signal
+      const LANG_OPTIONS = ['hindi', 'english', 'punjabi', 'tamil', 'telugu', 'marathi', 'gujarati', 'bengali', 'kannada', 'bhojpuri', 'malayalam', 'urdu'];
+      const langChipsWrap = document.getElementById('onboarding-lang-chips');
+      let selectedLangs = new Set((Storage.getSettings().languages || ['hindi', 'english']).map(l => l.toLowerCase()));
+      if (langChipsWrap) {
+        langChipsWrap.innerHTML = LANG_OPTIONS.map(l => `
+          <button type="button" class="lang-chip ${selectedLangs.has(l) ? 'active' : ''}" data-lang="${l}">
+            ${l.charAt(0).toUpperCase() + l.slice(1)}
+          </button>
+        `).join('');
+        langChipsWrap.querySelectorAll('.lang-chip').forEach(chip => {
+          chip.addEventListener('click', () => {
+            const l = chip.dataset.lang;
+            if (selectedLangs.has(l)) {
+              if (selectedLangs.size <= 1) {
+                if (typeof UI !== 'undefined') UI.showToast('Keep at least one language selected', 'info');
+                return;
+              }
+              selectedLangs.delete(l);
+              chip.classList.remove('active');
+            } else {
+              selectedLangs.add(l);
+              chip.classList.add('active');
+            }
+            if (typeof Haptics !== 'undefined' && Haptics.selection) Haptics.selection();
+          });
+        });
+      }
+
       modal.style.display = 'flex';
       if (nameInput) setTimeout(() => nameInput.focus(), 300);
 
@@ -299,6 +328,13 @@ const Settings = (() => {
           avatar: selectedAvatar,
           hasOnboarded: true
         });
+
+        // Persist language choice and rebuild recommendations around it
+        if (selectedLangs && selectedLangs.size > 0) {
+          Storage.updateSettings({ languages: [...selectedLangs] });
+          try { localStorage.removeItem('mf_home_cache'); } catch (_) {}
+          if (window.App && App.loadHomePage) App.loadHomePage(true);
+        }
 
         modal.style.animation = 'fadeOut 0.3s ease forwards';
         setTimeout(() => {

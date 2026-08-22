@@ -2362,6 +2362,8 @@ const App = (() => {
           .filter(c => c.checked)
           .map(c => c.value);
         Storage.updateSettings({ languages: selected });
+        try { localStorage.removeItem('mf_home_cache'); } catch (_) {}
+        if (typeof loadHomePage === 'function') loadHomePage(true);
         Storage.clearHomeCache();
       });
     });
@@ -3368,14 +3370,22 @@ const App = (() => {
       const primaryArtist = norm.artists ? norm.artists.split(',')[0].trim() : '';
       const secondaryArtist = norm.artists && norm.artists.includes(',') ? norm.artists.split(',')[1].trim() : '';
       
+      const prefLangs = (Storage.getSettings().languages || []).slice(0, 2);
+
       const queryPromises = [
-        API.searchSongs(primaryArtist, 15),
+        API.searchSongs(primaryArtist, 20),
+        API.searchSongs(`${primaryArtist} best songs`, 15),
         API.searchSongs(norm.album || norm.name, 15)
       ];
 
       if (secondaryArtist) {
         queryPromises.push(API.searchSongs(secondaryArtist, 15));
       }
+      // Language-anchored discovery so the station stays in the user's languages
+      prefLangs.forEach(lang => {
+        queryPromises.push(API.searchSongs(`top ${lang} songs`, 12));
+        queryPromises.push(API.searchSongs(`${lang} hits ${new Date().getFullYear()}`, 10));
+      });
       queryPromises.push(API.getTrendingPool(15));
 
       const resultsArray = await Promise.allSettled(queryPromises);
@@ -3386,26 +3396,28 @@ const App = (() => {
         }
       });
 
-      const prefs = Storage.getSettings().languages || [];
       const seen = new Set([norm.id]);
-      let uniqueSongs = [norm];
-
+      let normalizedPool = [];
       combinedPool.forEach(s => {
         if (s && s.id && !seen.has(s.id)) {
           seen.add(s.id);
-          const sNorm = API.normalizeSong(s);
-          const lang = (sNorm.language || '').toLowerCase();
-          if (prefs.length === 0 || lang === '' || lang === 'unknown' || prefs.includes(lang)) {
-            uniqueSongs.push(sNorm);
-          }
+          normalizedPool.push(API.normalizeSong(s));
         }
       });
+      // Strict language preference (unknown-language songs only backfill)
+      normalizedPool = API.filterByLanguagePrefs(normalizedPool, { minKeep: 15 });
+      let uniqueSongs = [norm, ...normalizedPool];
 
       if (uniqueSongs.length > 1) {
         // Kill slowed/8D/sped-up clones, cap per-artist, interleave artists
         const seedKey = API.getTitleKey(norm);
+        const recentKeys = (Storage.getRecent() || []).slice(0, 40).map(r => API.getTitleKey(r));
         let tail = uniqueSongs.slice(1).sort(() => Math.random() - 0.5);
-        tail = API.dedupeVariants(tail, { maxPerArtist: 4, maxRun: 2, excludeKeys: [seedKey] });
+        tail = API.dedupeVariants(tail, { maxPerArtist: 4, maxRun: 2, excludeKeys: [seedKey, ...recentKeys] });
+        if (tail.length < 8) {
+          // Too much history overlap: allow repeats rather than a thin station
+          tail = API.dedupeVariants(uniqueSongs.slice(1), { maxPerArtist: 4, maxRun: 2, excludeKeys: [seedKey] });
+        }
         const radioQueue = [norm, ...tail];
         Player.setQueue(radioQueue, 0);
         UI.showToast(`Radio loaded \u2014 ${radioQueue.length} unique tracks`, 'success');

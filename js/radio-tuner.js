@@ -123,8 +123,9 @@ const RadioTuner = (() => {
       } catch (e) {}
     }
 
-    // 4. Normalize, kill title-variant clones, enforce artist diversity
-    const unique = pool.filter(s => s && s.id).map(API.normalizeSong);
+    // 4. Normalize, honor language prefs, kill title-variant clones, enforce artist diversity
+    let unique = pool.filter(s => s && s.id).map(API.normalizeSong);
+    unique = API.filterByLanguagePrefs ? API.filterByLanguagePrefs(unique, { minKeep: 15 }) : unique;
     const shuffled = unique.sort(() => Math.random() - 0.5);
     const stationQueue = API.dedupeVariants
       ? API.dedupeVariants(shuffled, { maxPerArtist: 5, maxRun: 2 })

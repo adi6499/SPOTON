@@ -920,8 +920,10 @@ const Player = (() => {
             const seedArtist = (artists[Math.floor(Math.random() * artists.length)] || '').trim();
             const seedLang = (currentTrack.language || '').trim();
 
+            const prefLangsAuto = (settings.languages || []).slice(0, 1);
             const seedQueries = [];
             if (seedArtist) seedQueries.push(seedArtist, `${seedArtist} hits`);
+            prefLangsAuto.forEach(l => seedQueries.push(`top ${l} songs`));
 
             const recentIds = new Set(Storage.getRecent().slice(0, 30).map(r => r.id));
             const queueKeys = queue.map(q => (API.getTitleKey ? API.getTitleKey(q) : q.id));
@@ -933,12 +935,11 @@ const Player = (() => {
               for (const q of seedQueries) {
                 let res = [];
                 try { res = await API.searchSongs(q, 15) || []; } catch (_) { continue; }
-                let candidates = res.map(s => API.normalizeSong(s)).filter(s => {
-                  if (!relaxed && recentIds.has(s.id)) return false;
-                  const sLang = (s.language || '').toLowerCase();
-                  if (!relaxed && prefs.length > 0 && sLang !== '' && sLang !== 'unknown' && !prefs.includes(sLang)) return false;
-                  return true;
-                });
+                let candidates = res.map(s => API.normalizeSong(s));
+                if (!relaxed) {
+                  candidates = API.filterByLanguagePrefs ? API.filterByLanguagePrefs(candidates, { minKeep: 5 }) : candidates;
+                  candidates = candidates.filter(s => !recentIds.has(s.id));
+                }
                 candidates = API.dedupeVariants
                   ? API.dedupeVariants(candidates, { maxPerArtist: 3, maxRun: 2, excludeKeys: queueKeys })
                   : candidates;

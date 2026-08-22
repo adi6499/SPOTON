@@ -8342,3 +8342,28 @@ input.form-input[type="text"] {
   /* Section header tools wrap cleanly */
   #queue-container .section-header { flex-wrap: wrap; gap: 8px; }
 }
+
+/* ---- Onboarding language chips ---- */
+.welcome-lang-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.lang-chip {
+  padding: 9px 16px;
+  border-radius: var(--radius-full);
+  border: 1.5px solid var(--border);
+  background: var(--bg-card);
+  color: var(--text-secondary);
+  font-size: 13.5px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: transform 0.18s cubic-bezier(0.34, 1.56, 0.64, 1), background 0.2s ease, color 0.2s ease, border-color 0.2s ease;
+}
+.lang-chip:active { transform: scale(0.93); }
+.lang-chip.active {
+  background: var(--accent-color);
+  border-color: var(--accent-color);
+  color: #fff;
+  box-shadow: 0 4px 14px var(--accent-glow);
+}
