@@ -164,6 +164,7 @@ const App = (() => {
       });
       startAudioReactivePulse();
       initVoiceSearch();
+      bindMiniPlayerSwipe();
       bindUpNextStrip();
       bindArtworkDoubleTap();
       bindSleepTimerButton();
@@ -1086,6 +1087,11 @@ const App = (() => {
     } else if (pageId === 'page-queue') {
       UI.renderQueue(document.getElementById('queue-container'));
       rebindQueueEvents();
+      // Bring the currently playing track into view
+      setTimeout(() => {
+        const act = document.querySelector('#queue-container .song-list-item.active');
+        if (act) act.scrollIntoView({ block: 'center', behavior: 'smooth' });
+      }, 150);
     } else if (pageId === 'page-recap') {
       Recap.renderRecap(document.getElementById('recap-container'));
     } else if (pageId === 'page-home') {
@@ -1614,14 +1620,28 @@ const App = (() => {
       const clearBtn = e.target.closest('#btn-clear-queue');
       if (clearBtn) {
         if (confirm('Clear the entire queue?')) {
+          const prevQueue = Player.getQueue();
+          const prevIdx = Player.getCurrentIndex();
           Player.setQueue([], -1);
           Player.pause();
-          UI.showToast('Queue cleared');
-          const qContainer = document.getElementById('queue-container');
-          if (qContainer) {
-            UI.renderQueue(qContainer);
-            rebindQueueEvents();
-          }
+          const rerenderQueue = () => {
+            const qContainer = document.getElementById('queue-container');
+            if (qContainer) {
+              UI.renderQueue(qContainer);
+              rebindQueueEvents();
+            }
+          };
+          rerenderQueue();
+          UI.showToast('Queue cleared', 'info', {
+            action: {
+              label: 'Undo',
+              onClick: () => {
+                Player.setQueue(prevQueue, Math.max(0, prevIdx));
+                rerenderQueue();
+                UI.showToast('Queue restored', 'success');
+              }
+            }
+          });
         }
         return;
       }
@@ -2987,7 +3007,9 @@ const App = (() => {
         if (typeof Haptics !== 'undefined') Haptics.medium && Haptics.medium();
         UI.showToast(`\u2764\uFE0F Added \u201C${cur.name}\u201D to favorites`, 'success');
       } else {
-        UI.showToast(`Removed \u201C${cur.name}\u201D from favorites`);
+        UI.showToast(`Removed \u201C${cur.name}\u201D from favorites`, 'info', {
+          action: { label: 'Undo', onClick: () => { Storage.addFavorite(cur); UI.showToast('Restored to favorites', 'success'); } }
+        });
       }
       if (UI.updateFavoriteButton) UI.updateFavoriteButton(nowFav);
     }
@@ -3057,6 +3079,28 @@ const App = (() => {
     });
   }
 
+
+  // ---- Mini player: swipe left/right to change track ----
+  function bindMiniPlayerSwipe() {
+    const mini = document.getElementById('mini-player');
+    if (!mini) return;
+    let sx = 0, sy = 0, t0 = 0;
+    mini.addEventListener('touchstart', (e) => {
+      const t = e.touches[0];
+      sx = t.clientX; sy = t.clientY; t0 = Date.now();
+    }, { passive: true });
+    mini.addEventListener('touchend', (e) => {
+      const t = e.changedTouches[0];
+      const dx = t.clientX - sx;
+      const dy = t.clientY - sy;
+      if (Math.abs(dx) > 64 && Math.abs(dx) > Math.abs(dy) * 2 && Date.now() - t0 < 600) {
+        if (typeof Haptics !== 'undefined') Haptics.light();
+        if (dx < 0) { Player.next(); UI.showToast('\u23ED Next'); }
+        else { Player.previous(); UI.showToast('\u23EE Previous'); }
+      }
+    }, { passive: true });
+  }
+
   // ---- Keyboard Shortcuts & Command Palette ----
 
   function bindKeyboardShortcuts() {
@@ -3110,7 +3154,13 @@ const App = (() => {
           const cur = Player.getCurrentTrack();
           if (cur) {
             const nowFav = Storage.toggleFavorite(cur);
-            UI.showToast(nowFav ? `\u2764\uFE0F Added \u201C${cur.name}\u201D to favorites` : `Removed \u201C${cur.name}\u201D from favorites`);
+            if (nowFav) {
+              UI.showToast(`\u2764\uFE0F Added \u201C${cur.name}\u201D to favorites`);
+            } else {
+              UI.showToast(`Removed \u201C${cur.name}\u201D from favorites`, 'info', {
+                action: { label: 'Undo', onClick: () => { Storage.addFavorite(cur); UI.showToast('Restored to favorites', 'success'); } }
+              });
+            }
             if (UI.updateFavoriteButton) UI.updateFavoriteButton(nowFav);
           }
           break;
@@ -3772,6 +3822,43 @@ const App = (() => {
     const imgEl = document.getElementById('playlist-page-img');
     const nameEl = document.getElementById('playlist-page-name');
     if (nameEl) nameEl.textContent = cleanName;
+
+    // Local playlists get Rename / Delete management actions
+    const oldManage = document.getElementById('playlist-manage-actions');
+    if (oldManage) oldManage.remove();
+    const isLocalPlaylist = (Storage.getPlaylists() || []).some(p => p.id === id);
+    if (isLocalPlaylist) {
+      const playBtnEl = document.getElementById('btn-playlist-play');
+      if (playBtnEl && playBtnEl.parentElement) {
+        const manage = document.createElement('div');
+        manage.id = 'playlist-manage-actions';
+        manage.style.cssText = 'display:flex; gap:10px; margin-top:10px;';
+        manage.innerHTML = `
+          <button class="btn-text" id="btn-playlist-rename" style="display:flex; align-items:center; gap:5px;">\u270F\uFE0F Rename</button>
+          <button class="btn-text" id="btn-playlist-delete" style="display:flex; align-items:center; gap:5px; color:var(--error);">\u{1F5D1}\uFE0F Delete</button>
+        `;
+        playBtnEl.parentElement.appendChild(manage);
+
+        manage.querySelector('#btn-playlist-rename').addEventListener('click', () => {
+          const current = (Storage.getPlaylists() || []).find(p => p.id === id);
+          const newName = prompt('Rename playlist:', current ? current.name : cleanName);
+          if (newName && newName.trim() && Storage.renamePlaylist(id, newName)) {
+            if (nameEl) nameEl.textContent = newName.trim();
+            if (UI.renderSidebarPlaylists) UI.renderSidebarPlaylists();
+            UI.showToast(`Renamed to \u201C${newName.trim()}\u201D`, 'success');
+          }
+        });
+
+        manage.querySelector('#btn-playlist-delete').addEventListener('click', () => {
+          const current = (Storage.getPlaylists() || []).find(p => p.id === id);
+          if (!confirm(`Delete playlist \u201C${current ? current.name : cleanName}\u201D? This cannot be undone.`)) return;
+          Storage.deletePlaylist(id);
+          if (UI.renderSidebarPlaylists) UI.renderSidebarPlaylists();
+          UI.showToast('Playlist deleted', 'info');
+          navigateToPage('page-favorites');
+        });
+      }
+    }
     if (imgEl) {
       imgEl.src = image || 'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><rect fill="%231a1a2e" width="100" height="100"/><text x="50" y="55" text-anchor="middle" fill="%236c5ce7" font-size="40">🎵</text></svg>';
     }

@@ -48,7 +48,19 @@ const UI = (() => {
     toast.innerHTML = `
       <span class="toast-icon">${icon}</span>
       <span class="toast-msg">${message}</span>
+      ${options.action && options.action.label ? `<button class="toast-action">${options.action.label}</button>` : ''}
     `;
+
+    const actionBtn = toast.querySelector('.toast-action');
+    if (actionBtn && options.action && typeof options.action.onClick === 'function') {
+      actionBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        options.action.onClick();
+        toast.classList.remove('show');
+        setTimeout(() => toast.remove(), 220);
+        if (activeToast === toast) activeToast = null;
+      });
+    }
     
     toast.style.cursor = 'pointer';
     toast.addEventListener('click', () => {
@@ -62,7 +74,7 @@ const UI = (() => {
     activeToast = toast;
     requestAnimationFrame(() => toast.classList.add('show'));
 
-    const duration = options.duration || 2600;
+    const duration = options.duration || (options.action ? 6000 : 2600);
     toastTimer = setTimeout(() => {
       toast.classList.remove('show');
       setTimeout(() => {

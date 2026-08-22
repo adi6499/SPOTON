@@ -214,6 +214,16 @@ const Storage = (() => {
     return newPlaylist;
   }
 
+  function renamePlaylist(id, newName) {
+    if (!newName || !newName.trim()) return false;
+    const pls = getPlaylists();
+    const p = pls.find(x => x.id === id);
+    if (!p) return false;
+    p.name = newName.trim();
+    set(KEYS.PLAYLISTS, pls);
+    return true;
+  }
+
   function deletePlaylist(id) {
     savePlaylists(getPlaylists().filter(p => p.id !== id));
   }
@@ -589,6 +599,7 @@ const Storage = (() => {
     getPlaylists,
     createPlaylist,
     deletePlaylist,
+    renamePlaylist,
     addSongToPlaylist,
     getListeningHistory,
     addListeningHistory,
