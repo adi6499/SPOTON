@@ -5,14 +5,17 @@
 const API = (() => {
   // Public JioSaavn API instances (unofficial)
   // Users can self-host on Vercel for reliability
-  const localApiUrl = window.location.hostname === 'localhost' 
-    ? 'http://localhost:3001' 
-    : `http://${window.location.hostname}:3001`;
+  // Only offer the local dev API when actually running on localhost / LAN over http.
+  // On a deployed https origin an http://host:3001 entry is mixed content — it can
+  // never succeed and would just burn a fetch timeout during instance rotation.
+  const isLocalDev = window.location.protocol === 'http:' &&
+    /^(localhost|127\.|192\.168\.|10\.|172\.(1[6-9]|2\d|3[01])\.)/.test(window.location.hostname);
+  const localApiUrl = `http://${window.location.hostname}:3001`;
 
   const INSTANCES = [
     'https://spoton-trpn.vercel.app',
     'https://jiosaavn-api-sage.vercel.app',
-    localApiUrl,
+    ...(isLocalDev ? [localApiUrl] : []),
   ];
 
   let currentInstanceIndex = 0;
