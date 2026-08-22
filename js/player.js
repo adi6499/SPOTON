@@ -939,6 +939,13 @@ const Player = (() => {
                 if (!relaxed) {
                   candidates = API.filterByLanguagePrefs ? API.filterByLanguagePrefs(candidates, { minKeep: 5 }) : candidates;
                   candidates = candidates.filter(s => !recentIds.has(s.id));
+                  // Artist-seeded queries must actually match the artist —
+                  // otherwise they are sound-alike cover spam; let the chart
+                  // pool handle discovery instead.
+                  if (seedArtist && q.toLowerCase().includes(seedArtist.toLowerCase())) {
+                    const sl = seedArtist.toLowerCase();
+                    candidates = candidates.filter(s => (s.artists || '').toLowerCase().includes(sl));
+                  }
                 }
                 candidates = API.dedupeVariants
                   ? API.dedupeVariants(candidates, { maxPerArtist: 3, maxRun: 2, excludeKeys: queueKeys })

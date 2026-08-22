@@ -8422,3 +8422,265 @@ body.theme-light.clear-glass .profile-stat-box {
   -webkit-backdrop-filter: blur(36px) saturate(160%) !important;
   border-color: rgba(0, 0, 0, 0.1) !important;
 }
+
+/* ==========================================================
+   SETTINGS REFINEMENT — visible language chips + polished
+   selects, inputs and section rhythm (Library tab and friends)
+   ========================================================== */
+
+/* Language checkboxes were invisible: restyle each label as a toggle chip.
+   The native checkbox stays in the DOM (existing JS reads it) but is hidden;
+   the chip lights up via :has(input:checked). */
+#settings-languages {
+  gap: 8px !important;
+}
+#settings-languages label {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 9px 16px;
+  border-radius: var(--radius-full);
+  border: 1.5px solid var(--border);
+  background: var(--bg-card);
+  color: var(--text-secondary);
+  font-size: 13.5px;
+  font-weight: 700;
+  cursor: pointer;
+  user-select: none;
+  transition: transform 0.18s cubic-bezier(0.34, 1.56, 0.64, 1), background 0.2s ease, color 0.2s ease, border-color 0.2s ease;
+}
+#settings-languages label:active { transform: scale(0.93); }
+#settings-languages label input[type="checkbox"] {
+  position: absolute;
+  opacity: 0;
+  width: 1px;
+  height: 1px;
+  pointer-events: none;
+}
+#settings-languages label:has(input:checked) {
+  background: var(--accent-color);
+  border-color: var(--accent-color);
+  color: #fff;
+  box-shadow: 0 4px 14px var(--accent-glow);
+}
+#settings-languages label:has(input:checked)::before {
+  content: '¹3';
+  font-size: 12px;
+  font-weight: 900;
+}
+
+/* Selects: modern rounded field with a chevron */
+.settings-select {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 100%;
+  padding: 12px 42px 12px 14px;
+  border-radius: 12px;
+  border: 1.5px solid var(--border);
+  background-color: var(--bg-input);
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%23999' stroke-width='2.5' stroke-linecap='round'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 14px center;
+  color: var(--text-primary);
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+.settings-select:focus {
+  outline: none;
+  border-color: var(--accent-color);
+  box-shadow: 0 0 0 4px var(--accent-glow);
+}
+
+/* Section rhythm inside settings panels */
+.settings-tab-panel .settings-group { margin-bottom: 22px; }
+.settings-tab-panel .settings-group h3,
+.settings-tab-panel .profile-section-title {
+  font-size: 12px;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 1.2px;
+  color: var(--text-tertiary);
+  margin-bottom: 10px;
+}
+
+/* Text inputs inside settings (e.g. Musixmatch key) match .form-input */
+.settings-tab-panel input[type="text"]:not(.profile-name-input):not(.profile-bio-input),
+.settings-tab-panel input[type="password"] {
+  width: 100%;
+  padding: 12px 14px;
+  border-radius: 12px;
+  border: 1.5px solid var(--border);
+  background: var(--bg-input);
+  color: var(--text-primary);
+  font-size: 14px;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+.settings-tab-panel input[type="text"]:focus,
+.settings-tab-panel input[type="password"]:focus {
+  outline: none;
+  border-color: var(--accent-color);
+  box-shadow: 0 0 0 4px var(--accent-glow);
+}
+.settings-tab-panel input::placeholder { color: var(--text-tertiary); }
+
+/* Data & Privacy buttons: consistent height + press feedback */
+.settings-tab-panel .btn-primary,
+.settings-tab-panel button.btn-danger {
+  transition: transform 0.15s ease, filter 0.15s ease;
+}
+.settings-tab-panel .btn-primary:active,
+.settings-tab-panel button.btn-danger:active { transform: scale(0.97); }
+
+/* ==========================================================
+   FULL PLAYER REDESIGN — premium, focused, Apple-clean
+   ========================================================== */
+
+/* Depth: darken the lower half so controls always sit on contrast */
+#full-player::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(180deg, rgba(0,0,0,0.08) 0%, transparent 30%, transparent 48%, rgba(0,0,0,0.42) 100%);
+  pointer-events: none;
+  z-index: 0;
+}
+#full-player > * { position: relative; z-index: 1; }
+
+/* Header: quiet and minimal */
+.full-player__header-title {
+  font-size: 11px !important;
+  letter-spacing: 2px !important;
+  opacity: 0.85;
+}
+@media (max-width: 767.98px) {
+  .full-player-user-chip { display: none !important; } /* declutter */
+}
+
+/* Title block: bigger, tighter */
+.full-player__title {
+  font-size: 23px !important;
+  font-weight: 800 !important;
+  letter-spacing: -0.4px;
+  line-height: 1.2;
+}
+.full-player__artist {
+  font-size: 14.5px !important;
+  opacity: 0.85;
+}
+
+/* Quality + haptics badges: quiet ghost chips, not neon stickers */
+.full-player__codec,
+.interactive-quality-badge,
+.player-haptic-badge {
+  background: rgba(255, 255, 255, 0.09) !important;
+  border: 1px solid rgba(255, 255, 255, 0.14) !important;
+  color: rgba(255, 255, 255, 0.85) !important;
+  border-radius: var(--radius-full) !important;
+  font-size: 9.5px !important;
+  font-weight: 700 !important;
+  letter-spacing: 0.6px;
+  padding: 4px 10px !important;
+  box-shadow: none !important;
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+}
+
+/* Radio badge: present but subtle */
+.player-radio-broadcast-badge {
+  transform: scale(0.92);
+  opacity: 0.92;
+}
+
+/* Progress: thicker track, bold thumb while scrubbing */
+.full-player__progress-area .player-progress {
+  height: 5px;
+  border-radius: 3px;
+  background: rgba(255, 255, 255, 0.16);
+}
+#full-progress-fill {
+  border-radius: 3px;
+  background: #fff;
+}
+#full-progress-thumb {
+  width: 14px;
+  height: 14px;
+  background: #fff;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.5);
+}
+.player-times span { font-size: 11.5px; opacity: 0.75; font-variant-numeric: tabular-nums; }
+
+/* Controls: hero play button, balanced side keys */
+.full-player__controls {
+  gap: 18px !important;
+  margin: 10px 0 6px !important;
+}
+.full-player__controls .btn-play,
+.full-player__controls .btn-massive {
+  width: 74px !important;
+  height: 74px !important;
+  background: #ffffff !important;
+  color: #000000 !important;
+  border-radius: 50% !important;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.45), 0 0 40px var(--accent-glow) !important;
+  transition: transform 0.16s cubic-bezier(0.34, 1.56, 0.64, 1) !important;
+}
+.full-player__controls .btn-play:active { transform: scale(0.9) !important; }
+.full-player__controls .btn-large {
+  width: 54px !important;
+  height: 54px !important;
+}
+/* Shuffle / repeat: accent + dot when engaged */
+.full-player__controls [data-action="shuffle"].active,
+.full-player__controls [data-action="repeat"].active {
+  color: var(--accent-color) !important;
+  position: relative;
+}
+.full-player__controls [data-action="shuffle"].active::after,
+.full-player__controls [data-action="repeat"].active::after {
+  content: '';
+  position: absolute;
+  bottom: 2px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 4px;
+  height: 4px;
+  border-radius: 50%;
+  background: var(--accent-color);
+}
+
+/* Bottom action row: one floating glass pill */
+.full-player__controls-secondary {
+  background: rgba(255, 255, 255, 0.07);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: var(--radius-full);
+  padding: 6px 22px;
+  gap: 30px !important;
+  width: fit-content;
+  margin: 4px auto 0;
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+}
+
+/* Up Next: glassier, matches the pill language */
+.up-next-strip {
+  background: rgba(255, 255, 255, 0.07);
+  border-color: rgba(255, 255, 255, 0.1);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+}
+
+/* Song/Video toggle pill: cleaner */
+.player-media-toggle-pill {
+  background: rgba(0, 0, 0, 0.28) !important;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+}
+
+/* ---- Queue rows: final polish ---- */
+#queue-container .drag-handle { color: var(--text-tertiary); opacity: 0.7; }
+#queue-container .song-list-item { margin-bottom: 6px; }
+#queue-container .song-list-item .btn-remove { opacity: 0.75; }

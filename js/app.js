@@ -3370,23 +3370,19 @@ const App = (() => {
       const primaryArtist = norm.artists ? norm.artists.split(',')[0].trim() : '';
       const secondaryArtist = norm.artists && norm.artists.includes(',') ? norm.artists.split(',')[1].trim() : '';
       
-      const prefLangs = (Storage.getSettings().languages || []).slice(0, 2);
-
+      // Phase 1: RELATED-ONLY queries (artists, the song family, the album).
+      // Language/chart backfill is fetched later ONLY if this pool runs thin,
+      // so an artist radio is never polluted with unrelated chart songs.
       const queryPromises = [
         API.searchSongs(primaryArtist, 20),
         API.searchSongs(`${primaryArtist} best songs`, 15),
-        API.searchSongs(norm.album || norm.name, 15)
+        API.searchSongs(norm.name, 15),
+        API.searchSongs(norm.album || norm.name, 10)
       ];
 
       if (secondaryArtist) {
         queryPromises.push(API.searchSongs(secondaryArtist, 15));
       }
-      // Language-anchored discovery so the station stays in the user's languages
-      prefLangs.forEach(lang => {
-        queryPromises.push(API.searchSongs(`top ${lang} songs`, 12));
-        queryPromises.push(API.searchSongs(`${lang} hits ${new Date().getFullYear()}`, 10));
-      });
-      queryPromises.push(API.getTrendingPool(15));
 
       const resultsArray = await Promise.allSettled(queryPromises);
       let combinedPool = [];
@@ -3404,9 +3400,47 @@ const App = (() => {
           normalizedPool.push(API.normalizeSong(s));
         }
       });
-      // Strict language preference (unknown-language songs only backfill)
-      normalizedPool = API.filterByLanguagePrefs(normalizedPool, { minKeep: 15 });
-      let uniqueSongs = [norm, ...normalizedPool];
+
+      // RELEVANCE SCORE: JioSaavn artist searches return sound-alike cover
+      // spam for niche tracks. Keep only songs that actually relate to the
+      // seed: shared artist (+3), title-family token (+2), same album (+1),
+      // same language (+1). Score >= 2 = related.
+      const seedArtistList = (norm.artists || '').toLowerCase().split(',').map(a => a.trim()).filter(a => a.length > 1);
+      const seedTokens = (norm.name || '').toLowerCase().replace(/[^a-z0-9\u0900-\u097f ]+/g, ' ').split(/\s+/).filter(w => w.length > 3);
+      const relevanceScore = (s) => {
+        let sc = 0;
+        const a = (s.artists || '').toLowerCase();
+        if (seedArtistList.some(sa => a.includes(sa))) sc += 3;
+        const n = (s.name || '').toLowerCase();
+        if (seedTokens.some(t => n.includes(t))) sc += 2;
+        if (norm.album && s.album && s.album === norm.album) sc += 1;
+        if (norm.language && s.language && s.language === norm.language) sc += 1;
+        return sc;
+      };
+      let related = normalizedPool
+        .map(s => ({ s, sc: relevanceScore(s) }))
+        .filter(x => x.sc >= 2)
+        .sort((x, y) => y.sc - x.sc)
+        .map(x => x.s);
+      related = API.filterByLanguagePrefs(related, { minKeep: 12 });
+
+      // Phase 2: backfill with the user's languages/charts only if thin
+      if (related.length < 12) {
+        const prefLangs = (Storage.getSettings().languages || []).slice(0, 2);
+        const backfillPromises = prefLangs.map(lang => API.searchSongs(`top ${lang} songs`, 12));
+        backfillPromises.push(API.getTrendingPool(15));
+        const backfillResults = await Promise.allSettled(backfillPromises);
+        let backfill = [];
+        backfillResults.forEach(r => {
+          if (r.status === 'fulfilled' && Array.isArray(r.value)) backfill.push(...r.value);
+        });
+        backfill = backfill.map(API.normalizeSong).filter(s => s && s.id && !seen.has(s.id));
+        backfill.forEach(s => seen.add(s.id));
+        backfill = API.filterByLanguagePrefs(backfill, { minKeep: 10 });
+        related = [...related, ...backfill];
+      }
+
+      let uniqueSongs = [norm, ...related];
 
       if (uniqueSongs.length > 1) {
         // Kill slowed/8D/sped-up clones, cap per-artist, interleave artists
