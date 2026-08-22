@@ -9119,3 +9119,59 @@ body.perf-lite #waveform-canvas { display: none !important; }
   .bottom-nav .nav-item span:last-child { display: none; }
   .bottom-nav .nav-item .material-symbols-outlined { font-size: 25px; }
 }
+
+/* ==========================================================
+   UI AUDIT FIXES
+   ========================================================== */
+
+/* 1. Queue header actions were 16px tall - unusable as touch targets */
+.section-header .btn-text,
+#queue-container .btn-text {
+  min-height: 36px;
+  padding: 8px 14px;
+  border-radius: var(--radius-full);
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  font-weight: 700;
+  transition: background 0.18s ease, transform 0.14s ease;
+}
+.section-header .btn-text:active,
+#queue-container .btn-text:active { transform: scale(0.94); }
+#queue-container .btn-text#btn-clear-queue { color: var(--error); }
+
+/* 2. Haptics badge nudged to a comfortable tap size */
+.player-haptic-badge { min-height: 28px; }
+
+/* 3. LANDSCAPE / short screens: the full player ran ~200px past the fold,
+      pushing play/pause out of view. Compact it so controls always sit
+      on screen without scrolling. */
+@media (max-height: 500px) and (orientation: landscape) {
+  #full-player {
+    padding-top: 6px !important;
+    padding-bottom: max(6px, env(safe-area-inset-bottom)) !important;
+    justify-content: flex-start;
+    gap: 2px;
+  }
+  .full-player__header { margin-bottom: 2px; }
+  .full-player__artwork {
+    max-height: 34vh;
+    padding: 2px 0;
+  }
+  .full-player__artwork img { max-width: min(30vw, 150px); }
+  .player-action-rail { gap: 6px; }
+  .rail-btn { width: 34px; height: 34px; }
+  .rail-btn .material-symbols-outlined { font-size: 17px; }
+  .full-player__title { font-size: 17px !important; }
+  .full-player__artist { font-size: 12px !important; }
+  .full-player__controls { margin: 2px 0 !important; gap: 12px !important; }
+  .full-player__controls .btn-play,
+  .full-player__controls .btn-massive { width: 54px !important; height: 54px !important; }
+  .full-player__controls .btn-large { width: 42px !important; height: 42px !important; }
+  /* Secondary chrome is optional in landscape - reclaim the space */
+  #waveform-canvas,
+  .up-next-strip,
+  .full-player__bottom-actions,
+  .player-badges-row,
+  .player-media-toggle-pill { display: none !important; }
+  .full-player__controls-secondary { padding: 3px 16px; gap: 22px !important; }
+}
