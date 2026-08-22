@@ -2082,6 +2082,55 @@ const App = (() => {
 
   // ---- Home Page ----
 
+  async function renderTasteShelves() {
+    if (typeof Recs === 'undefined' || !Recs.getPersonalizedHome) return;
+    const host = document.getElementById('home-feed-sections');
+    if (!host) return;
+    try {
+      const { madeForYou, perArtistShelves } = await Recs.getPersonalizedHome();
+
+      let wrap = document.getElementById('taste-shelves');
+      if (wrap) wrap.remove();
+      wrap = document.createElement('div');
+      wrap.id = 'taste-shelves';
+
+      const addShelf = (title, eyebrow, songs) => {
+        if (!songs || songs.length < 4) return;
+        let clean = API.filterByLanguagePrefs(songs, { minKeep: 6 });
+        clean = API.dedupeVariants(clean, { maxPerArtist: 6, maxRun: 3 });
+        if (clean.length < 4) return;
+        const list = clean.slice(0, 14);
+        const section = document.createElement('section');
+        section.className = 'shelf-section taste-shelf';
+        section.innerHTML = `
+          <div class="shelf-header">
+            <div>
+              <div class="shelf-eyebrow">${eyebrow}</div>
+              <h2 class="shelf-title">${title}</h2>
+            </div>
+          </div>
+          <div class="shelf-container"></div>`;
+        const cont = section.querySelector('.shelf-container');
+        UI.renderShelf(list, cont, 'song');
+        bindSongCardEvents(cont, list);
+        wrap.appendChild(section);
+      };
+
+      addShelf('Made For You', 'BASED ON WHAT YOU LISTEN TO', madeForYou);
+      Object.entries(perArtistShelves || {}).forEach(([artist, songs]) => {
+        addShelf(`More from ${artist}`, 'BECAUSE YOU LISTEN TO THEM', songs);
+      });
+
+      if (wrap.children.length > 0) {
+        const qp = document.getElementById('quick-picks-section');
+        if (qp && qp.parentElement === host) host.insertBefore(wrap, qp.nextSibling);
+        else host.prepend(wrap);
+      }
+    } catch (e) {
+      console.warn('[App] Taste shelves failed:', e);
+    }
+  }
+
   async function loadHomePage(forceRefresh = false) {
     // 1. Greeting with Username
     const greetingEl = document.getElementById('home-greeting');
@@ -2143,8 +2192,11 @@ const App = (() => {
         }
       });
 
-      // Shuffle pool for discovery and fresh picks
-      const shuffledQuickPicks = quickPickSongs.sort(() => Math.random() - 0.5);
+      // Kill near-duplicate variants, then shuffle for discovery
+      const qpClean = API.dedupeVariants
+        ? API.dedupeVariants(quickPickSongs, { maxPerArtist: 4, maxRun: 2 })
+        : quickPickSongs;
+      const shuffledQuickPicks = qpClean.sort(() => Math.random() - 0.5);
 
       // Show top 16 tracks (4 columns x 4 rows)
       UI.renderQuickPicks(shuffledQuickPicks.slice(0, 16), quickPicksContainer);
@@ -2172,8 +2224,25 @@ const App = (() => {
       const heroSubtitle = document.getElementById('hero-subtitle');
       const heroPlayBtn = document.getElementById('hero-play-btn');
 
-      const heroSong = API.normalizeSong(data.hero);
-      
+      // Prefer a hero from the user's actual taste (top artist, not recently played)
+      let heroCandidate = data.hero;
+      try {
+        if (typeof Recs !== 'undefined' && Recs.getTasteProfile) {
+          const tp = Recs.getTasteProfile();
+          if (tp.hasEnoughData && tp.topArtists.length > 0) {
+            const heroArtist = tp.topArtists[0];
+            const res = await API.searchSongs(`${heroArtist} best songs`, 10);
+            const normList = (res || []).map(API.normalizeSong);
+            const al = heroArtist.toLowerCase();
+            const recentIds = new Set(Storage.getRecent().slice(0, 20).map(r => r.id));
+            const matches = normList.filter(s => String(s.artists || '').toLowerCase().includes(al) && !recentIds.has(s.id));
+            if (matches.length > 0) heroCandidate = matches[Math.floor(Math.random() * matches.length)];
+          }
+        }
+      } catch (_) {}
+
+      const heroSong = API.normalizeSong(heroCandidate);
+
       heroBg.style.backgroundImage = `url(${heroSong.image})`;
       heroImg.src = heroSong.image;
       heroTitle.textContent = heroSong.name;
@@ -2218,6 +2287,9 @@ const App = (() => {
         });
       }
     });
+
+    // 9c. Taste-based shelves: Made For You + "More from <artist>"
+    renderTasteShelves();
 
     // 10. Load Recently Played
     const recentContainer = document.getElementById('recent-container');

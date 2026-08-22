@@ -8773,3 +8773,78 @@ body.perf-lite .is-playing .artwork-glow-aura,
 body.perf-lite #mini-progress-fill {
   animation: none !important;
 }
+
+/* ==========================================================
+   HOME REDESIGN + player badge fix + taste shelves
+   ========================================================== */
+
+/* Haptics badge: its .active teal rule outranked the ghost-chip pass */
+.player-haptic-badge,
+.player-haptic-badge.active {
+  background: rgba(255, 255, 255, 0.09) !important;
+  border: 1px solid rgba(255, 255, 255, 0.14) !important;
+  color: rgba(255, 255, 255, 0.85) !important;
+  box-shadow: none !important;
+}
+
+/* Greeting: balanced two-line wrap, no orphan words */
+.home-greeting {
+  text-wrap: balance;
+  line-height: 1.18;
+}
+
+/* Taste shelf eyebrows */
+.shelf-eyebrow {
+  font-size: 10.5px;
+  font-weight: 800;
+  letter-spacing: 1.5px;
+  color: var(--accent-color);
+  margin-bottom: 3px;
+  text-transform: uppercase;
+}
+.taste-shelf { margin-top: 4px; }
+
+@media (max-width: 767.98px) {
+  /* Greeting scale that fits "Good Afternoon, NAME" on two tidy lines */
+  .home-greeting { font-size: 23px !important; }
+
+  /* Hero: compact editorial card instead of a tall block */
+  #hero-section {
+    padding: 16px !important;
+    border-radius: 22px;
+    gap: 14px;
+  }
+  #hero-section .hero-img-wrap {
+    width: 118px !important;
+    height: 118px !important;
+    border-radius: 16px !important;
+  }
+  .hero-badge {
+    font-size: 9px;
+    letter-spacing: 1.6px;
+    padding: 4px 10px;
+    border-radius: var(--radius-full);
+    background: rgba(255, 255, 255, 0.14);
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+  }
+  .hero-title {
+    font-size: 20px !important;
+    font-weight: 800 !important;
+    letter-spacing: -0.3px;
+    line-height: 1.2;
+  }
+  .hero-subtitle { font-size: 12.5px !important; opacity: 0.85; }
+  .hero-play-btn {
+    padding: 10px 22px !important;
+    border-radius: var(--radius-full) !important;
+    font-weight: 800 !important;
+  }
+
+  /* Quick pick rows: tighter, cleaner */
+  .quick-pick-item { padding: 8px 12px !important; border-radius: 14px; }
+  .quick-pick-item__img { border-radius: 10px !important; }
+
+  /* Section headers: consistent rhythm on the feed */
+  .shelf-header .shelf-title { font-size: 19px; letter-spacing: -0.2px; }
+}
