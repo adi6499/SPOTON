@@ -9208,3 +9208,93 @@ body.perf-lite #waveform-canvas { display: none !important; }
 @media (max-width: 767.98px) {
   .more-like-card { max-height: 88dvh; }
 }
+
+/* ==========================================================
+   DESKTOP FULL PLAYER FIX
+   Mobile-first mockup styles left the desktop player broken:
+   artwork collapsed to ~150px, the action rail floated in dead
+   space away from the art, and accent-on-accent text washed out.
+   ========================================================== */
+@media (min-width: 768px) {
+  /* 1. Artwork gets real presence instead of collapsing */
+  .full-player__artwork {
+    flex: 1 1 auto;
+    min-height: 190px;
+    padding: 6px 0 2px;
+  }
+  .full-player__artwork img {
+    /* Flexible: fills the space left after the controls, never overflows */
+    max-height: min(100%, 34vh);
+    max-width: min(320px, 70%);
+    width: auto;
+  }
+  /* Safety net: if a short window still runs out of room, scroll rather
+     than pushing the controls off screen */
+  #full-player { overflow-y: auto; overscroll-behavior: contain; }
+
+  /* 2. Rail sits beside the artwork instead of floating at the
+        player's right edge. Negative margin keeps the art centered. */
+  .player-action-rail {
+    position: static;
+    transform: none;
+    flex-direction: column;
+    margin-left: 18px;
+    margin-right: -64px;
+    gap: 12px;
+    align-self: center;
+  }
+
+  /* 3. Text stays legible over the saturated artwork wash:
+        accent is for interactive elements, not body copy. */
+  .full-player__header-title {
+    color: rgba(255, 255, 255, 0.72) !important;
+  }
+  .full-player__artist {
+    color: rgba(255, 255, 255, 0.78) !important;
+  }
+  .full-player__title {
+    text-shadow: 0 2px 14px rgba(0, 0, 0, 0.4);
+  }
+
+  /* 4. Stronger scrim so controls always sit on contrast */
+  #full-player::before {
+    background: linear-gradient(180deg, rgba(0,0,0,0.42) 0%, rgba(0,0,0,0.14) 26%, rgba(0,0,0,0.24) 52%, rgba(0,0,0,0.62) 100%);
+  }
+
+  /* 5. Comfortable desktop rhythm */
+  .full-player__info { margin: 4px 0 2px; }
+  .full-player__controls { gap: 20px !important; margin: 4px 0 !important; }
+  /* Desktop already has the progress bar + optional visualizer for motion -
+     reclaim the waveform's space so the cover can breathe */
+  #waveform-canvas { display: none; }
+  .full-player__bottom-actions { margin: 0; }
+  .full-player__progress-area { margin: 2px 0; }
+  .full-player__header { margin-bottom: 0; }
+  .player-media-toggle-pill { margin: 2px auto !important; }
+  .up-next-strip { margin: 4px auto 2px; }
+  .full-player__controls-secondary { margin-top: 2px; }
+}
+
+/* Very tall desktop windows can afford a bigger cover */
+@media (min-width: 768px) and (min-height: 900px) {
+  .full-player__artwork { min-height: 260px; }
+  .full-player__artwork img { max-height: min(100%, 40vh); max-width: min(380px, 74%); }
+}
+
+/* ---- Mobile full player: give the cover its presence back ----
+   The mockup additions (waveform, meta chips, up-next card) squeezed the
+   artwork to ~150px. Phones have hardware volume keys, so the on-screen
+   volume row is the cheapest thing to trade for a bigger cover. */
+@media (max-width: 767.98px) {
+  .full-player__bottom-actions { display: none !important; }
+  .full-player__artwork {
+    min-height: 210px;
+    padding: 4px 0;
+  }
+  .full-player__artwork img {
+    max-height: min(100%, 38vh);
+    max-width: min(74vw, 300px);
+  }
+  .full-player__header { margin-bottom: 2px; }
+  .player-media-toggle-pill { margin: 2px auto !important; }
+}
