@@ -1,16 +1,8 @@
 import UIKit
 import Capacitor
 
-// Fallback proxy to satisfy Capacitor scene delegation if required
-class SceneDelegateProxy {
-    static let shared = SceneDelegateProxy()
-    
-    func scene(_ scene: UIScene, willConnectTo session: UISceneSession, options connectionOptions: UIScene.ConnectionOptions) {}
-    func scene(_ scene: UIScene, openURLContexts URLContexts: Set<UIOpenURLContext>) {}
-    func scene(_ scene: UIScene, continue userActivity: NSUserActivity) {}
-}
-
 class SceneDelegate: UIResponder, UIWindowSceneDelegate {
+
     var window: UIWindow?
 
     func scene(_ scene: UIScene, willConnectTo session: UISceneSession, options connectionOptions: UIScene.ConnectionOptions) {
@@ -18,15 +10,14 @@ class SceneDelegate: UIResponder, UIWindowSceneDelegate {
         window = UIWindow(windowScene: windowScene)
         window?.rootViewController = CAPBridgeViewController()
         window?.makeKeyAndVisible()
-        SceneDelegateProxy.shared.scene(scene, willConnectTo: session, options: connectionOptions)
     }
 
     func scene(_ scene: UIScene, openURLContexts URLContexts: Set<UIOpenURLContext>) {
-        SceneDelegateProxy.shared.scene(scene, openURLContexts: URLContexts)
+        // Handle opening URLs
     }
 
     func scene(_ scene: UIScene, continue userActivity: NSUserActivity) {
-        SceneDelegateProxy.shared.scene(scene, continue: userActivity)
+        // Handle continuing user activities
     }
 
     func sceneDidDisconnect(_ scene: UIScene) {
