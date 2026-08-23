@@ -28,6 +28,9 @@ jobs:
       - name: Sync Capacitor iOS
         run: npx cap sync ios
 
+      - name: Fix Scene Delegate
+        run: node scripts/fix-scene-delegate.js
+
       - name: Build iOS xcarchive
         run: |
           if [ -d "ios/App/App.xcworkspace" ]; then
