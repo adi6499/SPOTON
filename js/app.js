@@ -2581,7 +2581,7 @@ const App = (() => {
     if (colorSelect) colorSelect.value = settings.color || 'green';
     
     const toggleGlass = document.getElementById('toggle-glass');
-    if (toggleGlass) toggleGlass.checked = settings.glassEffect === true;
+    if (toggleGlass) toggleGlass.checked = settings.glassEffect === true || settings.glass === true;
 
     const perfModeSelect = document.getElementById('select-perf-mode');
     if (perfModeSelect) perfModeSelect.value = settings.perfMode || 'auto';
@@ -2611,10 +2611,10 @@ const App = (() => {
     if (ambientSelect) ambientSelect.value = settings.ambientSound || 'off';
 
     const beatPulseToggle = document.getElementById('toggle-beat-pulse');
-    if (beatPulseToggle) beatPulseToggle.checked = settings.beatPulse !== false;
+    if (beatPulseToggle) beatPulseToggle.checked = settings.beatPulse === true;
 
     const visualizerToggle = document.getElementById('toggle-visualizer');
-    if (visualizerToggle) visualizerToggle.checked = settings.visualizer !== false; // Default true
+    if (visualizerToggle) visualizerToggle.checked = settings.visualizer === true; // Default false
 
     const timerSelect = document.getElementById('select-timer');
     if (timerSelect) {
@@ -2766,9 +2766,11 @@ const App = (() => {
     });
 
     document.getElementById('toggle-glass')?.addEventListener('change', (e) => {
-      Storage.updateSettings({ glassEffect: e.target.checked });
+      const val = e.target.checked;
+      Storage.updateSettings({ glassEffect: val, glass: val });
       applyTheme();
-      UI.showToast(`Glassmorphism ${e.target.checked ? 'enabled' : 'disabled'}`);
+      if (typeof Settings !== 'undefined' && Settings.applyAllSettings) Settings.applyAllSettings();
+      UI.showToast(`Glassmorphism ${val ? 'enabled' : 'disabled'}`);
     });
 
     document.getElementById('select-eq-preset')?.addEventListener('change', (e) => {
@@ -2845,7 +2847,7 @@ const App = (() => {
     const pc = document.getElementById('player-container');
     const expanded = pc && pc.classList.contains('player-expanded');
     const settings = (typeof Storage !== 'undefined' && Storage.getSettings) ? Storage.getSettings() : {};
-    const enabled = settings.visualizer !== false; // default ON
+    const enabled = settings.visualizer === true; // default OFF
     const playing = (typeof Player !== 'undefined' && Player.getIsPlaying) ? Player.getIsPlaying() : false;
     const shouldRun = expanded && enabled && playing && !document.body.classList.contains('perf-lite');
 
@@ -3430,25 +3432,9 @@ const App = (() => {
   }
 
 
-  // ---- Mini player: swipe left/right to change track ----
+  // ---- Mini player swipe is handled cleanly in setupPlayerEvents ----
   function bindMiniPlayerSwipe() {
-    const mini = document.getElementById('mini-player');
-    if (!mini) return;
-    let sx = 0, sy = 0, t0 = 0;
-    mini.addEventListener('touchstart', (e) => {
-      const t = e.touches[0];
-      sx = t.clientX; sy = t.clientY; t0 = Date.now();
-    }, { passive: true });
-    mini.addEventListener('touchend', (e) => {
-      const t = e.changedTouches[0];
-      const dx = t.clientX - sx;
-      const dy = t.clientY - sy;
-      if (Math.abs(dx) > 64 && Math.abs(dx) > Math.abs(dy) * 2 && Date.now() - t0 < 600) {
-        if (typeof Haptics !== 'undefined') Haptics.light();
-        if (dx < 0) { Player.next(); UI.showToast('\u23ED Next'); }
-        else { Player.previous(); UI.showToast('\u23EE Previous'); }
-      }
-    }, { passive: true });
+    // Handled in setupPlayerEvents to avoid duplicate listeners
   }
 
   // ---- Player action rail (mockup: fav / download / add / share) ----
@@ -4207,7 +4193,7 @@ const App = (() => {
     document.body.classList.remove('color-purple', 'color-blue', 'color-green', 'color-red', 'color-pink', 'color-orange');
     document.body.classList.add(`color-${color}`);
 
-    const isGlass = settings.glass || settings.glassEffect || false;
+    const isGlass = settings.glass === true || settings.glassEffect === true;
     if (isGlass) {
       document.body.classList.add('ultra-glass', 'clear-glass');
     } else {
@@ -5088,35 +5074,7 @@ const App = (() => {
     const deltaY = e.changedTouches[0].clientY - touchStartY;
     const deltaTime = Date.now() - touchStartTime;
 
-    const pc = document.getElementById('player-container');
-    const isPlayerExpanded = pc && pc.classList.contains('player-expanded');
-
-    // 1. Swipe down on full player to minimize
-    if (isPlayerExpanded) {
-      if (deltaY > 60 && Math.abs(deltaY) > Math.abs(deltaX) * 1.2 && deltaTime < 600) {
-        window.minimizePlayer(false);
-      }
-      touchStartX = 0;
-      touchStartY = 0;
-      return;
-    }
-
-    // 2. Swipe left/right on mini player for next/previous
-    const miniEl = document.getElementById('mini-player');
-    if (miniEl && e.target.closest('#mini-player') && !isPlayerExpanded) {
-      if (Math.abs(deltaX) > 50 && Math.abs(deltaX) > Math.abs(deltaY) * 1.3 && deltaTime < 600) {
-        if (deltaX < 0) {
-          Player.next();
-        } else {
-          Player.previous();
-        }
-        touchStartX = 0;
-        touchStartY = 0;
-        return;
-      }
-    }
-
-    // 3. Edge Swipe Right to navigate back (started near left screen edge <= 65px)
+    // Edge Swipe Right to navigate back (started near left screen edge <= 65px)
     if (touchStartX <= 65 && deltaX > 70 && Math.abs(deltaX) > Math.abs(deltaY) * 1.3 && deltaTime < 500) {
       const activePage = document.querySelector('.page.active');
       const isInnerPage = activePage && (

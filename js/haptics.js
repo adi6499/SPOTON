@@ -1,6 +1,7 @@
 /**
- * MusicFlow - Apple Music Style Haptics Engine
- * Provides authentic iOS Taptic Engine style haptic feedback across playback, navigation, and gestures.
+ * MusicFlow - Lightweight Tactile Haptics Engine
+ * Fast, non-blocking hardware vibration on supported mobile devices.
+ * Completely safe for Web Audio, battery, and iOS/Android playback.
  */
 
 const Haptics = (function () {
@@ -9,77 +10,8 @@ const Haptics = (function () {
   let lastScrubPercent = -1;
   let lastHapticTime = 0;
 
-  let audioCtx = null;
-  let iosSwitchEl = null;
-
-  function getAudioContext() {
-    if (!hasUserInteracted || typeof window === 'undefined') return null;
-    try {
-      if (!audioCtx) {
-        const AudioContextClass = window.AudioContext || window.webkitAudioContext;
-        if (AudioContextClass) {
-          audioCtx = new AudioContextClass();
-        }
-      }
-      if (audioCtx && audioCtx.state === 'suspended' && hasUserInteracted) {
-        audioCtx.resume().catch(() => {});
-      }
-      return audioCtx;
-    } catch (e) {
-      return null;
-    }
-  }
-
-  /**
-   * iOS Transducer Kick: Outputs an ultra-short (10-25ms) sub-bass transient
-   * through the device's hardware speaker / Taptic transducer.
-   * On iOS Safari, this produces a real, physical tactile click felt in the hand.
-   */
-  function triggerTransducerPulse(freq = 55, durationMs = 18, gainLevel = 0.9) {
-    try {
-      const ctx = getAudioContext();
-      if (!ctx) return;
-
-      const now = ctx.currentTime;
-      const osc = ctx.createOscillator();
-      const gain = ctx.createGain();
-
-      osc.type = 'sine';
-      osc.frequency.setValueAtTime(freq, now);
-      osc.frequency.exponentialRampToValueAtTime(30, now + (durationMs / 1000));
-
-      gain.gain.setValueAtTime(gainLevel, now);
-      gain.gain.exponentialRampToValueAtTime(0.001, now + (durationMs / 1000));
-
-      osc.connect(gain);
-      gain.connect(ctx.destination);
-
-      osc.start(now);
-      osc.stop(now + (durationMs / 1000) + 0.01);
-    } catch (e) {}
-  }
-
-  /**
-   * iOS WebKit Native Haptic Trigger via virtual Switch/Checkbox control
-   */
-  function triggerIOSNativeSwitch() {
-    if (typeof document === 'undefined') return;
-    try {
-      if (!iosSwitchEl) {
-        iosSwitchEl = document.createElement('input');
-        iosSwitchEl.type = 'checkbox';
-        iosSwitchEl.setAttribute('switch', '');
-        iosSwitchEl.style.cssText = 'position:fixed;top:-9999px;left:-9999px;opacity:0;pointer-events:none;';
-        document.body.appendChild(iosSwitchEl);
-      }
-      iosSwitchEl.checked = !iosSwitchEl.checked;
-    } catch (e) {}
-  }
-
   function isSupported() {
-    if (typeof navigator !== 'undefined' && 'vibrate' in navigator) return true;
-    if (typeof window !== 'undefined' && ('AudioContext' in window || 'webkitAudioContext' in window)) return true;
-    return false;
+    return typeof navigator !== 'undefined' && typeof navigator.vibrate === 'function';
   }
 
   function isEnabled() {
@@ -88,31 +20,16 @@ const Haptics = (function () {
     return settings.hapticsEnabled !== false;
   }
 
-  let hasUserInteracted = false;
-
   function trigger(pattern) {
     if (!isEnabled()) return false;
-    let didTrigger = false;
+    if (!isSupported()) return false;
 
-    // 1. Android & Standards-Compliant Hardware Vibration
-    if (typeof navigator !== 'undefined' && typeof navigator.vibrate === 'function') {
-      try {
-        navigator.vibrate(pattern);
-        didTrigger = true;
-      } catch (e) {}
+    try {
+      navigator.vibrate(pattern);
+      return true;
+    } catch (_) {
+      return false;
     }
-
-    // 2. iOS Taptic Sub-Bass Transducer Pulse (felt physically while audio is active)
-    if (hasUserInteracted) {
-      const duration = Array.isArray(pattern) ? (pattern[0] || 15) : (typeof pattern === 'number' ? pattern : 15);
-      const freq = duration <= 10 ? 75 : 55;
-      triggerTransducerPulse(freq, Math.max(12, Math.min(35, duration)));
-
-      // 3. iOS WebKit Native Selection Switch
-      triggerIOSNativeSwitch();
-    }
-
-    return true;
   }
 
   // ---- Apple Music Haptic Presets ----
@@ -158,7 +75,7 @@ const Haptics = (function () {
     if (rounded !== lastScrubPercent) {
       lastScrubPercent = rounded;
       const now = Date.now();
-      if (now - lastHapticTime > 35) {
+      if (now - lastHapticTime > 30) {
         lastHapticTime = now;
         selection();
       }
@@ -207,74 +124,65 @@ const Haptics = (function () {
     const target = e.target;
     if (!target) return;
 
-    // Heart / Favorite button
     if (target.closest('.btn-fav, [data-action="fav-current"], [data-action="fav"]')) {
       like();
       return;
     }
 
-    // Play / Pause button
     if (target.closest('.btn-play, .hero-play-btn, [data-action="toggle-play"], [data-action="play-full"]')) {
       medium();
       return;
     }
 
-    // Next / Previous / Skip
     if (target.closest('[data-action="next"], [data-action="previous"], [data-action="prev"], [data-action="shuffle"], [data-action="repeat"], [data-action="toggle-shuffle"], [data-action="toggle-repeat"]')) {
       light();
       return;
     }
 
-    // Tabs, Filter chips, Mood chips, Media toggle pill
     if (target.closest('.nav-item, .settings-tab-btn, .mood-chip-btn, .lang-chip, .filter-chip, .media-toggle-btn, .search-tab-chip')) {
       selection();
       return;
     }
 
-    // Songs, Quick picks, Shelf cards
     if (target.closest('.quick-pick-item, .song-item, .shelf-card, .radio-station-card, .podcast-show-card, .sample-reel-card, .library-song-row')) {
       light();
       return;
     }
 
-    // Action buttons
     if (target.closest('.btn-icon, .btn-primary, #btn-refresh-home, #btn-user-profile-header, .settings-btn, #btn-player-haptics')) {
       light();
-      return;
     }
   }
 
-  /** Initialize automatic tactile feedback delegation */
+  let isInitialized = false;
   function init() {
-    if (typeof document === 'undefined') return;
+    if (typeof document === 'undefined' || isInitialized) return;
+    isInitialized = true;
 
     updatePlayerHapticsBadge();
 
-    const onFirstGesture = () => {
-      hasUserInteracted = true;
-    };
+    // Use single pointerdown event to prevent duplicate triggers
+    if (typeof window !== 'undefined' && window.PointerEvent) {
+      document.addEventListener('pointerdown', handleDirectInteraction, { passive: true });
+    } else if (typeof document !== 'undefined') {
+      document.addEventListener('touchstart', handleDirectInteraction, { passive: true });
+    }
 
-    // 1. Delegated touch / click feedback
-    document.addEventListener('touchstart', (e) => { hasUserInteracted = true; handleDirectInteraction(e); }, { capture: true, passive: true });
-    document.addEventListener('pointerdown', (e) => { hasUserInteracted = true; handleDirectInteraction(e); }, { capture: true, passive: true });
+    if (typeof document !== 'undefined') {
+      document.addEventListener('input', (e) => {
+        const target = e.target;
+        if (!target) return;
 
-    document.addEventListener('click', onFirstGesture, { once: true, passive: true });
-
-    // 2. Continuous slider scrubbing haptics (Volume & Progress)
-    document.addEventListener('input', (e) => {
-      const target = e.target;
-      if (!target) return;
-
-      if (target.classList.contains('volume-slider') || target.id === 'full-progress-range' || target.id === 'mini-progress-range') {
-        const val = parseFloat(target.value) || 0;
-        const max = parseFloat(target.max) || 100;
-        const percent = (val / max) * 100;
-        scrubTick(percent);
-      }
-    }, { passive: true });
+        if (target.classList.contains('volume-slider') || target.id === 'full-progress-range' || target.id === 'mini-progress-range') {
+          const val = parseFloat(target.value) || 0;
+          const max = parseFloat(target.max) || 100;
+          const percent = (val / max) * 100;
+          scrubTick(percent);
+        }
+      }, { passive: true });
+    }
   }
 
-  // Auto-init on DOM ready if in browser
   if (typeof document !== 'undefined') {
     if (document.readyState === 'loading') {
       document.addEventListener('DOMContentLoaded', init);
@@ -301,12 +209,9 @@ const Haptics = (function () {
   };
 })();
 
-// Export globally and for module environments
 if (typeof window !== 'undefined') {
   window.Haptics = Haptics;
 }
 if (typeof module !== 'undefined' && module.exports) {
   module.exports = Haptics;
 }
-
-if (typeof window !== "undefined") window.Haptics = Haptics;

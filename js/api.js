@@ -12,14 +12,13 @@ const API = (() => {
     /^(localhost|127\.|192\.168\.|10\.|172\.(1[6-9]|2\d|3[01])\.)/.test(window.location.hostname);
   const localApiUrl = `http://${window.location.hostname}:3001`;
 
-  const INSTANCES = [
-    'https://spoton-trpn.vercel.app',
-    'https://jiosaavn-api-sage.vercel.app',
-    ...(isLocalDev ? [localApiUrl] : []),
-  ];
+  const INSTANCES = isLocalDev
+    ? [localApiUrl, 'https://spoton-trpn.vercel.app', 'https://jiosaavn-api-sage.vercel.app']
+    : ['https://spoton-trpn.vercel.app', 'https://jiosaavn-api-sage.vercel.app'];
 
   let currentInstanceIndex = 0;
   let baseUrl = INSTANCES[0];
+  const memoryCache = new Map();
 
   /**
    * Set a custom API base URL (e.g., self-hosted instance)
@@ -38,23 +37,30 @@ const API = (() => {
   function rotateInstance() {
     currentInstanceIndex = (currentInstanceIndex + 1) % INSTANCES.length;
     baseUrl = INSTANCES[currentInstanceIndex];
-    console.log(`[API] Rotating to instance: ${baseUrl}`);
   }
 
   /**
-   * Core fetch wrapper with retry & instance fallback
-   * Each request independently tries instances without mutating shared state
+   * Core fetch wrapper with fast timeout, memory caching & instance fallback
    */
   async function request(endpoint, retries = INSTANCES.length) {
+    const cacheKey = endpoint;
+    if (memoryCache.has(cacheKey)) {
+      const entry = memoryCache.get(cacheKey);
+      if (Date.now() - entry.time < 300000) { // 5 min cache
+        return entry.data;
+      }
+    }
+
     let lastError = null;
 
     for (let attempt = 0; attempt < retries; attempt++) {
       const instanceUrl = INSTANCES[(currentInstanceIndex + attempt) % INSTANCES.length];
       const url = `${instanceUrl}${endpoint}`;
+      const timeoutMs = instanceUrl.includes(':3001') ? 1800 : 3000;
 
       try {
         const controller = new AbortController();
-        const timeoutId = setTimeout(() => controller.abort(), 4500);
+        const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
         const response = await fetch(url, { signal: controller.signal });
         clearTimeout(timeoutId);
 
@@ -62,12 +68,12 @@ const API = (() => {
           throw new Error(`HTTP ${response.status}: ${response.statusText}`);
         }
         const data = await response.json();
-        // On success, remember this working instance
         currentInstanceIndex = INSTANCES.indexOf(instanceUrl);
         baseUrl = instanceUrl;
+
+        memoryCache.set(cacheKey, { time: Date.now(), data });
         return data;
       } catch (error) {
-        console.warn(`[API] Attempt ${attempt + 1} failed for ${url}:`, error.message);
         lastError = error;
       }
     }

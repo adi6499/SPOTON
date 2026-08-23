@@ -4431,9 +4431,12 @@ body.density-compact .song-list-item {
     padding: 0 4px;
     z-index: 1000;
     box-sizing: border-box;
-    touch-action: none; /* Fluid pointer tracking across all tabs */
+    touch-action: manipulation;
     user-select: none;
     -webkit-user-select: none;
+    transform: translateZ(0);
+    -webkit-transform: translateZ(0);
+    will-change: transform;
     transition: transform 0.35s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.3s ease;
   }
 
@@ -13824,12 +13827,59 @@ html, body {
 .user-profile-modal-card,
 .radio-tuner-modal-card,
 .lyrics-overlay,
-.sleep-timer-modal-card {
-  -webkit-transform: translate3d(0, 0, 0);
-  transform: translate3d(0, 0, 0);
+/* 4. Ultra-Smooth Mobile 120Hz/60Hz GPU Acceleration & Glitch Elimination */
+* {
+  -webkit-tap-highlight-color: transparent;
+}
+
+button,
+a,
+.btn-icon,
+.btn-primary,
+.nav-item,
+.song-card,
+.quick-pick-item,
+.shelf-card,
+.tuner-pill,
+.mood-chip-btn,
+.lang-chip {
+  touch-action: manipulation !important;
+}
+
+.player-container,
+.full-player,
+.mini-player,
+.bottom-nav,
+.page,
+.modal-overlay {
+  -webkit-transform: translateZ(0);
+  transform: translateZ(0);
   -webkit-backface-visibility: hidden;
   backface-visibility: hidden;
 }
+
+@media (max-width: 768px) {
+  /* Prevent nested blur compositing chokes on mobile GPUs */
+  .shelf-card,
+  .song-card,
+  .quick-pick-item,
+  .song-item {
+    backdrop-filter: none !important;
+    -webkit-backdrop-filter: none !important;
+  }
+
+  .shelf-scroll,
+  .page,
+  .app-layout {
+    -webkit-overflow-scrolling: touch !important;
+    overscroll-behavior-y: contain;
+  }
+
+  .player-expanded #full-player {
+    overscroll-behavior: contain;
+  }
+}
+
 
 
 

@@ -45,8 +45,8 @@ const Settings = (() => {
     applyFontSize(settings.fontSize || 'medium');
     applyLayoutDensity(prefs.layoutDensity || 'comfortable');
 
-    // 4. Glassmorphism
-    const isGlass = settings.glass || settings.glassEffect || false;
+    // 4. Glassmorphism (Disabled by default for maximum speed & clarity)
+    const isGlass = settings.glass === true || settings.glassEffect === true;
     if (isGlass) {
       document.body.classList.add('ultra-glass', 'clear-glass');
     } else {
@@ -741,10 +741,10 @@ const Settings = (() => {
       });
     }
 
-    // 9. Glassmorphism Toggle
+    // 9. Glassmorphism Toggle (defaults to false)
     const glassToggle = document.getElementById('toggle-glass');
     if (glassToggle) {
-      const isGlass = Storage.getSettings().glass || Storage.getSettings().glassEffect || false;
+      const isGlass = Storage.getSettings().glass === true || Storage.getSettings().glassEffect === true;
       glassToggle.checked = isGlass;
       glassToggle.addEventListener('change', (e) => {
         const val = e.target.checked;

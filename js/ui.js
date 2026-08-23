@@ -955,20 +955,21 @@ const UI = (() => {
         if (fullPlayerSwiper) {
           fullPlayerSwiper.destroy(true, true);
         }
+        const isMobileDevice = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
         fullPlayerSwiper = new Swiper('#player-cards-swiper', {
           effect: 'cards',
           grabCursor: true,
           initialSlide: validIndex,
-          speed: 300,
+          speed: 260,
           cardsEffect: {
-            slideShadows: true,
+            slideShadows: !isMobileDevice,
             rotate: true,
-            perSlideRotate: 3,
-            perSlideOffset: 10
+            perSlideRotate: 2.5,
+            perSlideOffset: 8
           },
-          touchRatio: 1.1,
+          touchRatio: 1.0,
           resistanceRatio: 0.85,
-          threshold: 4,
+          threshold: 5,
           observer: true,
           observeParents: true,
           on: {
@@ -978,7 +979,7 @@ const UI = (() => {
             touchEnd: function() {
               setTimeout(() => {
                 isUserSwipingPlayer = false;
-              }, 350);
+              }, 300);
             },
             slideChange: function() {
               if (isProgrammaticPlayerSlide) return;
@@ -1753,20 +1754,21 @@ const UI = (() => {
         if (cardsSwiperInstance) {
           cardsSwiperInstance.destroy(true, true);
         }
+        const isMobileDevice = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
         cardsSwiperInstance = new Swiper('#home-cards-swiper', {
           effect: 'cards',
           grabCursor: true,
           loop: normalizedSongs.length > 2,
-          loopAdditionalSlides: 4,
+          loopAdditionalSlides: 2,
           cardsEffect: {
-            slideShadows: true,
+            slideShadows: !isMobileDevice,
             rotate: true,
-            perSlideRotate: 3,
-            perSlideOffset: 10
+            perSlideRotate: 2.5,
+            perSlideOffset: 8
           },
-          autoplay: {
-            delay: 3200,
-            disableOnInteraction: false,
+          autoplay: isMobileDevice ? false : {
+            delay: 4500,
+            disableOnInteraction: true,
             pauseOnMouseEnter: true
           },
           navigation: {

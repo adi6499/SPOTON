@@ -21,6 +21,10 @@ const Player = (() => {
   let activeAudio = audio;
   let inactiveAudio = audio2;
   
+  const isMobile = typeof navigator !== 'undefined' && (
+    /Android|iPhone|iPad|iPod/i.test(navigator.userAgent) ||
+    (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1)
+  );
   const isIOS = typeof navigator !== 'undefined' && (
     /iPad|iPhone|iPod/.test(navigator.userAgent) ||
     (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1)
@@ -31,7 +35,7 @@ const Player = (() => {
     a.playsInline = true;
     a.setAttribute('playsinline', 'true');
     a.setAttribute('webkit-playsinline', 'true');
-    if (!isIOS) {
+    if (!isMobile) {
       a.crossOrigin = 'anonymous';
       a.setAttribute('crossorigin', 'anonymous');
     }
@@ -81,8 +85,8 @@ const Player = (() => {
   const EQ_FREQUENCIES = [32, 64, 125, 250, 500, 1000, 2000, 4000, 8000, 16000];
 
   function initWebAudio() {
-    // On iOS, skip Web Audio entirely — native HTML5 audio handles lockscreen/background correctly
-    if (isIOS) return;
+    // On mobile devices, skip Web Audio to guarantee 100% stable lockscreen & background audio
+    if (isMobile) return;
     if (!audioCtx) {
       try {
         const AudioCtxClass = window.AudioContext || window.webkitAudioContext;
@@ -162,8 +166,8 @@ const Player = (() => {
           analyserNode.connect(volumeNormalizer);
           volumeNormalizer.connect(audioCtx.destination);
 
-          // Connect HTML5 audio elements on non-iOS platforms (iOS requires native audio pipeline for background & lockscreen)
-          if (!isIOS) {
+          // Connect HTML5 audio elements on desktop (mobile uses native audio pipeline for background & lockscreen)
+          if (!isMobile) {
             if (audio && !sourceNode1) {
               try {
                 sourceNode1 = audioCtx.createMediaElementSource(audio);
@@ -668,8 +672,8 @@ const Player = (() => {
         window.location.protocol === 'http:'
       );
       rawCandidateUrls.forEach(url => {
-        // On iOS, always use direct CDN URLs (no proxy needed since no Web Audio CORS)
-        if (!isIOS && isLocalServer && url.includes('saavncdn.com')) {
+        // On mobile devices, always use direct CDN URLs for instant zero-latency stream start
+        if (!isMobile && isLocalServer && url.includes('saavncdn.com')) {
           candidateUrls.push(`/api/proxy-audio?url=${encodeURIComponent(url)}`);
         }
         candidateUrls.push(url);

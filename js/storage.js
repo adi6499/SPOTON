@@ -40,7 +40,7 @@ const Storage = (() => {
     try {
       localStorage.setItem(key, JSON.stringify(value));
       if (key !== BACKUP_KEY && key !== KEYS.HOME_CACHE && key !== KEYS.DAILY_MIX_CACHE) {
-        createDataBackupSnapshot();
+        scheduleDataBackup();
       }
     } catch (e) {
       if (e.name === 'QuotaExceededError' || e.code === 22 || e.code === 1014) {
@@ -181,6 +181,10 @@ const Storage = (() => {
       shuffle: false,
       theme: 'dark',
       autoplay: true,
+      glass: false,
+      glassEffect: false,
+      beatPulse: false,
+      visualizer: false,
       languages: ['hindi', 'english', 'punjabi'],
     });
     return settingsCache;
@@ -487,6 +491,14 @@ const Storage = (() => {
   }
 
   // ---- Phase 3: User Profile & Permanent Data Protection ----
+
+  let backupDebounceTimer = null;
+  function scheduleDataBackup() {
+    if (backupDebounceTimer) clearTimeout(backupDebounceTimer);
+    backupDebounceTimer = setTimeout(() => {
+      createDataBackupSnapshot();
+    }, 4000);
+  }
 
   function createDataBackupSnapshot() {
     try {
