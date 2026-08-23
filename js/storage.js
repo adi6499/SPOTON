@@ -43,6 +43,20 @@ const Storage = (() => {
         createDataBackupSnapshot();
       }
     } catch (e) {
+      if (e.name === 'QuotaExceededError' || e.code === 22 || e.code === 1014) {
+        console.warn('[Storage] Quota exceeded. Purging transient caches to free space...');
+        try {
+          // Free non-critical caches
+          localStorage.removeItem(KEYS.HOME_CACHE);
+          localStorage.removeItem(KEYS.DAILY_MIX_CACHE);
+          localStorage.removeItem(BACKUP_KEY);
+          // Try again
+          localStorage.setItem(key, JSON.stringify(value));
+          return;
+        } catch (retryErr) {
+          console.warn('[Storage] Retry after cache purge failed:', retryErr.message);
+        }
+      }
       console.warn('[Storage] Failed to save:', e.message);
     }
   }

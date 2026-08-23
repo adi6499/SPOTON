@@ -1,9 +1,10 @@
-const CACHE_NAME = 'musicflow-v101';
+const CACHE_NAME = 'musicflow-v138';
 const ASSETS = [
   './',
   './index.html',
   './css/style.css',
   './js/haptics.js',
+  './js/ambience.js',
   './js/api.js',
   './js/storage.js',
   './js/player.js',

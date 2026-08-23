@@ -145,82 +145,71 @@ const API = (() => {
       }
     }
 
-    const prefs = Storage.getSettings().languages || [];
-    const mainLang = prefs.length > 0 ? prefs[0] : '';
-    const langSuffix = mainLang ? ` ${mainLang}` : '';
+    const prefs = (typeof Storage !== 'undefined' && Storage.getSettings && Storage.getSettings().languages) ? Storage.getSettings().languages : [];
+    const userLangs = prefs.length > 0 ? prefs.map(l => String(l).toLowerCase()) : ['hindi', 'english'];
+    const primaryLang = userLangs[0] || 'hindi';
+    const secondaryLang = userLangs[1] || primaryLang;
 
-    // Dynamic rotation pools for vibrant and fresh daily discovery
+    // Dynamic rotation pools matching user's selected languages
     const trendingPool = [
-      `trending hits${langSuffix}`,
-      `top 50 viral${langSuffix}`,
-      `latest chartbusters${langSuffix}`,
-      `top songs 2026${langSuffix}`,
-      `billboard hot 100`,
-      `bollywood superhits`,
-      `punjabi pop top hits`
+      `top ${primaryLang} songs`,
+      `trending ${primaryLang} hits`,
+      `latest ${primaryLang} chartbusters`,
+      `top songs 2026 ${primaryLang}`,
+      `top ${secondaryLang} viral hits`
     ];
 
     const globalPool = [
-      `top 50 global`,
+      `top global songs`,
       `worldwide viral hits`,
-      `international pop hits`,
-      `top english songs`,
-      `global dance hits`,
-      `billboard global 200`
+      `top international hits`,
+      `billboard hot 100`,
+      `top ${primaryLang} songs`
     ];
 
     const newReleasesPool = [
-      `new releases${langSuffix}`,
-      `latest singles 2026`,
-      `fresh new tracks${langSuffix}`,
-      `brand new music`,
-      `hot new arrivals`,
-      `friday music drops`
+      `new ${primaryLang} songs 2026`,
+      `latest ${primaryLang} singles`,
+      `fresh ${primaryLang} music drops`,
+      `new releases ${secondaryLang}`
     ];
 
     const chillPool = [
-      'lo-fi chillhop beats',
-      'acoustic coffee morning',
-      'late night vibes songs',
-      'peaceful piano melodies',
-      'ambient chill beats',
-      'monsoon romantic songs',
-      'indie acoustic vibes'
+      `chill ${primaryLang} songs`,
+      `acoustic ${primaryLang} melodies`,
+      `late night ${primaryLang} vibes`,
+      `lo-fi chillhop beats`,
+      `peaceful piano melodies`
     ];
 
     const focusPool = [
       'deep focus electronic',
-      'braindance synthwave',
-      'phonk drift high energy',
       'instrumental study flow',
       'chillwave beats',
-      'lo-fi sleep & study'
+      'lo-fi sleep study',
+      `relaxing ${primaryLang} instrumental`
     ];
 
     const workoutPool = [
-      'workout pump gym hits',
+      `workout ${primaryLang} gym hits`,
       'high energy edm festival',
       'banger hip hop hype',
       'motivational running beats',
-      'hardstyle edm',
-      'rap gym workout'
+      `fast beats ${primaryLang}`
     ];
 
     const artistPool = [
-      `popular artists${langSuffix}`,
-      'top indian singers',
-      'famous global artists',
-      'top vocalists',
-      'legendary playback singers',
-      'trending rap artists'
+      `top ${primaryLang} singers`,
+      `famous ${primaryLang} artists`,
+      `legendary ${primaryLang} vocalists`,
+      `trending ${secondaryLang} artists`
     ];
 
     const albumPool = [
-      `top albums${langSuffix}`,
-      'best soundtrack albums',
-      'blockbuster movie albums',
-      'trending studio albums',
-      'iconic music albums'
+      `top ${primaryLang} albums`,
+      `blockbuster ${primaryLang} movie albums`,
+      `latest ${primaryLang} soundtrack albums`,
+      `trending ${secondaryLang} albums`
     ];
 
     const pick = (arr) => arr[Math.floor(Math.random() * arr.length)];
@@ -239,9 +228,9 @@ const API = (() => {
     const keys = Object.keys(queries);
     const promises = keys.map(k => {
       const q = queries[k];
-      if (q.type === 'songs') return searchSongs(q.query, 40);
-      if (q.type === 'artists') return searchArtists(q.query, 20);
-      if (q.type === 'albums') return searchAlbums(q.query, 20);
+      if (q.type === 'songs') return searchSongs(q.query, 16);
+      if (q.type === 'artists') return searchArtists(q.query, 12);
+      if (q.type === 'albums') return searchAlbums(q.query, 12);
       return Promise.resolve([]);
     });
 
@@ -253,6 +242,8 @@ const API = (() => {
       keys.forEach((k, index) => {
         let items = results[index].status === 'fulfilled' ? results[index].value : [];
         if (queries[k].type === 'songs') {
+          // Strictly filter by user language preferences
+          items = filterByLanguagePrefs(items, { minKeep: 6 });
           // Shuffle slightly to give variety
           items = items.sort(() => Math.random() - 0.5);
           items = items.filter(item => {
@@ -366,81 +357,82 @@ const API = (() => {
    * @param {string} trackName - Song name
    * @param {string} artistName - Artist name
    * @param {number} duration - Duration in seconds
-   * @returns {Promise<Object|null>}
-   */
+   * @returns {Promise<Object|null    */
+  const _lyricsMemoryCache = new Map();
+
   async function getLyrics(trackName, artistName, duration) {
     if (!trackName) return null;
-    const cleanTitle = trackName.replace(/\(.*?\)|\[.*?\]/g, '').trim();
-    const cleanArtist = (artistName || '').split(',')[0].split('&')[0].trim();
-    const settings = (typeof Storage !== 'undefined' && Storage.getSettings) ? Storage.getSettings() : {};
-    const musixmatchKey = settings.musixmatchApiKey || '';
+    const cleanTitle = trackName
+      .replace(/\(.*?\)|\[.*?\]/g, '')
+      .replace(/feat\..*|ft\..*|prod\..*|official.*|slowed.*|reverb.*/gi, '')
+      .trim();
+    const rawFirstArtist = (artistName || '').split(',')[0].split('&')[0].trim();
+    const cleanArtist = rawFirstArtist.replace(/feat\..*|ft\..*/gi, '').trim();
+    const cacheKey = `${cleanTitle.toLowerCase()}__${cleanArtist.toLowerCase()}`;
 
-    // 1. Try LRCLIB exact match if artist is provided
-    if (cleanArtist) {
-      try {
-        let url = `https://lrclib.net/api/get?track_name=${encodeURIComponent(cleanTitle)}&artist_name=${encodeURIComponent(cleanArtist)}`;
-        if (duration) url += `&duration=${Math.round(duration)}`;
-        const res = await fetch(url);
-        if (res.ok) {
-          const data = await res.json();
-          if (data.syncedLyrics || data.plainLyrics) {
-            return {
-              synced: data.syncedLyrics || null,
-              plain: data.plainLyrics || data.syncedLyrics
-            };
-          }
-        }
-      } catch (_) {}
+    // 1. Instant Cache Check (0ms response)
+    if (_lyricsMemoryCache.has(cacheKey)) {
+      return _lyricsMemoryCache.get(cacheKey);
     }
 
-    // 2. Try LRCLIB search query
     try {
-      const q = cleanArtist ? `${cleanTitle} ${cleanArtist}` : cleanTitle;
-      const searchRes = await fetch(`https://lrclib.net/api/search?q=${encodeURIComponent(q)}`);
-      if (searchRes.ok) {
-        const results = await searchRes.json();
-        if (Array.isArray(results) && results.length > 0) {
-          const match = results[0];
-          if (match.syncedLyrics || match.plainLyrics) {
-            return {
-              synced: match.syncedLyrics || null,
-              plain: match.plainLyrics || match.syncedLyrics
-            };
-          }
+      const stored = localStorage.getItem(`mf_lyrics_${cacheKey}`);
+      if (stored) {
+        const parsed = JSON.parse(stored);
+        if (parsed && (parsed.synced || parsed.plain)) {
+          _lyricsMemoryCache.set(cacheKey, parsed);
+          return parsed;
         }
       }
     } catch (_) {}
 
-    // 3. Try Musixmatch API (if API key is configured)
-    if (musixmatchKey && cleanArtist) {
-      try {
-        const mxTarget = `https://api.musixmatch.com/ws/1.1/matcher.lyrics.get?q_track=${encodeURIComponent(cleanTitle)}&q_artist=${encodeURIComponent(cleanArtist)}&apikey=${musixmatchKey}`;
-        const mxRes = await fetch(`https://api.allorigins.win/raw?url=${encodeURIComponent(mxTarget)}`);
-        if (mxRes.ok) {
-          const mxData = await mxRes.json();
-          const lyricsBody = mxData?.message?.body?.lyrics?.lyrics_body;
-          if (lyricsBody) {
-            return {
-              synced: null,
-              plain: lyricsBody.replace(/\*\*\*.*$/s, '').trim()
-            };
-          }
-        }
-      } catch (_) {}
+    // 2. Fast Parallel Multi-Query Execution (<500ms)
+    const queries = [
+      `https://lrclib.net/api/search?q=${encodeURIComponent(`${cleanTitle} ${cleanArtist}`.trim())}`,
+      `https://lrclib.net/api/get?track_name=${encodeURIComponent(cleanTitle)}&artist_name=${encodeURIComponent(cleanArtist)}` + (duration ? `&duration=${Math.round(duration)}` : ''),
+      `https://lrclib.net/api/search?q=${encodeURIComponent(cleanTitle)}`
+    ];
+
+    if (artistName && artistName.includes(',')) {
+      const secondaryArtist = (artistName.split(',')[1] || '').trim();
+      if (secondaryArtist) {
+        queries.push(`https://lrclib.net/api/search?q=${encodeURIComponent(`${cleanTitle} ${secondaryArtist}`)}`);
+      }
     }
 
-    // 4. Fallback to Lyrics.ovh only if both artist and title are present
-    if (cleanArtist && cleanTitle) {
-      try {
-        const ovhRes = await fetch(`https://api.lyrics.ovh/v1/${encodeURIComponent(cleanArtist)}/${encodeURIComponent(cleanTitle)}`);
-        if (ovhRes.ok) {
-          const ovhData = await ovhRes.json();
-          if (ovhData.lyrics) {
-            return { synced: null, plain: ovhData.lyrics };
+    try {
+      const fetchPromises = queries.map(async (url) => {
+        try {
+          const controller = new AbortController();
+          const timer = setTimeout(() => controller.abort(), 2500);
+          const res = await fetch(url, { signal: controller.signal });
+          clearTimeout(timer);
+          if (!res.ok) return null;
+          const json = await res.json();
+          if (Array.isArray(json)) {
+            return json.find(d => d.syncedLyrics) || json[0] || null;
           }
+          return json;
+        } catch {
+          return null;
         }
-      } catch (_) {}
-    }
+      });
+
+      const candidates = await Promise.all(fetchPromises);
+      const match = candidates.find(c => c && c.syncedLyrics) || candidates.find(c => c && c.plainLyrics);
+
+      if (match && (match.syncedLyrics || match.plainLyrics)) {
+        const result = {
+          synced: match.syncedLyrics || null,
+          plain: match.plainLyrics || match.syncedLyrics
+        };
+        _lyricsMemoryCache.set(cacheKey, result);
+        try {
+          localStorage.setItem(`mf_lyrics_${cacheKey}`, JSON.stringify(result));
+        } catch (_) {}
+        return result;
+      }
+    } catch (_) {}
 
     return null;
   }
@@ -752,32 +744,144 @@ const API = (() => {
    * Federated multi-collection search across all collections
    */
   async function searchFederated(query, page = 1) {
-    const cleanQuery = query.trim();
+    const cleanQuery = (query || '').trim();
     if (!cleanQuery) return null;
 
-    const [songsRes, albumsRes, artistsRes, playlistsRes] = await Promise.allSettled([
-      searchSongs(cleanQuery, 40, page),
-      searchAlbums(cleanQuery, 20, page),
-      searchArtists(cleanQuery, 20, page),
-      searchPlaylists(cleanQuery, 20, page)
-    ]);
+    const words = cleanQuery.split(/\s+/).filter(Boolean);
+    const subFetches = [
+      searchSongs(cleanQuery, 50, page),
+      searchAlbums(cleanQuery, 25, page),
+      searchArtists(cleanQuery, 25, page),
+      searchPlaylists(cleanQuery, 25, page)
+    ];
 
-    const songs = (songsRes.status === 'fulfilled' && Array.isArray(songsRes.value)) 
-      ? songsRes.value.map(normalizeSong) 
-      : [];
-    const albums = (albumsRes.status === 'fulfilled' && Array.isArray(albumsRes.value)) 
-      ? albumsRes.value.map(normalizeAlbum).filter(Boolean) 
-      : [];
-    const artists = (artistsRes.status === 'fulfilled' && Array.isArray(artistsRes.value)) 
-      ? artistsRes.value.map(normalizeArtist).filter(Boolean) 
-      : [];
-    const playlists = (playlistsRes.status === 'fulfilled' && Array.isArray(playlistsRes.value)) 
-      ? playlistsRes.value.map(normalizePlaylist).filter(Boolean) 
-      : [];
+    // For multi-word queries (e.g. "OK Katy Perry", "Katy Perry OK"),
+    // dispatch smart sub-query variations to guarantee discovery
+    if (words.length >= 2) {
+      const firstWord = words[0];
+      const restWords = words.slice(1).join(' ');
+      subFetches.push(
+        searchSongs(firstWord, 35, 1).catch(() => []),
+        searchSongs(restWords, 35, 1).catch(() => [])
+      );
+      if (words.length > 2) {
+        const lastWord = words[words.length - 1];
+        const firstWords = words.slice(0, -1).join(' ');
+        subFetches.push(
+          searchSongs(lastWord, 35, 1).catch(() => []),
+          searchSongs(firstWords, 35, 1).catch(() => [])
+        );
+      }
+    }
+
+    const settled = await Promise.allSettled(subFetches);
+
+    let rawSongs = (settled[0].status === 'fulfilled' && Array.isArray(settled[0].value)) ? settled[0].value : [];
+    const albums = (settled[1].status === 'fulfilled' && Array.isArray(settled[1].value)) ? settled[1].value.map(normalizeAlbum).filter(Boolean) : [];
+    const artists = (settled[2].status === 'fulfilled' && Array.isArray(settled[2].value)) ? settled[2].value.map(normalizeArtist).filter(Boolean) : [];
+    const playlists = (settled[3].status === 'fulfilled' && Array.isArray(settled[3].value)) ? settled[3].value.map(normalizePlaylist).filter(Boolean) : [];
+
+    // Append sub-query matches
+    for (let i = 4; i < settled.length; i++) {
+      if (settled[i].status === 'fulfilled' && Array.isArray(settled[i].value)) {
+        rawSongs = rawSongs.concat(settled[i].value);
+      }
+    }
+
+    // If matching albums exist, backfill top album songs in parallel to enrich catalog diversity
+    if (albums.length > 0) {
+      const topAlbums = albums.slice(0, 3);
+      const albumSongFetches = topAlbums.map(a => getAlbumDetails(a.id).catch(() => null));
+      const albumDetails = await Promise.all(albumSongFetches);
+      albumDetails.forEach(ad => {
+        if (ad && Array.isArray(ad.songs)) {
+          rawSongs = rawSongs.concat(ad.songs);
+        }
+      });
+    }
+
+    // Relevance scoring & smart deduplication
+    const lowerQ = cleanQuery.toLowerCase();
+    const wordRegexes = words.map(w => new RegExp(`\\b${w.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\b`, 'i'));
+    const matchedArtistNames = artists.map(a => (a.name || '').toLowerCase());
+
+    function computeRelevance(s) {
+      const title = (s.name || s.title || '').toLowerCase();
+      let art = s.primaryArtists || s.artists || s.artist || '';
+      if (Array.isArray(art)) art = art.map(a => typeof a === 'object' ? a.name : a).join(' ');
+      else if (typeof art === 'object' && art !== null) art = art.name || '';
+      const artistStr = String(art).toLowerCase();
+      const albumStr = (s.album?.name || s.album || '').toLowerCase();
+
+      let score = 0;
+
+      // 1. Exact full query match
+      if (title === lowerQ) score += 300;
+      else if (title.startsWith(lowerQ)) score += 180;
+      else if (title.includes(lowerQ)) score += 120;
+
+      // 2. Primary Artist Boost (e.g. song is performed by matched artist)
+      matchedArtistNames.forEach(artName => {
+        if (artistStr.includes(artName)) {
+          score += 260;
+        }
+      });
+
+      // 3. Whole-word token matching (avoids matching "ok" in "Crooks" or "Rokko")
+      let matchedTokens = 0;
+      wordRegexes.forEach(rx => {
+        let hit = false;
+        if (rx.test(title)) {
+          score += 55;
+          hit = true;
+        }
+        if (rx.test(artistStr)) {
+          score += 65;
+          hit = true;
+        }
+        if (rx.test(albumStr)) {
+          score += 20;
+          hit = true;
+        }
+        if (hit) matchedTokens++;
+      });
+
+      // 4. Exact short title match boost (e.g. Song titled literally "OK")
+      if (words.some(w => title === w.toLowerCase())) {
+        score += 120;
+      }
+
+      if (matchedTokens >= words.length) score += 90;
+      return score;
+    }
+
+    const seenSongKeys = new Set();
+    const scoredSongs = [];
+
+    rawSongs.forEach(rawSong => {
+      if (!rawSong) return;
+      const norm = normalizeSong(rawSong);
+      if (!norm || !norm.id || !norm.title) return;
+
+      const cleanTitle = norm.title.toLowerCase().replace(/[^a-z0-9]/g, '');
+      const cleanArtist = String(norm.artist || '').toLowerCase().replace(/[^a-z0-9]/g, '').slice(0, 16);
+      const dedupeKey = `${cleanTitle}__${cleanArtist}`;
+
+      if (seenSongKeys.has(dedupeKey)) return;
+      seenSongKeys.add(dedupeKey);
+
+      scoredSongs.push({
+        song: norm,
+        score: computeRelevance(norm)
+      });
+    });
+
+    scoredSongs.sort((a, b) => b.score - a.score);
+    const finalSongs = scoredSongs.map(s => s.song);
 
     return {
       query: cleanQuery,
-      songs,
+      songs: finalSongs,
       albums,
       artists,
       playlists

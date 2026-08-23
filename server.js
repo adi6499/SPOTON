@@ -50,6 +50,61 @@ const server = http.createServer((req, res) => {
   }
 
   let cleanUrl = req.url.split('?')[0];
+
+  // Streaming audio CORS proxy for Web Audio, Equalizer & 3D Spatial Sound
+  if (cleanUrl === '/api/proxy-audio' || cleanUrl === '/proxy-audio') {
+    try {
+      const parsedUrl = new URL(req.url, `http://${req.headers.host}`);
+      const targetAudioUrl = parsedUrl.searchParams.get('url');
+      if (!targetAudioUrl || !targetAudioUrl.startsWith('http')) {
+        res.writeHead(400, { 'Content-Type': 'text/plain' });
+        res.end('Missing or invalid url query parameter');
+        return;
+      }
+
+      const https = require('https');
+      const httpModule = targetAudioUrl.startsWith('https:') ? https : http;
+
+      const proxyReq = httpModule.get(targetAudioUrl, (proxyRes) => {
+        // Handle redirect if any
+        if (proxyRes.statusCode >= 300 && proxyRes.statusCode < 400 && proxyRes.headers.location) {
+          res.writeHead(302, { 'Location': proxyRes.headers.location, 'Access-Control-Allow-Origin': '*' });
+          res.end();
+          return;
+        }
+
+        const headers = {
+          'Access-Control-Allow-Origin': '*',
+          'Access-Control-Allow-Methods': 'GET, HEAD, OPTIONS',
+          'Access-Control-Allow-Headers': '*',
+          'Content-Type': proxyRes.headers['content-type'] || 'audio/mp4',
+          'Accept-Ranges': 'bytes',
+          'Cache-Control': 'public, max-age=86400'
+        };
+        if (proxyRes.headers['content-length']) {
+          headers['Content-Length'] = proxyRes.headers['content-length'];
+        }
+        if (proxyRes.headers['content-range']) {
+          headers['Content-Range'] = proxyRes.headers['content-range'];
+        }
+
+        res.writeHead(proxyRes.statusCode || 200, headers);
+        proxyRes.pipe(res);
+      });
+
+      proxyReq.on('error', (err) => {
+        console.warn('[Proxy Audio Error]:', err.message);
+        res.writeHead(502, { 'Content-Type': 'text/plain', 'Access-Control-Allow-Origin': '*' });
+        res.end('Proxy Fetch Failed');
+      });
+      return;
+    } catch (e) {
+      res.writeHead(500, { 'Content-Type': 'text/plain', 'Access-Control-Allow-Origin': '*' });
+      res.end('Internal Proxy Error');
+      return;
+    }
+  }
+
   if (cleanUrl === '/' || cleanUrl === '') {
     cleanUrl = '/index.html';
   }

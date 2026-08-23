@@ -909,16 +909,145 @@ const UI = (() => {
     });
   }
 
+  // ---- Full Player 3D Queue Cards Swiper ----
+  let fullPlayerSwiper = null;
+  let isProgrammaticPlayerSlide = false;
+  let isUserSwipingPlayer = false;
+  let _lastRenderedQueueHash = '';
+
+  function updatePlayerCardsDeck(queue, currentIndex = 0, forceRebuild = false) {
+    const swiperWrapper = document.getElementById('player-cards-swiper-wrapper');
+    if (!swiperWrapper) return;
+
+    const list = Array.isArray(queue) && queue.length > 0 
+      ? queue 
+      : (typeof Player !== 'undefined' && (Player.getCurrentTrack ? Player.getCurrentTrack() : Player.getCurrentSong()) ? [(Player.getCurrentTrack ? Player.getCurrentTrack() : Player.getCurrentSong())] : []);
+    if (list.length === 0) return;
+
+    const validIndex = Math.max(0, Math.min(currentIndex, list.length - 1));
+    const currentQueueHash = list.map(s => s.id || `${s.name}_${s.artists}`).join('|');
+
+    // If swiper already initialized with same queue and not forced, just sync index
+    if (!forceRebuild && fullPlayerSwiper && !fullPlayerSwiper.destroyed && _lastRenderedQueueHash === currentQueueHash && swiperWrapper.children.length === list.length) {
+      if (!isUserSwipingPlayer) {
+        syncPlayerCardsSlide(validIndex);
+      }
+      return;
+    }
+
+    _lastRenderedQueueHash = currentQueueHash;
+
+    // Build clean square rounded slides for 3D player cards swiper
+    swiperWrapper.innerHTML = list.map((song, idx) => {
+      const img = (window.API && API.getImageUrl) ? API.getImageUrl(song) : (song?.image || 'assets/logo.png');
+      const highRes = (window.API && API.getHighResImage) ? API.getHighResImage(img) : (img || 'assets/logo.png');
+      const name = song?.name || song?.title || 'Track';
+      const isCurrent = idx === validIndex;
+      return `
+        <div class="swiper-slide player-card-slide" data-index="${idx}">
+          <img class="minimal-art-img" ${isCurrent ? 'id="full-player-img"' : ''} src="${highRes}" alt="${name}" onerror="this.src='assets/logo.png'">
+        </div>
+      `;
+    }).join('');
+
+    if (typeof Swiper !== 'undefined') {
+      try {
+        if (fullPlayerSwiper) {
+          fullPlayerSwiper.destroy(true, true);
+        }
+        fullPlayerSwiper = new Swiper('#player-cards-swiper', {
+          effect: 'cards',
+          grabCursor: true,
+          initialSlide: validIndex,
+          speed: 300,
+          cardsEffect: {
+            slideShadows: true,
+            rotate: true,
+            perSlideRotate: 3,
+            perSlideOffset: 10
+          },
+          touchRatio: 1.1,
+          resistanceRatio: 0.85,
+          threshold: 4,
+          observer: true,
+          observeParents: true,
+          on: {
+            touchStart: function() {
+              isUserSwipingPlayer = true;
+            },
+            touchEnd: function() {
+              setTimeout(() => {
+                isUserSwipingPlayer = false;
+              }, 350);
+            },
+            slideChange: function() {
+              if (isProgrammaticPlayerSlide) return;
+              const newIndex = typeof this.realIndex === 'number' ? this.realIndex : this.activeIndex;
+              if (newIndex >= 0 && newIndex < list.length && typeof Player !== 'undefined') {
+                const curIdx = typeof Player.getQueueIndex === 'function' ? Player.getQueueIndex() : (Player.getCurrentIndex ? Player.getCurrentIndex() : -1);
+                if (newIndex !== curIdx) {
+                  if (typeof Haptics !== 'undefined' && Haptics.selection) Haptics.selection();
+                  if (typeof Player.playAtIndex === 'function') {
+                    Player.playAtIndex(newIndex);
+                  } else if (typeof Player.playSong === 'function') {
+                    Player.playSong(list[newIndex]);
+                  }
+                }
+              }
+            }
+          }
+        });
+      } catch (e) {
+        console.warn('Player Swiper error:', e);
+      }
+    }
+  }
+
+  function refreshPlayerCardsDeck() {
+    if (typeof Player !== 'undefined') {
+      const q = Player.getQueue ? Player.getQueue() : [];
+      const idx = Player.getQueueIndex ? Player.getQueueIndex() : 0;
+      updatePlayerCardsDeck(q, idx, false);
+      if (fullPlayerSwiper && !fullPlayerSwiper.destroyed) {
+        try {
+          fullPlayerSwiper.update();
+          fullPlayerSwiper.slideTo(idx, 0);
+        } catch (_) {}
+      }
+    }
+  }
+
+  function syncPlayerCardsSlide(index) {
+    if (!fullPlayerSwiper || fullPlayerSwiper.destroyed) return;
+    if (isUserSwipingPlayer) return;
+    const curSwiperIdx = typeof fullPlayerSwiper.realIndex === 'number' ? fullPlayerSwiper.realIndex : fullPlayerSwiper.activeIndex;
+    if (curSwiperIdx === index) return;
+    try {
+      isProgrammaticPlayerSlide = true;
+      fullPlayerSwiper.slideTo(index, 300);
+      setTimeout(() => {
+        isProgrammaticPlayerSlide = false;
+      }, 320);
+    } catch (_) {
+      isProgrammaticPlayerSlide = false;
+    }
+  }
+
   // ---- Player Bar ----
 
   function updatePlayerBar(track) {
     const bar = document.getElementById('player-container');
     if (!bar) return;
 
-    if (!track || !track.id || track.name === 'Not Playing') {
-      document.body.classList.remove('has-player');
-      bar.style.display = 'none';
-      return;
+    const activeTrack = track || (typeof Player !== 'undefined' && Player.getCurrentTrack ? Player.getCurrentTrack() : null);
+
+    if (!activeTrack || !activeTrack.id || activeTrack.name === 'Not Playing') {
+      const qLen = (typeof Player !== 'undefined' && Player.getQueue) ? Player.getQueue().length : 0;
+      if (qLen === 0) {
+        document.body.classList.remove('has-player');
+        bar.style.display = 'none';
+        return;
+      }
     }
 
     bar.style.display = 'block';
@@ -992,8 +1121,38 @@ const UI = (() => {
       });
     };
 
-    renderArtistChips(mArtist, track.artists, track.image);
+    // Mini-player artist is plain text so tapping the mini player expands the player without redirecting
+    if (mArtist) {
+      let mArtStr = 'Artist';
+      if (typeof track.artists === 'string') mArtStr = track.artists;
+      else if (Array.isArray(track.artists)) mArtStr = track.artists.map(a => typeof a === 'string' ? a : (a.name || '')).filter(Boolean).join(', ');
+      mArtist.textContent = mArtStr || 'Artist';
+    }
     renderArtistChips(fArtist, track.artists, highResImg || track.image);
+
+    // Minimalist Spotify-style Player Artist Pill & Live Listeners
+    const minAvatar = document.getElementById('minimal-artist-avatar');
+    const minName = document.getElementById('minimal-artist-name');
+    const minListeners = document.getElementById('minimal-listener-count');
+    const followBtn = document.getElementById('btn-player-follow');
+
+    let primaryArtist = 'Artist';
+    if (typeof track.artists === 'string' && track.artists) {
+      primaryArtist = track.artists.split(/[,/&]+/)[0].trim();
+    } else if (Array.isArray(track.artists) && track.artists.length > 0) {
+      primaryArtist = track.artists[0]?.name || track.artists[0] || 'Artist';
+    }
+    if (minName) minName.textContent = primaryArtist;
+    if (minAvatar) minAvatar.src = highResImg || cleanImg || 'assets/logo.png';
+    if (minListeners) {
+      const base = Math.abs((track.name || 'Song').split('').reduce((acc, c) => acc + c.charCodeAt(0), 0) % 850) + 120;
+      minListeners.textContent = base.toLocaleString();
+    }
+    if (followBtn) {
+      const followed = (window.Storage && Storage.isArtistFollowed) ? Storage.isArtistFollowed(primaryArtist) : false;
+      followBtn.textContent = followed ? 'Following' : 'Follow';
+      followBtn.classList.toggle('following', followed);
+    }
 
     // Highlight currently active track across all cards and list items in DOM
     document.querySelectorAll('.song-card, .song-list-item, .quick-pick-item, .video-search-card, .search-top-result-card').forEach(el => {
@@ -1005,13 +1164,26 @@ const UI = (() => {
     });
 
     const isFav = Storage.isFavorite(track.id);
-    document.querySelectorAll('.full-player .btn-fav, .mini-player .btn-fav').forEach(btn => {
-      if (isFav) btn.classList.add('active');
-      else btn.classList.remove('active');
-      btn.innerHTML = `<svg viewBox="0 0 24 24" fill="${isFav ? 'currentColor' : 'none'}" stroke="currentColor" stroke-width="2"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>`;
+    document.querySelectorAll('.full-player .btn-fav, .mini-player .btn-fav, #full-player .btn-fav, [data-action="fav-current"]').forEach(btn => {
+      btn.classList.toggle('active', isFav);
+      btn.classList.toggle('favorited', isFav);
+      btn.innerHTML = `<span class="material-symbols-outlined" style="font-size: 26px; ${isFav ? 'color: #ff4757; font-variation-settings: \'FILL\' 1;' : ''}">${isFav ? 'favorite' : 'favorite_border'}</span>`;
     });
 
     updateDynamicBackground(track.image);
+
+    // Update Full Player 3D Queue Cards Deck
+    if (typeof Player !== 'undefined') {
+      const queue = Player.getQueue ? Player.getQueue() : [];
+      const currentIdx = Player.getQueueIndex ? Player.getQueueIndex() : 0;
+      if (queue.length > 0) {
+        if (!fullPlayerSwiper || fullPlayerSwiper.slides?.length !== queue.length) {
+          updatePlayerCardsDeck(queue, currentIdx);
+        } else {
+          syncPlayerCardsSlide(currentIdx);
+        }
+      }
+    }
   }
 
   function updatePlayPauseButton(isPlaying) {
@@ -1019,10 +1191,13 @@ const UI = (() => {
     const pc = document.getElementById('player-container');
     if (pc) pc.classList.toggle('is-playing', isPlaying);
 
-    document.querySelectorAll('.btn-play').forEach(btn => {
+    document.querySelectorAll('.btn-play, .neu-btn-hero-play, .neu-btn-play-mini, [data-action="toggle-play"]').forEach(btn => {
+      const isHero = btn.classList.contains('neu-btn-hero-play');
+      const isMini = btn.classList.contains('neu-btn-play-mini');
+      const fontSize = isHero ? '38px' : (isMini ? '24px' : '32px');
       btn.innerHTML = isPlaying 
-        ? '<span class="material-symbols-outlined" style="font-size: 32px; font-variation-settings: \'FILL\' 1;">pause</span>'
-        : '<span class="material-symbols-outlined" style="font-size: 32px; font-variation-settings: \'FILL\' 1;">play_arrow</span>';
+        ? `<span class="material-symbols-outlined" style="font-size: ${fontSize}; font-variation-settings: 'FILL' 1;">pause</span>`
+        : `<span class="material-symbols-outlined" style="font-size: ${fontSize}; font-variation-settings: 'FILL' 1;">play_arrow</span>`;
     });
   }
 
@@ -1032,6 +1207,7 @@ const UI = (() => {
     const mEdge = document.getElementById('mini-progress-edge');
     const fFill = document.getElementById('full-progress-fill');
     const fThumb = document.getElementById('full-progress-thumb');
+    const radialBar = document.getElementById('radial-progress-bar');
     
     const tCurr = document.getElementById('time-current');
     const tTot = document.getElementById('time-total');
@@ -1043,6 +1219,13 @@ const UI = (() => {
       if (mFill) mFill.style.width = `${data.progress}%`;
       if (mEdge) mEdge.style.transform = `scaleX(${(data.progress / 100).toFixed(4)})`;
       if (fFill) fFill.style.width = `${data.progress}%`;
+
+      if (radialBar) {
+        const circumference = 791.68; // 2 * PI * 126
+        const offset = circumference - (data.progress / 100) * circumference;
+        radialBar.style.strokeDasharray = `${circumference}`;
+        radialBar.style.strokeDashoffset = `${offset}`;
+      }
     }
 
     if (data.currentTime !== undefined) {
@@ -1236,7 +1419,7 @@ const UI = (() => {
       
       const bg = document.getElementById('dynamic-bg');
       if (bg) {
-        bg.style.background = `radial-gradient(circle at 50% 0%, rgba(${r}, ${g}, ${b}, 0.4) 0%, transparent 70%)`;
+        bg.style.background = 'none';
       }
     });
   }
@@ -1508,6 +1691,93 @@ const UI = (() => {
         }
       });
     });
+  }
+
+  // ---- Skiper48 3D Swiper Cards Carousel ----
+  let cardsSwiperInstance = null;
+
+  function render3DCardsCarousel(songs) {
+    const swiperWrapper = document.getElementById('home-cards-swiper-wrapper');
+    const deckSection = document.getElementById('cards-deck-section');
+    if (!swiperWrapper || !deckSection) return;
+
+    if (!songs || songs.length === 0) {
+      deckSection.style.display = 'none';
+      return;
+    }
+    deckSection.style.display = 'block';
+
+    const normalizedSongs = songs.slice(0, 20).map(s => (window.API && API.normalizeSong) ? API.normalizeSong(s) : s);
+
+    swiperWrapper.innerHTML = normalizedSongs.map((song, idx) => {
+      const img = song.image || 'assets/logo.png';
+      const name = typeof truncate === 'function' ? truncate(song.name, 22) : song.name;
+      const artist = typeof truncate === 'function' ? truncate(song.artists || song.artist || 'Trending Artist', 24) : (song.artists || song.artist || 'Trending');
+      return `
+        <div class="swiper-slide card-deck-slide" data-index="${idx}">
+          <img class="card-deck-img" src="${img}" alt="${name}" onerror="this.src='assets/logo.png'">
+          <div class="card-deck-overlay">
+            <div class="card-deck-top-badge">#${idx + 1} Trending</div>
+            <div class="card-deck-bottom-pill">
+              <div class="card-deck-info">
+                <h4 class="card-deck-name">${name}</h4>
+                <p class="card-deck-artist">${artist}</p>
+              </div>
+              <button class="card-deck-play-btn" data-index="${idx}" aria-label="Play ${name}" title="Play Now">
+                <span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">play_arrow</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      `;
+    }).join('');
+
+    // Delegated click handler on the swiper container so original AND looped/duplicated slides play seamlessly
+    const swiperContainer = document.getElementById('home-cards-swiper');
+    if (swiperContainer) {
+      swiperContainer.onclick = async (e) => {
+        const slide = e.target.closest('.card-deck-slide');
+        if (!slide) return;
+        const idx = parseInt(slide.dataset.index, 10);
+        if (isNaN(idx) || !normalizedSongs[idx]) return;
+        const song = normalizedSongs[idx];
+        if (typeof Haptics !== 'undefined' && Haptics.light) Haptics.light();
+        Player.setQueue(normalizedSongs, idx);
+        await Player.playSong(song);
+      };
+    }
+
+    // Initialize Swiper with True Endless Loop
+    if (typeof Swiper !== 'undefined') {
+      try {
+        if (cardsSwiperInstance) {
+          cardsSwiperInstance.destroy(true, true);
+        }
+        cardsSwiperInstance = new Swiper('#home-cards-swiper', {
+          effect: 'cards',
+          grabCursor: true,
+          loop: normalizedSongs.length > 2,
+          loopAdditionalSlides: 4,
+          cardsEffect: {
+            slideShadows: true,
+            rotate: true,
+            perSlideRotate: 3,
+            perSlideOffset: 10
+          },
+          autoplay: {
+            delay: 3200,
+            disableOnInteraction: false,
+            pauseOnMouseEnter: true
+          },
+          navigation: {
+            nextEl: '.swiper-cards-next',
+            prevEl: '.swiper-cards-prev'
+          }
+        });
+      } catch (err) {
+        console.warn('Swiper init error:', err);
+      }
+    }
   }
 
   // ---- Phase 2: Public Playlists Shelf ----
@@ -1817,7 +2087,8 @@ const UI = (() => {
       { id: 'lossless', name: 'Lossless CD Quality — 16-bit / 44.1 kHz', desc: 'Bit-perfect 1411 kbps uncompressed audio', icon: '💿', badge: 'LOSSLESS', color: '#a29bfe' },
       { id: '320kbps', name: 'Extreme Quality — 320 kbps AAC', desc: 'Crystal clear high-fidelity AAC (Recommended)', icon: '🚀', badge: '320 KBPS', color: '#6c5ce7' },
       { id: '192kbps', name: 'High Quality — 192 kbps', desc: 'Great sound quality with lower data usage', icon: '⚡', badge: '192 KBPS', color: '#74b9ff' },
-      { id: '128kbps', name: 'Standard Quality — 128 kbps', desc: 'Fast loading for low data and mobile networks', icon: '🍃', badge: '128 KBPS', color: '#55efc4' },
+      { id: '128kbps', name: 'Standard Quality — 128 kbps', desc: 'Fast loading for mobile networks', icon: '🍃', badge: '128 KBPS', color: '#00cec9' },
+      { id: 'data-saver', name: 'Data Saver — 64 kbps Opus/AAC', desc: 'Ultra-low bandwidth mode for saving mobile data', icon: '📉', badge: 'DATA SAVER', color: '#00b894' },
       { id: 'auto', name: 'Auto / Adaptive Bitrate', desc: 'Automatically adjusts to current network bandwidth', icon: '📶', badge: 'ADAPTIVE', color: '#fdcb6e' },
     ];
 
@@ -1897,6 +2168,9 @@ const UI = (() => {
     renderQueue,
     renderRecent,
     updatePlayerBar,
+    updatePlayerCardsDeck,
+    refreshPlayerCardsDeck,
+    syncPlayerCardsSlide,
     updatePlayPauseButton,
     updateProgress,
     updateRepeatButton,
@@ -1916,6 +2190,7 @@ const UI = (() => {
     renderSidebarPlaylists,
     renderMoodChips,
     updateMoodChipsActive,
+    render3DCardsCarousel,
     renderQuickPicks,
     renderMixSuiteShelf,
     renderLanguageChips,

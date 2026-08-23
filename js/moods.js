@@ -10,6 +10,38 @@ const Moods = (() => {
       icon: '✨',
       isDefault: true
     },
+    new_releases: {
+      id: 'new_releases',
+      label: 'New Release',
+      icon: '🚀',
+      gradient: 'linear-gradient(135deg, #FA2D48, #FF5E7E)',
+      queries: [
+        { title: 'Fresh New Releases', query: 'latest release hot tracks', type: 'song' },
+        { title: 'Brand New Singles', query: 'latest new hit singles', type: 'song' },
+        { title: 'New Albums & EPs', query: 'latest album release songs', type: 'song' }
+      ]
+    },
+    trending: {
+      id: 'trending',
+      label: 'Trending',
+      icon: '🔥',
+      gradient: 'linear-gradient(135deg, #FF416C, #FF4B2B)',
+      queries: [
+        { title: 'Trending Global Chartbusters', query: 'top trending music hits', type: 'song' },
+        { title: 'Viral Music Right Now', query: 'viral trending social hits', type: 'song' },
+        { title: 'High Velocity Streams', query: 'most streamed trending songs', type: 'song' }
+      ]
+    },
+    top: {
+      id: 'top',
+      label: 'Top Charts',
+      icon: '🏆',
+      gradient: 'linear-gradient(135deg, #f857a6, #ff5858)',
+      queries: [
+        { title: 'Top 50 Global Hits', query: 'top global 50 billboard hits', type: 'song' },
+        { title: 'All-Time Greatest Chartbusters', query: 'mega chartbusters top hits', type: 'song' }
+      ]
+    },
     relax: {
       id: 'relax',
       label: 'Relax',
@@ -203,6 +235,15 @@ const Moods = (() => {
     `;
 
     document.getElementById('btn-clear-mood')?.addEventListener('click', () => setMood('all'));
+
+    // Automatically scroll to show the filtered results immediately so the user doesn't have to guess or manually scroll
+    setTimeout(() => {
+      const target = document.getElementById('mood-custom-feed') || homeContent;
+      if (target) {
+        target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      }
+    }, 120);
+    if (typeof Haptics !== 'undefined' && Haptics.selection) Haptics.selection();
 
     // Fetch queries in parallel
     const promises = config.queries.map(q => API.searchSongs(q.query, 25));

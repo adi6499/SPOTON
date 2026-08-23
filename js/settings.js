@@ -4,13 +4,14 @@
 
 const Settings = (() => {
   const ACCENT_COLORS = {
-    purple: { name: 'Electric Purple', primary: '#6c5ce7', light: '#a29bfe', glow: 'rgba(108, 92, 231, 0.4)' },
-    green: { name: 'Emerald Green', primary: '#00b894', light: '#55efc4', glow: 'rgba(0, 184, 148, 0.4)' },
-    red: { name: 'Crimson Red', primary: '#d63031', light: '#ff7675', glow: 'rgba(214, 48, 49, 0.4)' },
-    blue: { name: 'Ocean Blue', primary: '#0984e3', light: '#74b9ff', glow: 'rgba(9, 132, 227, 0.4)' },
-    pink: { name: 'Neon Pink', primary: '#e84393', light: '#fd79a8', glow: 'rgba(232, 67, 147, 0.4)' },
-    orange: { name: 'Sunset Orange', primary: '#e17055', light: '#fab1a0', glow: 'rgba(225, 112, 85, 0.4)' },
-    cyan: { name: 'Cyberpunk Cyan', primary: '#00cec9', light: '#81ecec', glow: 'rgba(0, 206, 201, 0.4)' }
+    crimson: { name: 'Ruby Crimson (Signature)', primary: '#FA2D48', light: '#FF5E7E', glow: 'rgba(250, 45, 72, 0.42)', text: '#ffffff' },
+    purple: { name: 'Electric Purple', primary: '#6c5ce7', light: '#a29bfe', glow: 'rgba(108, 92, 231, 0.4)', text: '#ffffff' },
+    green: { name: 'Emerald Green', primary: '#00b894', light: '#55efc4', glow: 'rgba(0, 184, 148, 0.4)', text: '#ffffff' },
+    red: { name: 'Crimson Red', primary: '#d63031', light: '#ff7675', glow: 'rgba(214, 48, 49, 0.4)', text: '#ffffff' },
+    blue: { name: 'Ocean Blue', primary: '#0984e3', light: '#74b9ff', glow: 'rgba(9, 132, 227, 0.4)', text: '#ffffff' },
+    pink: { name: 'Velvet Pink', primary: '#e84393', light: '#fd79a8', glow: 'rgba(232, 67, 147, 0.4)', text: '#ffffff' },
+    orange: { name: 'Sunset Orange', primary: '#e17055', light: '#fab1a0', glow: 'rgba(225, 112, 85, 0.4)', text: '#ffffff' },
+    cyan: { name: 'Cyberpunk Cyan', primary: '#00cec9', light: '#81ecec', glow: 'rgba(0, 206, 201, 0.4)', text: '#ffffff' }
   };
 
   const AVATAR_PRESETS = ['🎧', '👑', '⚡', '🎵', '🎸', '🏎️', '🚀', '🦊', '🐉', '🎙️', '🌌', '💎'];
@@ -32,18 +33,24 @@ const Settings = (() => {
     // 1. Theme
     applyTheme(settings.theme || 'dark');
 
-    // 2. Accent Color
-    applyAccentColor(settings.accentColor || 'purple');
+    // 2. Accent Color (auto-migrate from legacy lime)
+    let activeAccent = settings.accentColor;
+    if (!activeAccent || activeAccent === 'lime') {
+      activeAccent = 'crimson';
+      Storage.updateSettings({ accentColor: 'crimson' });
+    }
+    applyAccentColor(activeAccent);
 
     // 3. Font Size & Density
     applyFontSize(settings.fontSize || 'medium');
     applyLayoutDensity(prefs.layoutDensity || 'comfortable');
 
     // 4. Glassmorphism
-    if (settings.glass) {
-      document.body.classList.add('ultra-glass');
+    const isGlass = settings.glass || settings.glassEffect || false;
+    if (isGlass) {
+      document.body.classList.add('ultra-glass', 'clear-glass');
     } else {
-      document.body.classList.remove('ultra-glass');
+      document.body.classList.remove('ultra-glass', 'clear-glass');
     }
 
     // 5. Custom Background Atmosphere & Color
@@ -104,6 +111,33 @@ const Settings = (() => {
     }
   }
 
+  function setTheme(themeName, event = null) {
+    if (typeof Haptics !== 'undefined' && Haptics.selection) Haptics.selection();
+    Storage.updateSettings({ theme: themeName });
+    applyTheme(themeName, event);
+
+    const themeSelect = document.getElementById('select-theme');
+    if (themeSelect) themeSelect.value = themeName;
+
+    document.querySelectorAll('.theme-card-option').forEach(card => {
+      const isMatch = card.dataset.theme === themeName;
+      card.classList.toggle('active', isMatch);
+      let badge = card.querySelector('.theme-card-badge');
+      if (isMatch && !badge) {
+        badge = document.createElement('span');
+        badge.className = 'theme-card-badge';
+        badge.textContent = 'Active';
+        card.querySelector('.theme-card-label')?.appendChild(badge);
+      } else if (!isMatch && badge) {
+        badge.remove();
+      }
+    });
+
+    if (typeof UI !== 'undefined' && UI.showToast) {
+      UI.showToast(`Theme set to ${themeName.toUpperCase()}`, 'info');
+    }
+  }
+
   function applyTheme(theme, clickOrigin = null) {
     const updateDOM = () => {
       document.body.classList.remove('theme-light', 'theme-dark', 'theme-oled');
@@ -159,11 +193,16 @@ const Settings = (() => {
   }
 
   function applyAccentColor(colorKey) {
-    const palette = ACCENT_COLORS[colorKey] || ACCENT_COLORS.purple;
+    if (colorKey === 'lime') colorKey = 'crimson';
+    const palette = ACCENT_COLORS[colorKey] || ACCENT_COLORS.crimson;
     const root = document.documentElement;
     root.style.setProperty('--accent-color', palette.primary);
+    root.style.setProperty('--primary', palette.primary);
     root.style.setProperty('--accent-light', palette.light);
     root.style.setProperty('--accent-glow', palette.glow);
+    root.style.setProperty('--accent-contrast', palette.text || '#ffffff');
+    root.style.setProperty('--on-primary', palette.text || '#ffffff');
+    root.style.setProperty('--accent-gradient', `linear-gradient(135deg, ${palette.primary}, ${palette.light})`);
   }
 
   function applyFontSize(size) {
@@ -381,6 +420,102 @@ const Settings = (() => {
     if (bioInput) bioInput.value = profile.bio || 'Music enthusiast & audiophile';
     if (avatarDisplay) avatarDisplay.textContent = profile.avatar || '🎧';
 
+    // 1. Language Preferences Selection Chips
+    const PROFILE_LANGUAGES = [
+      { id: 'english', label: 'English', flag: '🇬🇧' },
+      { id: 'hindi', label: 'Hindi', flag: '🇮🇳' },
+      { id: 'punjabi', label: 'Punjabi', flag: '🪕' },
+      { id: 'tamil', label: 'Tamil', flag: '🌴' },
+      { id: 'telugu', label: 'Telugu', flag: '🎬' },
+      { id: 'spanish', label: 'Spanish', flag: '🇪🇸' },
+      { id: 'korean', label: 'K-Pop', flag: '🇰🇷' },
+      { id: 'japanese', label: 'J-Pop', flag: '🇯🇵' },
+      { id: 'malayalam', label: 'Malayalam', flag: '🥥' },
+      { id: 'kannada', label: 'Kannada', flag: '🐘' },
+      { id: 'marathi', label: 'Marathi', flag: '🚩' },
+      { id: 'gujarati', label: 'Gujarati', flag: '🦚' },
+      { id: 'bengali', label: 'Bengali', flag: '🐅' },
+      { id: 'bhojpuri', label: 'Bhojpuri', flag: '🌾' },
+      { id: 'urdu', label: 'Urdu', flag: '🌙' }
+    ];
+
+    const langContainer = document.getElementById('settings-profile-lang-chips');
+    const storedLangs = new Set((Storage.getSettings().languages || ['hindi', 'english']).map(l => l.toLowerCase()));
+    if (langContainer) {
+      langContainer.innerHTML = PROFILE_LANGUAGES.map(lang => {
+        const isSelected = storedLangs.has(lang.id);
+        return `
+          <button type="button" class="taste-chip ${isSelected ? 'active' : ''}" data-lang-id="${lang.id}">
+            <span>${lang.flag}</span>
+            <span>${lang.label}</span>
+          </button>
+        `;
+      }).join('');
+
+      langContainer.querySelectorAll('.taste-chip').forEach(chip => {
+        chip.addEventListener('click', () => {
+          const lId = chip.dataset.langId;
+          if (storedLangs.has(lId)) {
+            if (storedLangs.size <= 1) {
+              if (typeof UI !== 'undefined') UI.showToast('Keep at least one language selected', 'info');
+              return;
+            }
+            storedLangs.delete(lId);
+            chip.classList.remove('active');
+          } else {
+            storedLangs.add(lId);
+            chip.classList.add('active');
+          }
+          if (typeof Haptics !== 'undefined' && Haptics.selection) Haptics.selection();
+        });
+      });
+    }
+
+    // 2. Music Genres & Song Types Selection Chips
+    const PROFILE_GENRES = [
+      { id: 'pop', label: 'Pop Hits', icon: '🌟' },
+      { id: 'hiphop', label: 'Hip-Hop & Rap', icon: '🎤' },
+      { id: 'edm', label: 'EDM & Dance', icon: '⚡' },
+      { id: 'bollywood', label: 'Bollywood Hits', icon: '✨' },
+      { id: 'lofi', label: 'Lo-Fi & Chill', icon: '🍃' },
+      { id: 'acoustic', label: 'Acoustic & Unplugged', icon: '🎸' },
+      { id: 'rock', label: 'Rock & Metal', icon: '🤘' },
+      { id: 'rnb', label: 'R&B & Soul', icon: '🎷' },
+      { id: 'party', label: 'Party & Club', icon: '🎉' },
+      { id: 'classical', label: 'Classical & Sufi', icon: '🎻' },
+      { id: 'workout', label: 'Workout & Energy', icon: '🔥' },
+      { id: 'indie', label: 'Indie Vibes', icon: '🎧' },
+      { id: 'sad', label: 'Sad & Emotional', icon: '🌧️' }
+    ];
+
+    const genreContainer = document.getElementById('settings-profile-genre-chips');
+    const storedGenres = new Set((profile.favoriteGenres || ['pop', 'bollywood', 'lofi']).map(g => g.toLowerCase()));
+    if (genreContainer) {
+      genreContainer.innerHTML = PROFILE_GENRES.map(g => {
+        const isSelected = storedGenres.has(g.id);
+        return `
+          <button type="button" class="taste-chip ${isSelected ? 'active' : ''}" data-genre-id="${g.id}">
+            <span>${g.icon}</span>
+            <span>${g.label}</span>
+          </button>
+        `;
+      }).join('');
+
+      genreContainer.querySelectorAll('.taste-chip').forEach(chip => {
+        chip.addEventListener('click', () => {
+          const gId = chip.dataset.genreId;
+          if (storedGenres.has(gId)) {
+            storedGenres.delete(gId);
+            chip.classList.remove('active');
+          } else {
+            storedGenres.add(gId);
+            chip.classList.add('active');
+          }
+          if (typeof Haptics !== 'undefined' && Haptics.selection) Haptics.selection();
+        });
+      });
+    }
+
     // Calculate real dynamic stats
     const totalSongs = stats.totalPlays || history.length || 0;
     const totalSeconds = history.reduce((sum, h) => sum + (h.song?.duration || 180), 0);
@@ -421,6 +556,7 @@ const Settings = (() => {
           avatarGrid.querySelectorAll('.avatar-preset-btn').forEach(b => b.classList.remove('active'));
           btn.classList.add('active');
           if (avatarDisplay) avatarDisplay.textContent = btn.dataset.avatar;
+          if (typeof Haptics !== 'undefined' && Haptics.selection) Haptics.selection();
         });
       });
     }
@@ -449,15 +585,30 @@ const Settings = (() => {
       const bioInput = document.getElementById('settings-bio-input');
       const avatarDisplay = document.getElementById('settings-profile-avatar');
 
+      // Collect selected languages and genres
+      const langChips = document.querySelectorAll('#settings-profile-lang-chips .taste-chip.active');
+      const selectedLangs = Array.from(langChips).map(c => c.dataset.langId).filter(Boolean);
+
+      const genreChips = document.querySelectorAll('#settings-profile-genre-chips .taste-chip.active');
+      const selectedGenres = Array.from(genreChips).map(c => c.dataset.genreId).filter(Boolean);
+
       const updated = Storage.saveUserProfile({
         username: nameInput?.value.trim() || 'Adesh',
         bio: bioInput?.value.trim() || '',
         avatar: avatarDisplay?.textContent || '🎧',
+        favoriteGenres: selectedGenres,
         hasOnboarded: true
       });
 
+      if (selectedLangs.length > 0) {
+        Storage.updateSettings({ languages: selectedLangs });
+        try { localStorage.removeItem('mf_home_cache'); } catch (_) {}
+        if (window.App && App.loadHomePage) App.loadHomePage(true);
+      }
+
       renderProfileHeader();
-      UI.showToast(`Profile updated: ${updated.username}`, 'success');
+      if (typeof Haptics !== 'undefined' && Haptics.medium) Haptics.medium();
+      UI.showToast(`✨ Profile & Music Taste saved successfully!`, 'success');
     });
   }
 
@@ -477,7 +628,7 @@ const Settings = (() => {
     // 2. Accent Color Select (Live Preview)
     const colorSelect = document.getElementById('select-color');
     if (colorSelect) {
-      colorSelect.value = Storage.getSettings().accentColor || 'purple';
+      colorSelect.value = Storage.getSettings().accentColor || 'lime';
       colorSelect.addEventListener('change', (e) => {
         const color = e.target.value;
         Storage.updateSettings({ accentColor: color });
@@ -593,13 +744,18 @@ const Settings = (() => {
     // 9. Glassmorphism Toggle
     const glassToggle = document.getElementById('toggle-glass');
     if (glassToggle) {
-      glassToggle.checked = Storage.getSettings().glass || false;
+      const isGlass = Storage.getSettings().glass || Storage.getSettings().glassEffect || false;
+      glassToggle.checked = isGlass;
       glassToggle.addEventListener('change', (e) => {
-        Storage.updateSettings({ glass: e.target.checked });
-        if (e.target.checked) {
-          document.body.classList.add('ultra-glass');
+        const val = e.target.checked;
+        Storage.updateSettings({ glass: val, glassEffect: val });
+        if (val) {
+          document.body.classList.add('ultra-glass', 'clear-glass');
         } else {
-          document.body.classList.remove('ultra-glass');
+          document.body.classList.remove('ultra-glass', 'clear-glass');
+        }
+        if (typeof UI !== 'undefined' && UI.showToast) {
+          UI.showToast(`Glassmorphism ${val ? 'enabled' : 'disabled'}`);
         }
       });
     }
@@ -741,6 +897,7 @@ const Settings = (() => {
 
   return {
     init,
+    setTheme,
     openProfileModal,
     closeProfileModal,
     openPwaModal,

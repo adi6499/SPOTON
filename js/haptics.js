@@ -252,16 +252,12 @@ const Haptics = (function () {
 
     const onFirstGesture = () => {
       hasUserInteracted = true;
-      getAudioContext();
     };
 
-    // 1. Delegated touch / click feedback (capture phase for zero-latency synchronous trigger)
+    // 1. Delegated touch / click feedback
     document.addEventListener('touchstart', (e) => { hasUserInteracted = true; handleDirectInteraction(e); }, { capture: true, passive: true });
     document.addEventListener('pointerdown', (e) => { hasUserInteracted = true; handleDirectInteraction(e); }, { capture: true, passive: true });
 
-    // Unlock AudioContext on first user touch so transducer is hot and ready
-    document.addEventListener('touchstart', onFirstGesture, { once: true, passive: true });
-    document.addEventListener('pointerdown', onFirstGesture, { once: true, passive: true });
     document.addEventListener('click', onFirstGesture, { once: true, passive: true });
 
     // 2. Continuous slider scrubbing haptics (Volume & Progress)

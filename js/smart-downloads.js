@@ -166,16 +166,24 @@ const SmartDownloads = (() => {
               }
             }
 
-            if (downloadUrl) {
-              const res = await fetch(downloadUrl);
-              if (res.ok) {
-                const blob = await res.blob();
-                await saveSong(song, blob);
-                console.log(`[SmartDownloads] Cached: ${song.name}`);
+            if (downloadUrl && downloadUrl.startsWith('http')) {
+              try {
+                let fetchTarget = downloadUrl;
+                if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') {
+                  fetchTarget = `/api/proxy-audio?url=${encodeURIComponent(downloadUrl)}`;
+                }
+                const res = await fetch(fetchTarget, { mode: 'cors' });
+                if (res && res.ok) {
+                  const blob = await res.blob();
+                  await saveSong(song, blob);
+                  console.log(`[SmartDownloads] Cached: ${song.name}`);
+                }
+              } catch (_) {
+                // Cross-origin CDN restrictions: non-fatal, skip caching this track
               }
             }
           } catch (e) {
-            console.warn(`[SmartDownloads] Could not cache ${song.name}:`, e);
+            // Silently skip non-critical download sync failures
           }
         }
       }

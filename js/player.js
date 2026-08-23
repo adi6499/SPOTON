@@ -21,11 +21,20 @@ const Player = (() => {
   let activeAudio = audio;
   let inactiveAudio = audio2;
   
+  const isIOS = typeof navigator !== 'undefined' && (
+    /iPad|iPhone|iPod/.test(navigator.userAgent) ||
+    (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1)
+  );
+
   [audio, audio2].forEach(a => {
     a.preload = 'auto';
     a.playsInline = true;
     a.setAttribute('playsinline', 'true');
     a.setAttribute('webkit-playsinline', 'true');
+    if (!isIOS) {
+      a.crossOrigin = 'anonymous';
+      a.setAttribute('crossorigin', 'anonymous');
+    }
     if (!a.parentNode && document.body) {
       document.body.appendChild(a);
     }
@@ -61,13 +70,19 @@ const Player = (() => {
   let gainNode = null;
   let analyserNode = null;
   let volumeNormalizer = null;
-  const eqBands = [];
-  const eqFrequencies = [60, 170, 310, 600, 1000, 3000, 6000, 12000, 14000, 16000];
+  let eqFilters = [];
+  let spatialPresenceFilter = null;
+  let spatialAirFilter = null;
+  let spatialCrossfeedNode = null;
+  let spatialCrossfeedGain = null;
+  let dryMasterGain = null;
+  let isSpatialEnabled = false;
 
-  let pannerNode = null;
-  let spatialInterval = null;
+  const EQ_FREQUENCIES = [32, 64, 125, 250, 500, 1000, 2000, 4000, 8000, 16000];
 
   function initWebAudio() {
+    // On iOS, skip Web Audio entirely — native HTML5 audio handles lockscreen/background correctly
+    if (isIOS) return;
     if (!audioCtx) {
       try {
         const AudioCtxClass = window.AudioContext || window.webkitAudioContext;
@@ -76,48 +91,101 @@ const Player = (() => {
           const inputGain = audioCtx.createGain();
           gainNode = inputGain;
           gainNode.gain.value = targetVolume;
-          const freqs = [60, 170, 310, 600, 1000, 3000, 6000, 12000, 14000, 16000];
-          let prevNode = inputGain;
 
-          eqBands.length = 0;
-          freqs.forEach(freq => {
+          eqFilters = EQ_FREQUENCIES.map((freq, idx) => {
             const eq = audioCtx.createBiquadFilter();
-            eq.type = 'peaking';
+            if (idx === 0) {
+              eq.type = 'lowshelf';
+            } else if (idx === EQ_FREQUENCIES.length - 1) {
+              eq.type = 'highshelf';
+            } else {
+              eq.type = 'peaking';
+              eq.Q.value = 1.4;
+            }
             eq.frequency.value = freq;
-            eq.Q.value = 1;
             eq.gain.value = 0;
-            eqBands.push(eq);
-            prevNode.connect(eq);
-            prevNode = eq;
+            return eq;
           });
 
-          if (audioCtx.createStereoPanner) {
-            pannerNode = audioCtx.createStereoPanner();
-          } else if (audioCtx.createPanner) {
-            pannerNode = audioCtx.createPanner();
+          inputGain.connect(eqFilters[0]);
+          for (let i = 0; i < eqFilters.length - 1; i++) {
+            eqFilters[i].connect(eqFilters[i + 1]);
           }
-          
-          if (pannerNode) {
-            prevNode.connect(pannerNode);
-            prevNode = pannerNode;
+
+          // 3D Spatial Surround Binaural Acoustic Processor
+          spatialPresenceFilter = audioCtx.createBiquadFilter();
+          spatialPresenceFilter.type = 'peaking';
+          spatialPresenceFilter.frequency.value = 3200; // Ear-canal HRTF presence band
+          spatialPresenceFilter.Q.value = 1.2;
+          spatialPresenceFilter.gain.value = 0;
+
+          spatialAirFilter = audioCtx.createBiquadFilter();
+          spatialAirFilter.type = 'highshelf';
+          spatialAirFilter.frequency.value = 8500; // Spatial air dimension
+          spatialAirFilter.gain.value = 0;
+
+          spatialCrossfeedNode = audioCtx.createDelay ? audioCtx.createDelay(0.01) : null;
+          if (spatialCrossfeedNode) {
+            spatialCrossfeedNode.delayTime.value = 0.00028; // 280µs interaural time difference
+          }
+          spatialCrossfeedGain = audioCtx.createGain ? audioCtx.createGain() : null;
+          if (spatialCrossfeedGain) {
+            spatialCrossfeedGain.gain.value = 0;
+          }
+
+          dryMasterGain = audioCtx.createGain();
+          dryMasterGain.gain.value = 1.0;
+
+          const lastEq = eqFilters[eqFilters.length - 1];
+          lastEq.connect(spatialPresenceFilter);
+          spatialPresenceFilter.connect(spatialAirFilter);
+          spatialAirFilter.connect(dryMasterGain);
+
+          if (spatialCrossfeedNode && spatialCrossfeedGain) {
+            spatialAirFilter.connect(spatialCrossfeedNode);
+            spatialCrossfeedNode.connect(spatialCrossfeedGain);
+            spatialCrossfeedGain.connect(dryMasterGain);
           }
 
           analyserNode = audioCtx.createAnalyser();
           analyserNode.fftSize = 128;
           analyserNode.smoothingTimeConstant = 0.35;
-          prevNode.connect(analyserNode);
-          
+          dryMasterGain.connect(analyserNode);
+
           volumeNormalizer = audioCtx.createDynamicsCompressor();
           volumeNormalizer.threshold.setValueAtTime(-24, audioCtx.currentTime);
           volumeNormalizer.knee.setValueAtTime(30, audioCtx.currentTime);
           volumeNormalizer.ratio.setValueAtTime(12, audioCtx.currentTime);
           volumeNormalizer.attack.setValueAtTime(0.003, audioCtx.currentTime);
           volumeNormalizer.release.setValueAtTime(0.25, audioCtx.currentTime);
-          
-          applyNormalization();
 
           analyserNode.connect(volumeNormalizer);
           volumeNormalizer.connect(audioCtx.destination);
+
+          // Connect HTML5 audio elements on non-iOS platforms (iOS requires native audio pipeline for background & lockscreen)
+          if (!isIOS) {
+            if (audio && !sourceNode1) {
+              try {
+                sourceNode1 = audioCtx.createMediaElementSource(audio);
+                sourceNode1.connect(inputGain);
+              } catch (_) {}
+            }
+            if (audio2 && !sourceNode2) {
+              try {
+                sourceNode2 = audioCtx.createMediaElementSource(audio2);
+                sourceNode2.connect(inputGain);
+              } catch (_) {}
+            }
+          }
+
+          // Apply saved settings
+          const settings = (typeof Storage !== 'undefined' ? Storage.getSettings() : {}) || {};
+          if (settings.eq && Array.isArray(settings.eq)) {
+            settings.eq.forEach((g, i) => setEqBand(i, g));
+          }
+          if (settings.spatialAudio) {
+            toggleSpatialAudio(true);
+          }
         }
       } catch (e) {
         console.warn('[Player] Web Audio API init:', e);
@@ -129,6 +197,58 @@ const Player = (() => {
     }
   }
 
+  function setEqBand(index, gain) {
+    if (!audioCtx) initWebAudio();
+    if (eqFilters && eqFilters[index] && audioCtx) {
+      try {
+        eqFilters[index].gain.setValueAtTime(parseFloat(gain) || 0, audioCtx.currentTime);
+      } catch (_) {
+        try { eqFilters[index].gain.value = parseFloat(gain) || 0; } catch (e) {}
+      }
+    }
+  }
+
+  function toggleSpatialAudio(enable) {
+    if (!audioCtx) initWebAudio();
+    isSpatialEnabled = enable !== undefined ? enable : !isSpatialEnabled;
+    Storage.updateSettings({ spatialAudio: isSpatialEnabled });
+
+    if (audioCtx) {
+      if (audioCtx.state === 'suspended') {
+        audioCtx.resume().catch(() => {});
+      }
+      const targetGain = isSpatialEnabled ? 3.5 : 0;
+      const targetAir = isSpatialEnabled ? 2.8 : 0;
+      const targetCrossfeed = isSpatialEnabled ? 0.35 : 0;
+
+      try {
+        if (spatialPresenceFilter) {
+          spatialPresenceFilter.gain.cancelScheduledValues(audioCtx.currentTime);
+          spatialPresenceFilter.gain.setValueAtTime(targetGain, audioCtx.currentTime);
+        }
+        if (spatialAirFilter) {
+          spatialAirFilter.gain.cancelScheduledValues(audioCtx.currentTime);
+          spatialAirFilter.gain.setValueAtTime(targetAir, audioCtx.currentTime);
+        }
+        if (spatialCrossfeedGain) {
+          spatialCrossfeedGain.gain.cancelScheduledValues(audioCtx.currentTime);
+          spatialCrossfeedGain.gain.setValueAtTime(targetCrossfeed, audioCtx.currentTime);
+        }
+        if (dryMasterGain) {
+          dryMasterGain.gain.cancelScheduledValues(audioCtx.currentTime);
+          dryMasterGain.gain.setValueAtTime(1.0, audioCtx.currentTime);
+        }
+        if (gainNode) {
+          gainNode.gain.cancelScheduledValues(audioCtx.currentTime);
+          gainNode.gain.setValueAtTime(targetVolume, audioCtx.currentTime);
+        }
+      } catch (e) {
+        console.warn('[Player] Spatial audio param update error:', e);
+      }
+    }
+    return isSpatialEnabled;
+  }
+
   // Mobile Audio Background & Lifecycle Keepalive
   document.addEventListener('visibilitychange', () => {
     if (document.visibilityState === 'hidden') {
@@ -138,9 +258,11 @@ const Player = (() => {
         } catch (_) {}
       }
     } else if (document.visibilityState === 'visible') {
-      if (audioCtx && audioCtx.state === 'suspended') {
+      // Resume AudioContext only on non-iOS
+      if (!isIOS && audioCtx && audioCtx.state === 'suspended') {
         audioCtx.resume().catch(() => {});
       }
+      // Sync UI state with actual audio element state
       if (activeAudio) {
         const isAudioActive = !activeAudio.paused && !activeAudio.ended;
         if (isAudioActive !== isPlaying) {
@@ -527,12 +649,31 @@ const Player = (() => {
         return urls.filter(u => typeof u === 'string' && u.startsWith('http'));
       }
 
-      let candidateUrls = [];
+      let rawCandidateUrls = [];
       if (streamUrl) {
-        candidateUrls.push(streamUrl);
+        rawCandidateUrls.push(streamUrl);
       } else {
-        candidateUrls = extractCandidateStreams(song);
+        rawCandidateUrls = extractCandidateStreams(song);
       }
+
+      // Build proxy & direct candidate list to guarantee clean Web Audio CORS stream
+      let candidateUrls = [];
+      const isLocalServer = (
+        window.location.hostname === 'localhost' ||
+        window.location.hostname === '127.0.0.1' ||
+        window.location.hostname.startsWith('192.168.') ||
+        window.location.hostname.startsWith('10.') ||
+        window.location.hostname.startsWith('172.') ||
+        window.location.port === '5500' ||
+        window.location.protocol === 'http:'
+      );
+      rawCandidateUrls.forEach(url => {
+        // On iOS, always use direct CDN URLs (no proxy needed since no Web Audio CORS)
+        if (!isIOS && isLocalServer && url.includes('saavncdn.com')) {
+          candidateUrls.push(`/api/proxy-audio?url=${encodeURIComponent(url)}`);
+        }
+        candidateUrls.push(url);
+      });
 
       // If no candidate stream URLs, fetch full song details
       if (candidateUrls.length === 0 && song.id) {
@@ -732,33 +873,34 @@ const Player = (() => {
   }
 
   async function checkAndPrefetchAutoplay() {
-    const settings = Storage.getSettings();
-    if (!settings.autoplay || queue.length === 0) return;
+    const settings = (typeof Storage !== 'undefined' && Storage.getSettings) ? Storage.getSettings() : {};
+    if (settings.autoplay === false || queue.length === 0) return;
     
-    // Only prefetch if we are at the last song in the queue (and not repeating all)
-    if (currentIndex === queue.length - 1 && repeatMode !== 'all') {
+    // Prefetch whenever we are within 2 songs of the end of the queue (and not repeating a single track)
+    if (currentIndex >= queue.length - 2 && repeatMode !== 'one') {
       try {
-        const currentTrack = queue[currentIndex];
+        const currentTrack = queue[currentIndex] || queue[queue.length - 1];
         let artists = [];
-        if (typeof currentTrack.artists === 'string') {
-          artists = currentTrack.artists.split(',');
-        } else if (Array.isArray(currentTrack.artists)) {
-          artists = currentTrack.artists.map(a => typeof a === 'object' ? (a?.name || a?.artist || '') : String(a));
-        } else if (currentTrack.artist) {
-          artists = [currentTrack.artist];
+        if (currentTrack) {
+          if (typeof currentTrack.artists === 'string') {
+            artists = currentTrack.artists.split(',');
+          } else if (Array.isArray(currentTrack.artists)) {
+            artists = currentTrack.artists.map(a => typeof a === 'object' ? (a?.name || a?.artist || '') : String(a));
+          } else if (currentTrack.artist) {
+            artists = [currentTrack.artist];
+          }
         }
         const seedArtist = (artists[Math.floor(Math.random() * artists.length)] || '').trim();
-        if (!seedArtist) return;
         
-        let query = seedArtist;
-        if (Math.random() < 0.1) query = "Trending Top Hits";
+        let query = seedArtist || 'Trending Top Hits';
+        if (Math.random() < 0.15) query = 'Top Global Hits 2024';
         
         const res = await API.searchSongs(query, 15);
         if (!res || res.length === 0) return;
         
-        const recentIds = Storage.getRecent().map(r => r.id);
+        const recentIds = (typeof Storage !== 'undefined' && Storage.getRecent) ? Storage.getRecent().map(r => r.id) : [];
         const queueIds = queue.map(q => q.id);
-        const prefs = Storage.getSettings().languages || [];
+        const prefs = settings.languages || [];
         
         const newSongs = res.filter(s => {
           if (queueIds.includes(s.id) || recentIds.includes(s.id)) return false;
@@ -768,15 +910,9 @@ const Player = (() => {
         });
         
         if (newSongs.length > 0) {
-          const nextSong = window.API ? window.API.normalizeSong(newSongs[0]) : newSongs[0];
-          // Pre-fetch the stream URL so it's instantly ready
-          const details = await API.getSongDetails(nextSong.id);
-          if (details && details.length > 0) {
-            const normalized = window.API ? window.API.normalizeSong(details[0]) : details[0];
-            queue.push({ ...nextSong, ...normalized });
-          } else {
-            queue.push(nextSong);
-          }
+          const songsToAdd = newSongs.slice(0, 5).map(s => (window.API && API.normalizeSong) ? API.normalizeSong(s) : s);
+          queue.push(...songsToAdd);
+          if (shuffleMode) generateShuffledIndices();
           onQueueUpdate?.(queue, currentIndex);
         }
       } catch (e) {
@@ -785,20 +921,14 @@ const Player = (() => {
     }
   }
 
-  async function play() {
+  function play() {
     if (!activeAudio) return;
+    stopInactiveAudio();
     
-    const currentTrack = getCurrentTrack();
-
     // If no source is loaded yet, but we have a track in queue, load and play it
-    if ((!activeAudio.src || activeAudio.src === '' || activeAudio.src === window.location.href) && currentIndex >= 0 && queue[currentIndex]) {
-      await loadAndPlay(queue[currentIndex]);
-      return;
-    }
-
-    if (!activeAudio.src) {
-      if (queue.length > 0 && currentIndex >= 0) {
-        await loadAndPlay(queue[currentIndex]);
+    if ((!activeAudio.src || activeAudio.src === '' || activeAudio.src === window.location.href)) {
+      if (queue.length > 0 && currentIndex >= 0 && queue[currentIndex]) {
+        loadAndPlay(queue[currentIndex]);
       } else {
         if (typeof UI !== 'undefined' && UI.showToast) {
           UI.showToast('No track selected to play', 'info');
@@ -807,15 +937,12 @@ const Player = (() => {
       return;
     }
 
-    if (audioCtx && audioCtx.state === 'suspended') {
-      try {
-        await audioCtx.resume();
-      } catch (err) {
-        console.warn('[Player] audioCtx.resume() failed:', err);
-      }
+    // Resume AudioContext only on non-iOS (iOS doesn't use Web Audio)
+    if (!isIOS && audioCtx && audioCtx.state === 'suspended') {
+      audioCtx.resume().catch(err => console.warn('[Player] audioCtx.resume() failed:', err));
     }
 
-    // Call activeAudio.play() synchronously after resume
+    // Call activeAudio.play() synchronously in the immediate user activation frame
     try {
       const playPromise = activeAudio.play();
       if (playPromise !== undefined) {
@@ -828,38 +955,30 @@ const Player = (() => {
             } catch (_) {}
           }
         }).catch(err => {
-          console.warn(`[Player] Resume error. Error: ${err.name} - ${err.message}`);
+          console.warn(`[Player] Resume error: ${err.name} - ${err.message}`);
+          // On iOS lockscreen, do NOT call loadAndPlay — it requires a user gesture.
+          // Just mark as paused so the lockscreen shows the correct state.
+          if (isIOS) {
+            isPlaying = false;
+            onPause?.();
+            if ('mediaSession' in navigator) {
+              try { navigator.mediaSession.playbackState = 'paused'; } catch (_) {}
+            }
+            return;
+          }
           const track = getCurrentTrack();
           if (track) {
-            const savedTime = activeAudio.currentTime || 0;
-            try {
-              activeAudio.load();
-              if (savedTime > 0) activeAudio.currentTime = savedTime;
-              activeAudio.play().then(() => {
-                isPlaying = true;
-                onPlay?.();
-                if ('mediaSession' in navigator) {
-                  try { navigator.mediaSession.playbackState = 'playing'; } catch(_) {}
-                }
-              }).catch(retryErr => {
-                console.warn(`[Player] Direct reload failed: ${retryErr.message}. Auto-recovering...`);
-                if (typeof UI !== 'undefined' && UI.showToast) {
-                  UI.showToast(`Track "${track.name}" unavailable. Auto-skipping...`, 'warning');
-                }
-                if (queue.length > 1) {
-                  next();
-                } else {
-                  loadAndPlay(track);
-                }
-              });
-            } catch (_) {
-              loadAndPlay(track);
-            }
+            loadAndPlay(track);
           }
         });
       }
     } catch (err) {
       console.warn(`[Player] Play sync error: ${err.name} - ${err.message}`);
+      if (isIOS) {
+        isPlaying = false;
+        onPause?.();
+        return;
+      }
       const track = getCurrentTrack();
       if (track) loadAndPlay(track);
     }
@@ -903,35 +1022,33 @@ const Player = (() => {
       if (repeatMode === 'all') {
         nextIndex = 0;
       } else {
-        // Endless autoplay: never let the music stop. Try several seeds and
-        // relax filters until something plays.
+        // Endless autoplay: never let the music stop. Fetch dynamic recommendations or loop seamlessly.
         const settings = Storage.getSettings();
-        if (settings.autoplay !== false && queue[currentIndex]) {
+        if (settings.autoplay !== false) {
           try {
-            const currentTrack = queue[currentIndex];
+            const currentTrack = queue[currentIndex] || queue[queue.length - 1];
             let artists = [];
-            if (typeof currentTrack.artists === 'string') {
-              artists = currentTrack.artists.split(',');
-            } else if (Array.isArray(currentTrack.artists)) {
-              artists = currentTrack.artists.map(a => typeof a === 'object' ? (a?.name || a?.artist || '') : String(a));
-            } else if (currentTrack.artist) {
-              artists = [currentTrack.artist];
+            if (currentTrack) {
+              if (typeof currentTrack.artists === 'string') {
+                artists = currentTrack.artists.split(',');
+              } else if (Array.isArray(currentTrack.artists)) {
+                artists = currentTrack.artists.map(a => typeof a === 'object' ? (a?.name || a?.artist || '') : String(a));
+              } else if (currentTrack.artist) {
+                artists = [currentTrack.artist];
+              }
             }
             const seedArtist = (artists[Math.floor(Math.random() * artists.length)] || '').trim();
-            const seedLang = (currentTrack.language || '').trim();
-
-            const prefLangsAuto = (settings.languages || []).slice(0, 1);
             const seedQueries = [];
             if (seedArtist) seedQueries.push(seedArtist, `${seedArtist} hits`);
-            prefLangsAuto.forEach(l => seedQueries.push(`top ${l} songs`));
+            (settings.languages || []).slice(0, 1).forEach(l => seedQueries.push(`top ${l} songs`));
+            seedQueries.push('trending hits', 'popular songs');
 
             const recentIds = new Set(Storage.getRecent().slice(0, 30).map(r => r.id));
             const queueKeys = queue.map(q => (API.getTitleKey ? API.getTitleKey(q) : q.id));
-            const prefs = settings.languages || [];
 
             let added = [];
             for (let pass = 0; pass < 2 && added.length === 0; pass++) {
-              const relaxed = pass === 1; // second pass: ignore language prefs + recents
+              const relaxed = pass === 1;
               for (const q of seedQueries) {
                 let res = [];
                 try { res = await API.searchSongs(q, 15) || []; } catch (_) { continue; }
@@ -939,9 +1056,6 @@ const Player = (() => {
                 if (!relaxed) {
                   candidates = API.filterByLanguagePrefs ? API.filterByLanguagePrefs(candidates, { minKeep: 5 }) : candidates;
                   candidates = candidates.filter(s => !recentIds.has(s.id));
-                  // Artist-seeded queries must actually match the artist —
-                  // otherwise they are sound-alike cover spam; let the chart
-                  // pool handle discovery instead.
                   if (seedArtist && q.toLowerCase().includes(seedArtist.toLowerCase())) {
                     const sl = seedArtist.toLowerCase();
                     candidates = candidates.filter(s => (s.artists || '').toLowerCase().includes(sl));
@@ -951,20 +1065,19 @@ const Player = (() => {
                   ? API.dedupeVariants(candidates, { maxPerArtist: 3, maxRun: 2, excludeKeys: queueKeys })
                   : candidates;
                 if (candidates.length > 0) {
-                  added = candidates.slice(0, 5);
+                  added = candidates.slice(0, 8);
                   break;
                 }
               }
             }
 
-            // Chart fallback: real trending songs, not a "trending" text search
             if (added.length === 0 && API.getTrendingPool) {
               try {
                 let pool = await API.getTrendingPool(15);
                 pool = API.dedupeVariants
                   ? API.dedupeVariants(pool, { maxPerArtist: 2, maxRun: 2, excludeKeys: queueKeys })
                   : pool;
-                added = pool.slice(0, 5);
+                added = pool.slice(0, 8);
               } catch (_) {}
             }
 
@@ -973,15 +1086,15 @@ const Player = (() => {
               nextIndex = queue.length - added.length;
               if (shuffleMode) generateShuffledIndices();
             } else {
-              // Absolute last resort: loop the queue instead of going silent
-              nextIndex = 0;
+              nextIndex = 0; // Loop seamlessly
             }
           } catch (e) {
             console.error('[Player] Autoplay fetch failed, looping queue:', e);
             nextIndex = 0;
           }
         } else {
-          return;
+          // If autoplay setting is explicitly off, loop the queue so playback never abruptly dies
+          nextIndex = 0;
         }
       }
     }
@@ -1372,43 +1485,7 @@ const Player = (() => {
     return preset;
   }
 
-  // ---- 3D Spatial Surround ----
 
-  let isSpatialEnabled = false;
-
-  function toggleSpatialAudio(enable) {
-    if (!audioCtx) initWebAudio();
-    isSpatialEnabled = enable !== undefined ? enable : !isSpatialEnabled;
-    Storage.updateSettings({ spatialAudio: isSpatialEnabled });
-
-    if (pannerNode && audioCtx) {
-      if (isSpatialEnabled) {
-        let angle = 0;
-        if (spatialInterval) clearInterval(spatialInterval);
-        spatialInterval = setInterval(() => {
-          if (!isSpatialEnabled) {
-            clearInterval(spatialInterval);
-            return;
-          }
-          angle += 0.04;
-          const panVal = Math.sin(angle) * 0.75;
-          if (pannerNode.pan) {
-            pannerNode.pan.setValueAtTime(panVal, audioCtx.currentTime);
-          } else if (pannerNode.setPosition) {
-            pannerNode.setPosition(Math.sin(angle), 0, Math.cos(angle));
-          }
-        }, 50);
-      } else {
-        if (spatialInterval) clearInterval(spatialInterval);
-        if (pannerNode.pan) {
-          pannerNode.pan.setValueAtTime(0, audioCtx.currentTime);
-        } else if (pannerNode.setPosition) {
-          pannerNode.setPosition(0, 0, 1);
-        }
-      }
-    }
-    return isSpatialEnabled;
-  }
 
   // ---- Ambient Focus Sound Generator ----
 
@@ -1482,13 +1559,6 @@ const Player = (() => {
     return playbackSpeed;
   }
 
-  function setEqBand(index, gain) {
-    if (!audioCtx) initWebAudio();
-    if (eqBands[index]) {
-      eqBands[index].gain.value = gain;
-    }
-  }
-
   function getAnalyserNode() {
     return analyserNode;
   }
@@ -1558,6 +1628,7 @@ const Player = (() => {
   return {
     playSong,
     playAtIndex,
+    playIndex: playAtIndex,
     play,
     pause,
     togglePlayPause,
@@ -1581,6 +1652,7 @@ const Player = (() => {
     getQueue,
     getCurrentTrack,
     getCurrentIndex,
+    getQueueIndex: getCurrentIndex,
     setQueue,
     addToQueue,
     removeFromQueue,

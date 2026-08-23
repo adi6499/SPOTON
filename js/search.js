@@ -69,6 +69,8 @@ const SearchEngine = (() => {
     const q = (query || '').toLowerCase().trim();
     if (!q) return null;
 
+    const words = q.split(/\s+/).filter(Boolean);
+
     // 1. Exact artist match
     const exactArtist = (artists || []).find(a => (a.name || '').toLowerCase() === q);
     if (exactArtist) {
@@ -76,34 +78,46 @@ const SearchEngine = (() => {
     }
 
     // 2. Exact song title match
-    const exactSong = (songs || []).find(s => (s.name || '').toLowerCase() === q);
+    const exactSong = (songs || []).find(s => (s.title || s.name || '').toLowerCase() === q);
     if (exactSong) {
       return { item: exactSong, type: 'song', confidence: 0.95 };
     }
 
-    // 3. Exact album title match
+    // 3. Multi-token high-relevance song match (e.g. "OK" by "Katy Perry")
+    if (words.length >= 2 && songs && songs.length > 0) {
+      const bestMatch = (songs || []).find(s => {
+        const title = (s.title || s.name || '').toLowerCase();
+        const artist = (s.artist || '').toLowerCase();
+        return words.every(w => title.includes(w) || artist.includes(w));
+      });
+      if (bestMatch) {
+        return { item: bestMatch, type: 'song', confidence: 0.92 };
+      }
+    }
+
+    // 4. Exact album title match
     const exactAlbum = (albums || []).find(a => (a.title || a.name || '').toLowerCase() === q);
     if (exactAlbum) {
       return { item: exactAlbum, type: 'album', confidence: 0.90 };
     }
 
-    // 4. Prefix artist match
+    // 5. Prefix artist match
     const prefixArtist = (artists || []).find(a => (a.name || '').toLowerCase().startsWith(q));
     if (prefixArtist) {
       return { item: prefixArtist, type: 'artist', confidence: 0.85 };
     }
 
-    // 5. First song if available
+    // 6. First song if available
     if (songs && songs.length > 0) {
       return { item: songs[0], type: 'song', confidence: 0.75 };
     }
 
-    // 6. First album
+    // 7. First album
     if (albums && albums.length > 0) {
       return { item: albums[0], type: 'album', confidence: 0.70 };
     }
 
-    // 7. First artist
+    // 8. First artist
     if (artists && artists.length > 0) {
       return { item: artists[0], type: 'artist', confidence: 0.65 };
     }
@@ -257,10 +271,20 @@ const SearchEngine = (() => {
       playlists: { page: 1, hasMore: true }
     };
 
-    // Show search page
+    // Show search page & toggle hub
     UI.showPage('page-search');
+    const browseHub = document.getElementById('search-browse-hub');
+    if (browseHub) browseHub.style.display = 'none';
     const container = document.getElementById('search-results');
     if (!container) return;
+    container.style.display = 'block';
+
+    const pageInput = document.getElementById('search-page-input');
+    if (pageInput && document.activeElement !== pageInput && pageInput.value.trim() !== cleanQuery) {
+      pageInput.value = cleanQuery;
+    }
+    const pageClear = document.getElementById('search-page-clear');
+    if (pageClear) pageClear.style.display = 'flex';
 
     // Render skeleton layout immediately
     renderSearchPageSkeleton(container, cleanQuery, state.activeTab);
@@ -274,16 +298,8 @@ const SearchEngine = (() => {
       const rawArtists = federated?.artists || [];
       const rawPlaylists = federated?.playlists || [];
 
-      // Local language preferences filtering for songs
-      const prefs = (typeof Storage !== 'undefined' && Storage.getSettings) ? (Storage.getSettings().languages || []) : [];
-      const filteredSongs = (prefs.length > 0)
-        ? rawSongs.filter(s => {
-            const lang = (s.language || '').toLowerCase();
-            return lang === '' || lang === 'unknown' || prefs.includes(lang);
-          })
-        : rawSongs;
-
-      const finalSongs = filteredSongs.length > 0 ? filteredSongs : rawSongs;
+      // In user-initiated search, return all rich matched results without artificial filtering
+      const finalSongs = rawSongs;
 
       // Integrate local matching playlists
       const localPlaylists = getLocalAndPublicPlaylists(cleanQuery);
@@ -773,10 +789,10 @@ const SearchEngine = (() => {
 
     // Populate Overview components
     if (tab === 'all') {
-      // 1. Overview Songs
+      // 1. Overview Songs (Show 10 songs for rich results)
       const songsContainer = document.getElementById('search-overview-songs');
       if (songsContainer && state.results.songs.length > 0) {
-        state.results.songs.slice(0, 5).forEach((song, i) => {
+        state.results.songs.slice(0, 10).forEach((song, i) => {
           const el = UI.renderSongListItem(song, i);
           const nameEl = el.querySelector('.song-list-item__name');
           const artistEl = el.querySelector('.song-list-item__artist');
@@ -795,7 +811,7 @@ const SearchEngine = (() => {
       // 2. Overview Albums
       const albumsContainer = document.getElementById('search-overview-albums');
       if (albumsContainer && state.results.albums.length > 0) {
-        state.results.albums.slice(0, 6).forEach((album, i) => {
+        state.results.albums.slice(0, 8).forEach((album, i) => {
           const card = UI.renderAlbumCard(album, i);
           const nameEl = card.querySelector('.song-card__name');
           const artistEl = card.querySelector('.song-card__artist');
@@ -808,7 +824,7 @@ const SearchEngine = (() => {
       // 3. Overview Artists
       const artistsContainer = document.getElementById('search-overview-artists');
       if (artistsContainer && state.results.artists.length > 0) {
-        state.results.artists.slice(0, 6).forEach((artist, i) => {
+        state.results.artists.slice(0, 8).forEach((artist, i) => {
           const card = UI.renderArtistCard(artist, i);
           const nameEl = card.querySelector('.song-card__name');
           if (nameEl) nameEl.innerHTML = highlightMatch(artist.name, q);
@@ -819,7 +835,7 @@ const SearchEngine = (() => {
       // 4. Overview Playlists
       const playlistsContainer = document.getElementById('search-overview-playlists');
       if (playlistsContainer && state.results.playlists.length > 0) {
-        state.results.playlists.slice(0, 6).forEach((playlist, i) => {
+        state.results.playlists.slice(0, 8).forEach((playlist, i) => {
           const card = UI.renderPlaylistCard(playlist, i);
           const nameEl = card.querySelector('.song-card__name');
           if (nameEl) nameEl.innerHTML = highlightMatch(playlist.title || playlist.name, q);
@@ -830,13 +846,13 @@ const SearchEngine = (() => {
       // 5. Overview Mixes
       const mixesContainer = document.getElementById('search-overview-mixes');
       if (mixesContainer && state.results.mixes.length > 0) {
-        renderMixCards(mixesContainer, state.results.mixes.slice(0, 4), q);
+        renderMixCards(mixesContainer, state.results.mixes.slice(0, 6), q);
       }
 
       // 6. Overview Podcasts
       const podcastsContainer = document.getElementById('search-overview-podcasts');
       if (podcastsContainer && state.results.podcasts.length > 0) {
-        renderPodcastCards(podcastsContainer, state.results.podcasts.slice(0, 4), q);
+        renderPodcastCards(podcastsContainer, state.results.podcasts.slice(0, 6), q);
       }
     } else {
       // Dedicated Tab content rendering
@@ -1062,51 +1078,125 @@ const SearchEngine = (() => {
    */
   function renderSearchHistory() {
     UI.showPage('page-search');
+    const browseHub = document.getElementById('search-browse-hub');
     const container = document.getElementById('search-results');
-    if (!container) return;
+    if (browseHub) browseHub.style.display = 'block';
+    if (container) container.style.display = 'none';
 
+    initSearchDiscoveryPage();
+  }
+
+  /**
+   * Initialize Search Discovery Page controls and trending tags
+   */
+  function initSearchDiscoveryPage() {
+    const pageInput = document.getElementById('search-page-input');
+    const headerInput = document.getElementById('search-input');
+    const pageClear = document.getElementById('search-page-clear');
+    const browseHub = document.getElementById('search-browse-hub');
+    const resultsArea = document.getElementById('search-results');
+
+    // 1. Render recent searches in chips if available
+    const recentSection = document.getElementById('search-recent-section');
+    const recentChips = document.getElementById('search-recent-chips');
     const history = (typeof Storage !== 'undefined' && Storage.getSearchHistory) ? Storage.getSearchHistory() : [];
+    if (recentSection && recentChips) {
+      if (history.length > 0) {
+        recentSection.style.display = 'block';
+        recentChips.innerHTML = history.slice(0, 10).map(q => `
+          <button class="search-trend-chip" data-query="${q}">${q}</button>
+        `).join('');
 
-    if (history.length === 0) {
-      container.innerHTML = `
-        <div class="empty-state">
-          <div class="empty-state__icon">🔍</div>
-          <div class="empty-state__title">Search MusicFlow</div>
-          <div class="empty-state__subtitle">Find your favorite songs, artists, albums, playlists, podcasts, and music videos.</div>
-        </div>`;
-      return;
+        recentChips.querySelectorAll('.search-trend-chip').forEach(chip => {
+          chip.onclick = (e) => {
+            e.stopPropagation();
+            const query = chip.dataset.query;
+            if (pageInput) pageInput.value = query;
+            if (headerInput) headerInput.value = query;
+            if (pageClear) pageClear.style.display = 'flex';
+            executeSearch(query);
+          };
+        });
+      } else {
+        recentSection.style.display = 'none';
+      }
     }
 
-    let html = `
-      <div class="search-history-container">
-        <div class="section-header">
-          <h2 class="section-title">Recent Searches</h2>
-          <button class="btn-text" id="btn-clear-history">Clear</button>
-        </div>
-        <div class="search-history-list" style="display: flex; flex-wrap: wrap; gap: 8px; margin-top: 12px;">
-    `;
-
-    history.forEach(q => {
-      html += `<button class="quick-tag" data-query="${q}" style="background: var(--bg-card); padding: 8px 16px; border-radius: var(--radius-full); font-size: var(--font-size-sm);">${q}</button>`;
+    // 2. Clear history button
+    document.getElementById('btn-clear-search-history')?.addEventListener('click', () => {
+      if (typeof Storage !== 'undefined' && Storage.clearSearchHistory) Storage.clearSearchHistory();
+      if (recentSection) recentSection.style.display = 'none';
+      if (recentChips) recentChips.innerHTML = '';
     });
 
-    html += `</div></div>`;
-    container.innerHTML = html;
-
-    document.getElementById('btn-clear-history')?.addEventListener('click', () => {
-      Storage.clearSearchHistory();
-      renderSearchHistory();
-    });
-
-    container.querySelectorAll('.quick-tag').forEach(tag => {
-      tag.addEventListener('click', () => {
-        const query = tag.dataset.query;
-        const input = document.getElementById('search-input');
-        if (input) input.value = query;
-        document.getElementById('search-clear')?.classList.add('visible');
+    // 3. Trending chips & Browse categories click handlers
+    document.querySelectorAll('.search-trend-chip, .search-cat-card').forEach(el => {
+      el.onclick = (e) => {
+        e.stopPropagation();
+        const query = el.dataset.query;
+        if (!query) return;
+        if (pageInput) pageInput.value = query;
+        if (headerInput) headerInput.value = query;
+        if (pageClear) pageClear.style.display = 'flex';
         executeSearch(query);
-      });
+      };
     });
+
+    // 4. Input listener for real-time typing
+    if (pageInput && !pageInput.dataset.bound) {
+      pageInput.dataset.bound = 'true';
+      let debounceTimer = null;
+
+      pageInput.addEventListener('input', () => {
+        const rawVal = pageInput.value;
+        const q = rawVal.trim();
+        if (headerInput && headerInput !== document.activeElement) headerInput.value = rawVal;
+        if (pageClear) pageClear.style.display = rawVal.length > 0 ? 'flex' : 'none';
+
+        if (!q) {
+          if (browseHub) browseHub.style.display = 'block';
+          if (resultsArea) resultsArea.style.display = 'none';
+          initSearchDiscoveryPage();
+          return;
+        }
+
+        clearTimeout(debounceTimer);
+        debounceTimer = setTimeout(() => {
+          if (typeof Storage !== 'undefined' && Storage.addSearchHistory) Storage.addSearchHistory(q);
+          executeSearch(q);
+        }, 360);
+      });
+
+      pageInput.addEventListener('keydown', (e) => {
+        if (e.key === ' ' || e.code === 'Space') {
+          e.stopPropagation();
+        }
+        if (e.key === 'Enter') {
+          e.preventDefault();
+          clearTimeout(debounceTimer);
+          const q = pageInput.value.trim();
+          if (q) {
+            if (typeof Storage !== 'undefined' && Storage.addSearchHistory) Storage.addSearchHistory(q);
+            executeSearch(q);
+          }
+        }
+      });
+    }
+
+    // 5. Clear button click handler
+    if (pageClear && !pageClear.dataset.bound) {
+      pageClear.dataset.bound = 'true';
+      pageClear.onclick = (e) => {
+        e.stopPropagation();
+        if (pageInput) pageInput.value = '';
+        if (headerInput) headerInput.value = '';
+        pageClear.style.display = 'none';
+        if (browseHub) browseHub.style.display = 'block';
+        if (resultsArea) resultsArea.style.display = 'none';
+        initSearchDiscoveryPage();
+        pageInput?.focus();
+      };
+    }
   }
 
   /**
@@ -1143,7 +1233,8 @@ const SearchEngine = (() => {
     executeSearch,
     switchTab,
     loadMore,
-    renderSearchHistory
+    renderSearchHistory,
+    initSearchDiscoveryPage
   };
 })();
 
