@@ -1,0 +1,28 @@
+{
+  "name": "musicflow",
+  "version": "1.0.0",
+  "description": "MusicFlow — Lossless music streaming iOS application",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "prepare:web": "node scripts/prepare-ios.js",
+    "cap:add:ios": "node scripts/prepare-ios.js && npx cap add ios",
+    "cap:sync": "node scripts/prepare-ios.js && npx cap sync ios",
+    "cap:open": "npx cap open ios",
+    "build:ios": "node scripts/prepare-ios.js && npx cap sync ios"
+  },
+  "keywords": [
+    "music",
+    "streaming",
+    "ios",
+    "capacitor",
+    "pwa"
+  ],
+  "author": "MusicFlow",
+  "license": "MIT",
+  "devDependencies": {
+    "@capacitor/cli": "^7.0.1",
+    "@capacitor/core": "^7.0.1",
+    "@capacitor/ios": "^7.0.1"
+  }
+}
