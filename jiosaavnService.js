@@ -3,11 +3,15 @@
 // Directly interfaces with JioSaavn API with 320kbps lossless stream decryption
 // ============================================================================
 
-const forge = require('node-forge');
+const crypto = require('crypto');
+let forge = null;
+try {
+  forge = require('node-forge');
+} catch (_) {}
 
 const JIOSAAVN_API_URL = 'https://www.jiosaavn.com/api.php';
-const DES_KEY = '38346591';
-const DES_IV = '00000000';
+const KEY_8 = Buffer.from('38346591', 'utf8');
+const KEY_24 = Buffer.concat([KEY_8, KEY_8, KEY_8]); // K1=K2=K3 for Single DES via Triple-DES EDE3-ECB
 
 const USER_AGENTS = [
   'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36',
@@ -32,25 +36,38 @@ function decodeHtml(str) {
 
 function decryptMediaUrl(encryptedMediaUrl) {
   if (!encryptedMediaUrl || typeof encryptedMediaUrl !== 'string') return [];
-  try {
-    const encrypted = forge.util.decode64(encryptedMediaUrl.trim());
-    const decipher = forge.cipher.createDecipher('DES-ECB', forge.util.createBuffer(DES_KEY));
-    decipher.start({ iv: forge.util.createBuffer(DES_IV) });
-    decipher.update(forge.util.createBuffer(encrypted));
-    decipher.finish();
-    const raw = decipher.output.getBytes();
-    if (!raw || !raw.includes('.mp4')) return [];
+  const cleanEnc = encryptedMediaUrl.trim();
+  let raw = '';
 
-    return [
-      { quality: '12kbps', url: raw.replace('_96', '_12') },
-      { quality: '48kbps', url: raw.replace('_96', '_48') },
-      { quality: '96kbps', url: raw.replace('_96', '_96') },
-      { quality: '160kbps', url: raw.replace('_96', '_160') },
-      { quality: '320kbps', url: raw.replace('_96', '_320') }
-    ];
-  } catch (_) {
-    return [];
+  // 1. Native Node.js crypto using mathematically equivalent 3DES-ECB (Zero external dependencies)
+  try {
+    const decipher = crypto.createDecipheriv('des-ede3-ecb', KEY_24, null);
+    decipher.setAutoPadding(true);
+    raw = decipher.update(Buffer.from(cleanEnc, 'base64'), null, 'utf8');
+    try { raw += decipher.final('utf8'); } catch (_) {}
+  } catch (_) {}
+
+  // 2. Fallback to node-forge if native crypto unavailable
+  if ((!raw || !raw.includes('.mp4')) && forge) {
+    try {
+      const encrypted = forge.util.decode64(cleanEnc);
+      const decipher = forge.cipher.createDecipher('DES-ECB', forge.util.createBuffer('38346591'));
+      decipher.start({ iv: forge.util.createBuffer('00000000') });
+      decipher.update(forge.util.createBuffer(encrypted));
+      decipher.finish();
+      raw = decipher.output.getBytes();
+    } catch (_) {}
   }
+
+  if (!raw || !raw.includes('.mp4')) return [];
+
+  return [
+    { quality: '12kbps', url: raw.replace('_96', '_12') },
+    { quality: '48kbps', url: raw.replace('_48', '_48') },
+    { quality: '96kbps', url: raw.replace('_96', '_96') },
+    { quality: '160kbps', url: raw.replace('_96', '_160') },
+    { quality: '320kbps', url: raw.replace('_96', '_320') }
+  ];
 }
 
 function createImageLinks(link) {

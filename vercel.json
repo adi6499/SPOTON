@@ -1,8 +1,4 @@
 {
-  "buildCommand": "",
-  "installCommand": "",
-  "outputDirectory": ".",
-  "framework": null,
   "headers": [
     {
       "source": "(.*)",
@@ -29,7 +25,17 @@
     { "source": "/api/artists", "destination": "/api/artists.js" },
     { "source": "/api/artists/:path*", "destination": "/api/artists.js" },
     { "source": "/api/modules", "destination": "/api/modules.js" },
-    { "source": "/api/update", "destination": "/api/update.js" }
+    { "source": "/api/update", "destination": "/api/update.js" },
+    { "source": "/api/providers/ytmusic/import-playlist", "destination": "/api/providers/ytmusic/import-playlist.js" },
+    { "source": "/api/providers/ytmusic/import-track", "destination": "/api/providers/ytmusic/import-track.js" },
+    { "source": "/api/providers/ytmusic/search", "destination": "/api/providers/ytmusic/search.js" },
+    { "source": "/api/providers/ytmusic/radio", "destination": "/api/providers/ytmusic/radio.js" },
+    { "source": "/api/providers/ytmusic/song", "destination": "/api/providers/ytmusic/song.js" },
+    { "source": "/api/providers/ytmusic/artist", "destination": "/api/providers/ytmusic/artist.js" },
+    { "source": "/api/providers/ytmusic/album", "destination": "/api/providers/ytmusic/album.js" },
+    { "source": "/api/providers/ytmusic/playlist", "destination": "/api/providers/ytmusic/playlist.js" },
+    { "source": "/api/providers/ytmusic/stream", "destination": "/api/providers/ytmusic/stream.js" },
+    { "source": "/api/providers/health", "destination": "/api/providers/health.js" }
   ],
   "cleanUrls": true
 }
