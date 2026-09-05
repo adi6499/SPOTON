@@ -53,7 +53,7 @@ const server = http.createServer((req, res) => {
 
   let cleanUrl = req.url.split('?')[0];
   const parsedUrl = new URL(req.url, `http://${req.headers.host || 'localhost:5500'}`);
-  const urlPath = parsedUrl.pathname;
+  const urlPath = parsedUrl.pathname.startsWith('/api/') ? parsedUrl.pathname.replace(/\.js$/, '') : parsedUrl.pathname;
 
   // JioSaavn Service Endpoints
   if (urlPath === '/api/search/songs' && req.method === 'GET') {
