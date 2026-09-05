@@ -12,16 +12,23 @@
   constructor() {
     super(MusicProviderTypes.JIOSAAVN, 100); // Priority 100 = Primary Playback Provider
     this.primaryHosts = [
+      'https://spoton-sigma.vercel.app/api',
       'https://spoton-trpn.vercel.app/api'
     ];
     this.currentHostIndex = 0;
   }
 
   getPrimaryHosts() {
+    const hosts = [];
     if (typeof ApiConfig !== 'undefined' && typeof ApiConfig.getJioSaavnApiBase === 'function') {
-      return [ApiConfig.getJioSaavnApiBase()];
+      hosts.push(ApiConfig.getJioSaavnApiBase());
     }
-    return this.primaryHosts;
+    if (typeof window !== 'undefined' && window.location?.origin?.startsWith('http')) {
+      hosts.push(`${window.location.origin}/api`);
+    }
+    hosts.push('https://spoton-sigma.vercel.app/api');
+    hosts.push('https://spoton-trpn.vercel.app/api');
+    return [...new Set(hosts.filter(Boolean))];
   }
 
   async fetchWithFallback(endpoint, params = {}, signal) {

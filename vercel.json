@@ -14,5 +14,22 @@
       ]
     }
   ],
+  "rewrites": [
+    { "source": "/api/search/songs", "destination": "/api/search/songs.js" },
+    { "source": "/api/search/albums", "destination": "/api/search/albums.js" },
+    { "source": "/api/search/playlists", "destination": "/api/search/playlists.js" },
+    { "source": "/api/search/artists", "destination": "/api/search/artists.js" },
+    { "source": "/api/search", "destination": "/api/search.js" },
+    { "source": "/api/songs", "destination": "/api/songs.js" },
+    { "source": "/api/songs/:path*", "destination": "/api/songs.js" },
+    { "source": "/api/albums", "destination": "/api/albums.js" },
+    { "source": "/api/albums/:path*", "destination": "/api/albums.js" },
+    { "source": "/api/playlists", "destination": "/api/playlists.js" },
+    { "source": "/api/playlists/:path*", "destination": "/api/playlists.js" },
+    { "source": "/api/artists", "destination": "/api/artists.js" },
+    { "source": "/api/artists/:path*", "destination": "/api/artists.js" },
+    { "source": "/api/modules", "destination": "/api/modules.js" },
+    { "source": "/api/update", "destination": "/api/update.js" }
+  ],
   "cleanUrls": true
 }

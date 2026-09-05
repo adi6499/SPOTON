@@ -3,16 +3,23 @@
 // ==========================================================================
 
 const API = (() => {
-  // Live Working Hosts (Android App host spoton-trpn)
+  // Live Primary and Fallback Hosts
   const DEFAULT_PRIMARY_HOSTS = [
+    'https://spoton-sigma.vercel.app/api',
     'https://spoton-trpn.vercel.app/api'
   ];
 
   function getPrimaryHosts() {
+    const hosts = [];
     if (typeof ApiConfig !== 'undefined' && typeof ApiConfig.getJioSaavnApiBase === 'function') {
-      return [ApiConfig.getJioSaavnApiBase()];
+      hosts.push(ApiConfig.getJioSaavnApiBase());
     }
-    return DEFAULT_PRIMARY_HOSTS;
+    if (typeof window !== 'undefined' && window.location?.origin?.startsWith('http')) {
+      hosts.push(`${window.location.origin}/api`);
+    }
+    hosts.push('https://spoton-sigma.vercel.app/api');
+    hosts.push('https://spoton-trpn.vercel.app/api');
+    return [...new Set(hosts.filter(Boolean))];
   }
 
   let currentHostIndex = 0;
@@ -719,6 +726,12 @@ const API = (() => {
     // Get Album Details
     async getAlbumDetails(id) {
       try {
+        if (id && (id.startsWith('alb_yt_') || id.startsWith('yt_'))) {
+          if (typeof MusicProvider !== 'undefined' && MusicProvider.getAlbum) {
+            const ytAlbum = await MusicProvider.getAlbum(id).catch(() => null);
+            if (ytAlbum && ytAlbum.songs && ytAlbum.songs.length > 0) return ytAlbum;
+          }
+        }
         const res = await fetchWithFallback('/albums', { id, limit: 100 });
         const data = res?.data || res;
         if (data && Array.isArray(data.songs)) {
@@ -733,6 +746,12 @@ const API = (() => {
     // Get Playlist Details
     async getPlaylistDetails(id) {
       try {
+        if (id && (id.startsWith('pl_yt_') || id.startsWith('yt_'))) {
+          if (typeof MusicProvider !== 'undefined' && MusicProvider.getPlaylist) {
+            const ytPlaylist = await MusicProvider.getPlaylist(id).catch(() => null);
+            if (ytPlaylist && ytPlaylist.songs && ytPlaylist.songs.length > 0) return ytPlaylist;
+          }
+        }
         const res = await fetchWithFallback('/playlists', { id, limit: 100 });
         const data = res?.data || res;
         if (data && Array.isArray(data.songs)) {

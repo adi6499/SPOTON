@@ -7,9 +7,9 @@
 // ==========================================================================
 
 const ApiConfig = (() => {
-  // Production JioSaavn Live Provider API Host
-  const PRODUCTION_JIOSAAVN_API_BASE = 'https://spoton-trpn.vercel.app/api';
-  const PRODUCTION_API_BASE = 'https://spoton-trpn.vercel.app';
+  // Production API Base (Deployed on Vercel)
+  const PRODUCTION_API_BASE = 'https://spoton-sigma.vercel.app';
+  const PRODUCTION_JIOSAAVN_API_BASE = 'https://spoton-sigma.vercel.app/api';
   // Local Development API Base URL
   const DEV_API_BASE = 'http://localhost:3000';
 
@@ -130,6 +130,15 @@ const ApiConfig = (() => {
    * Returns JioSaavn API endpoint base URL (always the live Saavn service host)
    */
   function getJioSaavnApiBase() {
+    // If running in local development browser -> use local server /api
+    if (isLocalDevelopment()) {
+      const origin = (typeof window !== 'undefined' && window.location && window.location.origin) ? window.location.origin : DEV_API_BASE;
+      return `${origin}/api`;
+    }
+    // If running on web in browser -> use same origin /api
+    if (typeof window !== 'undefined' && window.location && window.location.origin && window.location.origin.startsWith('https://') && !window.location.origin.includes('localhost')) {
+      return `${window.location.origin}/api`;
+    }
     return PRODUCTION_JIOSAAVN_API_BASE;
   }
 
